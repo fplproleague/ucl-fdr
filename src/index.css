@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ucl-navy text-ucl-star font-body antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(67, 97, 255, 0.35), transparent 55%),
+      radial-gradient(circle at 100% 20%, rgba(27, 42, 217, 0.25), transparent 45%);
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(67, 97, 255, 0.5);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    font-stretch: expanded;
+  }
+}
