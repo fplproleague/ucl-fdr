@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES, TOTAL_GAMEWEEKS } from '../data/fixtures.js'
-import { ratingColor, formatAvg } from '../utils/difficulty.js'
+import { formatAvg } from '../utils/difficulty.js'
 import TeamBadge from './TeamBadge.jsx'
+import FixtureChip from './FixtureChip.jsx'
 
 const MAX_TEAMS = 5
 const gameweeks = Array.from({ length: TOTAL_GAMEWEEKS }, (_, i) => i + 1)
@@ -36,14 +37,12 @@ export default function CompareTeams() {
 
   return (
     <div className="mx-auto max-w-4xl px-3 pb-6 pt-4 sm:px-4">
-      <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">Vergelijk teams</h1>
-      <p className="mt-0.5 text-sm text-ucl-star/60">Selecteer tot {MAX_TEAMS} teams om hun fixtures naast elkaar te zien.</p>
+      <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">Compare Teams</h1>
+      <p className="mt-0.5 text-sm text-ucl-star/60">Select up to {MAX_TEAMS} teams to see their fixtures stacked.</p>
 
       <div className="mt-4">
         <div className="mb-2 flex flex-wrap gap-2">
-          {selectedTeams.length === 0 && (
-            <p className="text-xs text-ucl-star/40">Nog geen teams geselecteerd.</p>
-          )}
+          {selectedTeams.length === 0 && <p className="text-xs text-ucl-star/40">No teams selected yet.</p>}
           {selectedTeams.map((team) => (
             <button
               key={team.id}
@@ -59,7 +58,7 @@ export default function CompareTeams() {
 
         <details className="rounded-2xl border border-white/10 bg-white/[0.03]">
           <summary className="cursor-pointer select-none px-3 py-2.5 text-sm font-semibold text-ucl-star/80">
-            Team toevoegen ({selected.length}/{MAX_TEAMS})
+            Add team ({selected.length}/{MAX_TEAMS})
           </summary>
           <div className="max-h-64 overflow-y-auto border-t border-white/5 p-2">
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -91,30 +90,29 @@ export default function CompareTeams() {
 
       {rows.length > 0 && (
         <div className="mt-4 space-y-3">
+          <div className="flex gap-1.5 px-1">
+            {gameweeks.map((gw) => (
+              <div
+                key={gw}
+                className="flex min-w-[60px] shrink-0 items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-ucl-star/50 sm:min-w-[68px]"
+              >
+                GW{gw}
+              </div>
+            ))}
+          </div>
           {rows.map(({ team, cells, avg }) => (
             <div key={team.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card">
               <div className="mb-2 flex items-center gap-2">
                 <TeamBadge abbr={team.abbr} size={26} />
                 <p className="text-sm font-semibold sm:text-base">{team.name}</p>
-                <span className="ml-auto text-xs font-semibold text-ucl-star/60">gem. {formatAvg(avg)}</span>
+                <span className="ml-auto text-xs font-semibold text-ucl-star/60">avg {formatAvg(avg)}</span>
               </div>
               <div className="flex gap-1.5 overflow-x-auto pb-1">
                 {cells.map((cell, i) =>
                   cell ? (
-                    <div
-                      key={i}
-                      className="flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded-md text-[11px] font-bold leading-tight"
-                      style={{
-                        backgroundColor: ratingColor(teamsByAbbr[cell.opp]?.rating ?? 3).bg,
-                        color: ratingColor(teamsByAbbr[cell.opp]?.rating ?? 3).text,
-                      }}
-                    >
-                      <span className="text-[9px] font-semibold opacity-70">GW{cell.gw}</span>
-                      <span>{cell.opp}</span>
-                      <span className="text-[9px] font-semibold opacity-80">{cell.venue}</span>
-                    </div>
+                    <FixtureChip key={i} opp={cell.opp} venue={cell.venue} rating={teamsByAbbr[cell.opp]?.rating ?? 3} />
                   ) : (
-                    <div key={i} className="flex h-11 w-14 shrink-0 items-center justify-center rounded-md bg-white/5 text-ucl-star/20">
+                    <div key={i} className="flex h-8 min-w-[60px] shrink-0 items-center justify-center rounded-md bg-white/5 text-ucl-star/20 sm:min-w-[68px]">
                       –
                     </div>
                   ),

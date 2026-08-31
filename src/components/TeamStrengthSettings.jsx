@@ -2,17 +2,22 @@ import { RotateCcw } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { RATING_COLORS } from '../data/teams.js'
 import TeamBadge from './TeamBadge.jsx'
+import RatingLegend from './RatingLegend.jsx'
 
 export default function TeamStrengthSettings() {
   const { teams, setRating, resetRatings } = useTeams()
-  const sorted = [...teams].sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name))
+  // Sort by the original seed rating, not the live one — otherwise a team
+  // jumps to a different row the moment you change its rating, which makes
+  // it hard to tell what you just did. The order stays put; only the
+  // highlighted button (and the "was X" hint) changes.
+  const sorted = [...teams].sort((a, b) => b.baseRating - a.baseRating || a.name.localeCompare(b.name))
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-4 sm:px-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">Team-sterkte</h1>
-          <p className="mt-0.5 text-sm text-ucl-star/60">Pas de rating (1-5) aan per team. Wordt overal live doorgerekend.</p>
+          <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">Team Strength</h1>
+          <p className="mt-0.5 text-sm text-ucl-star/60">Adjust each team's rating (1-5). Applied live everywhere.</p>
         </div>
         <button
           onClick={resetRatings}
@@ -23,14 +28,7 @@ export default function TeamStrengthSettings() {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-        {Object.entries(RATING_COLORS).map(([r, c]) => (
-          <div key={r} className="flex items-center gap-1.5 text-[11px] text-ucl-star/70">
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: c.bg }} />
-            {r} · {c.label}
-          </div>
-        ))}
-      </div>
+      <RatingLegend className="mb-4" />
 
       <ul className="space-y-2">
         {sorted.map((team) => (
