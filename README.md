@@ -1,33 +1,33 @@
 # UCL FDR
 
-Fixture Difficulty Rating tool voor de UEFA Champions League — React + Vite, mobile-first, klaar voor Vercel.
+Fixture Difficulty Rating tool for the UEFA Champions League — React + Vite, mobile-first, Vercel-ready.
 
 ## Features
 
-- **Team-sterkte**: pas de rating (1-5) van elk van de 36 teams live aan, met kleurcodering (groen = makkelijk, rood = moeilijk). Wordt bewaard in `localStorage`.
-- **FDR-tabel**: alle teams als rijen, gameweeks als kolommen, elke cel toont de tegenstander + thuis/uit, gekleurd volgens de sterkte van die tegenstander.
-- **Beste fixture runs**: top 5 teams met de laagste gemiddelde moeilijkheidsgraad over een zelf te kiezen GW-range.
-- **Vergelijk teams**: selecteer tot 5 teams en bekijk hun fixtures onder elkaar.
+- **Team Strength**: adjust each of the 36 teams' rating (1-5) live, color-coded (green = easy, red = hard). Persisted to `localStorage`.
+- **FDR Table**: all teams as rows, gameweeks as columns, each cell shows the opponent + home/away, colored by that opponent's strength. Filter by GW range and sort by best fixture run or name.
+- **Best Fixture Runs**: top 5 teams with the lowest average difficulty over a GW range you choose.
+- **Compare Teams**: select up to 5 teams and see their fixtures stacked.
 
-## Fixture-data
+## Fixture data
 
-`src/data/fixtures.js` bevat momenteel **placeholder-fixtures voor GW1-8**, gegenereerd met de round-robin "circle method" (`scripts/gen-placeholder-fixtures.mjs`) zodat elk team 8 unieke tegenstanders heeft met een realistische thuis/uit-verdeling. Zodra de echte fixtures beschikbaar zijn, vervang je gewoon de `FIXTURES`-object in dat bestand — de rest van de app (tabel, beste runs, vergelijken) rekent daar automatisch mee door.
+`src/data/fixtures.js` currently holds **placeholder fixtures for GW1-8**, generated with a round-robin "circle method" (`scripts/gen-placeholder-fixtures.mjs`) so every team has 8 unique opponents with a realistic home/away split. Once the real fixtures are available, just replace the `FIXTURES` object in that file — the rest of the app (table, best runs, compare) recalculates automatically.
 
-Elke entry heeft de vorm:
+Each entry has the shape:
 
 ```js
-{ gw: 1, opp: 'BAY', venue: 'H' } // gameweek, tegenstander-afkorting, thuis (H) of uit (A)
+{ gw: 1, opp: 'BAY', venue: 'H' } // gameweek, opponent abbreviation, home (H) or away (A)
 ```
 
 ## Development
 
 ```bash
 npm install
-npm run dev       # lokale dev server
-npm run build     # productie build (dist/)
-npm run preview   # preview van de build
+npm run dev       # local dev server
+npm run build     # production build (dist/)
+npm run preview   # preview the build
 ```
 
 ## Deploy
 
-Standaard Vite-project — importeer de repo in Vercel en de build (`npm run build`, output in `dist/`) wordt automatisch gedetecteerd.
+Standard Vite project — import the repo into Vercel and the build (`npm run build`, output in `dist/`) is auto-detected.

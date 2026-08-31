@@ -1,5 +1,5 @@
 // Initial team strength ratings (1 = easiest opponent, 5 = hardest opponent).
-// Users can override these live in the "Team-sterkte" tab; overrides are
+// Users can override these live in the "Strength" tab; overrides are
 // persisted to localStorage (see src/context/TeamsContext.jsx).
 export const INITIAL_TEAMS = [
   { id: 'ARS', name: 'Arsenal', abbr: 'ARS', rating: 5 },
@@ -45,9 +45,9 @@ export const INITIAL_TEAMS = [
 ]
 
 export const RATING_COLORS = {
-  1: { bg: '#1e8a4c', text: '#eafff1', label: 'Zeer makkelijk' },
-  2: { bg: '#7fc242', text: '#0b2412', label: 'Makkelijk' },
-  3: { bg: '#f2c14e', text: '#3a2b00', label: 'Gemiddeld' },
-  4: { bg: '#e8722c', text: '#2c1200', label: 'Moeilijk' },
-  5: { bg: '#d13438', text: '#fff0ef', label: 'Zeer moeilijk' },
+  1: { bg: '#1e8a4c', text: '#eafff1', label: 'Very easy' },
+  2: { bg: '#7fc242', text: '#0b2412', label: 'Easy' },
+  3: { bg: '#f2c14e', text: '#3a2b00', label: 'Average' },
+  4: { bg: '#e8722c', text: '#2c1200', label: 'Hard' },
+  5: { bg: '#d13438', text: '#fff0ef', label: 'Very hard' },
 }

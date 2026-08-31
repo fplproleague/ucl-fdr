@@ -5,12 +5,14 @@ import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
+import Footer from './components/Footer.jsx'
+import uclLogo from './assets/brand/UCL.png'
 
 const TABS = [
-  { id: 'table', label: 'FDR-tabel', icon: Table2, Component: FDRTable },
-  { id: 'runs', label: 'Beste runs', icon: TrendingUp, Component: BestFixtureRuns },
-  { id: 'compare', label: 'Vergelijk', icon: GitCompareArrows, Component: CompareTeams },
-  { id: 'settings', label: 'Sterkte', icon: SlidersHorizontal, Component: TeamStrengthSettings },
+  { id: 'table', label: 'FDR Table', icon: Table2, Component: FDRTable },
+  { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
+  { id: 'compare', label: 'Compare', icon: GitCompareArrows, Component: CompareTeams },
+  { id: 'settings', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
 export default function App() {
@@ -22,11 +24,7 @@ export default function App() {
       <div className="flex min-h-screen flex-col pb-20 sm:pb-0">
         <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/80 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-3 sm:px-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-ucl-accent to-ucl-indigo shadow-card">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white">
-                <path d="M12 1.5l2.9 6.02 6.6.83-4.83 4.62 1.23 6.53L12 16.3l-5.9 3.2 1.23-6.53L2.5 8.35l6.6-.83L12 1.5z" />
-              </svg>
-            </div>
+            <img src={uclLogo} alt="UCL" className="h-9 w-9 shrink-0 object-contain" />
             <div>
               <h1 className="font-display text-base font-extrabold uppercase tracking-wide sm:text-lg">UCL FDR</h1>
               <p className="text-[11px] text-ucl-star/50 sm:text-xs">Fixture Difficulty Rating</p>
@@ -52,6 +50,8 @@ export default function App() {
         <main className="flex-1">
           <Active />
         </main>
+
+        <Footer />
 
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ucl-navy/95 backdrop-blur-md sm:hidden">
           <div className="mx-auto flex max-w-6xl">

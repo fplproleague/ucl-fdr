@@ -30,6 +30,9 @@ export function TeamsProvider({ children }) {
       INITIAL_TEAMS.map((t) => ({
         ...t,
         rating: overrides[t.id] ?? t.rating,
+        // Original seed rating — used as a stable sort key so editing a
+        // team's live rating doesn't make it jump to a different spot.
+        baseRating: t.rating,
       })),
     [overrides],
   )
