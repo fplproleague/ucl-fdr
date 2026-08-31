@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { SlidersHorizontal, Table2, TrendingUp, GitCompareArrows } from 'lucide-react'
+import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
 import FDRTable from './components/FDRTable.jsx'
@@ -70,6 +71,7 @@ export default function App() {
           </div>
         </nav>
       </div>
+      <Analytics />
     </TeamsProvider>
   )
 }
