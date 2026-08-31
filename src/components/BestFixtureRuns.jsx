@@ -48,9 +48,7 @@ export default function BestFixtureRuns() {
                 <TeamBadge abbr={team.abbr} size={30} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold sm:text-base">{team.name}</p>
-                  <p className="text-[11px] text-ucl-star/50">
-                    GW{from}–GW{to} · avg {formatAvg(avg)}
-                  </p>
+                  <p className="text-[11px] text-ucl-star/50">avg {formatAvg(avg)}</p>
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">

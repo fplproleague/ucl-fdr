@@ -31,45 +31,39 @@ export default function TeamStrengthSettings() {
       <RatingLegend className="mb-4" />
 
       <ul className="space-y-2">
-        {sorted.map((team) => {
-          const changed = team.rating !== team.baseRating
-          return (
-            <li
-              key={team.id}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 shadow-card sm:p-3"
-            >
-              <TeamBadge abbr={team.abbr} size={32} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold sm:text-base">{team.name}</p>
-                <p className="text-[11px] uppercase tracking-wide text-ucl-star/50">
-                  {team.abbr}
-                  {changed && <span className="ml-1.5 normal-case text-ucl-accent/80">· was {team.baseRating}</span>}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-1">
-                {[1, 2, 3, 4, 5].map((r) => {
-                  const active = team.rating === r
-                  const color = RATING_COLORS[r]
-                  return (
-                    <button
-                      key={r}
-                      aria-label={`Rating ${r}`}
-                      onClick={() => setRating(team.id, r)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90 sm:h-9 sm:w-9"
-                      style={{
-                        backgroundColor: active ? color.bg : 'rgba(255,255,255,0.06)',
-                        color: active ? color.text : 'rgba(230,233,255,0.5)',
-                        boxShadow: active ? `0 0 0 2px ${color.bg}55` : 'none',
-                      }}
-                    >
-                      {r}
-                    </button>
-                  )
-                })}
-              </div>
-            </li>
-          )
-        })}
+        {sorted.map((team) => (
+          <li
+            key={team.id}
+            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 shadow-card sm:p-3"
+          >
+            <TeamBadge abbr={team.abbr} size={32} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold sm:text-base">{team.name}</p>
+              <p className="text-[11px] uppercase tracking-wide text-ucl-star/50">{team.abbr}</p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              {[1, 2, 3, 4, 5].map((r) => {
+                const active = team.rating === r
+                const color = RATING_COLORS[r]
+                return (
+                  <button
+                    key={r}
+                    aria-label={`Rating ${r}`}
+                    onClick={() => setRating(team.id, r)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90 sm:h-9 sm:w-9"
+                    style={{
+                      backgroundColor: active ? color.bg : 'rgba(255,255,255,0.06)',
+                      color: active ? color.text : 'rgba(230,233,255,0.5)',
+                      boxShadow: active ? `0 0 0 2px ${color.bg}55` : 'none',
+                    }}
+                  >
+                    {r}
+                  </button>
+                )
+              })}
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   )

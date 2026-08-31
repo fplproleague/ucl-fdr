@@ -7,7 +7,7 @@ import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
 import Footer from './components/Footer.jsx'
-import uclLogo from './assets/brand/UCL.png'
+import uclLogo from './assets/brand/UCL-icon.png'
 
 const TABS = [
   { id: 'table', label: 'FDR Table', icon: Table2, Component: FDRTable },
@@ -25,7 +25,9 @@ export default function App() {
       <div className="flex min-h-screen flex-col pb-20 sm:pb-0">
         <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/80 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-3 sm:px-4">
-            <img src={uclLogo} alt="UCL" className="h-9 w-9 shrink-0 object-contain" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white p-1.5 shadow-card sm:h-12 sm:w-12">
+              <img src={uclLogo} alt="UCL" className="h-full w-full object-contain" />
+            </span>
             <div>
               <h1 className="font-display text-base font-extrabold uppercase tracking-wide sm:text-lg">UCL FDR</h1>
               <p className="text-[11px] text-ucl-star/50 sm:text-xs">Fixture Difficulty Rating</p>

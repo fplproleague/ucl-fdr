@@ -11,13 +11,19 @@ Fixture Difficulty Rating tool for the UEFA Champions League — React + Vite, m
 
 ## Fixture data
 
-`src/data/fixtures.js` currently holds **placeholder fixtures for GW1-8**, generated with a round-robin "circle method" (`scripts/gen-placeholder-fixtures.mjs`) so every team has 8 unique opponents with a realistic home/away split. Once the real fixtures are available, just replace the `FIXTURES` object in that file — the rest of the app (table, best runs, compare) recalculates automatically.
-
-Each entry has the shape:
+`src/data/fixtures.js` holds the real GW1-8 fixtures for the 2026/27 UEFA Champions League league phase. Each entry has the shape:
 
 ```js
 { gw: 1, opp: 'BAY', venue: 'H' } // gameweek, opponent abbreviation, home (H) or away (A)
 ```
+
+The source list lives in `scripts/raw-fixtures.txt` (one block per team, `GW<n> <OPP> <H|A>` per line). To regenerate `src/data/fixtures.js` after editing that file — e.g. once later gameweeks are announced — run:
+
+```bash
+node scripts/build-fixtures.mjs
+```
+
+The script cross-checks every fixture against its reciprocal (if ARS has `GW1 NAP A`, NAP must have `GW1 ARS H`) and refuses to write the file if anything doesn't line up.
 
 ## Development
 
