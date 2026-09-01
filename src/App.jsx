@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SlidersHorizontal, Table2, TrendingUp, GitCompareArrows } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Scale } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -10,10 +10,10 @@ import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
 
 const TABS = [
-  { id: 'table', label: 'FDR Table', icon: Table2, Component: FDRTable },
+  { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: GitCompareArrows, Component: CompareTeams },
-  { id: 'settings', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
+  { id: 'settings', label: 'Strength', icon: Scale, Component: TeamStrengthSettings },
 ]
 
 export default function App() {
