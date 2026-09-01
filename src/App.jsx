@@ -12,8 +12,8 @@ import uclLogo from './assets/brand/UCL-icon.png'
 const TABS = [
   { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
-  { id: 'compare', label: 'Compare', icon: GitCompareArrows, Component: CompareTeams },
-  { id: 'settings', label: 'Strength', icon: Scale, Component: TeamStrengthSettings },
+  { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
+  { id: 'settings', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
 export default function App() {
