@@ -3,17 +3,17 @@
 // persisted to localStorage (see src/context/TeamsContext.jsx).
 export const INITIAL_TEAMS = [
   { id: 'ARS', name: 'Arsenal', abbr: 'ARS', rating: 5 },
-  { id: 'BAY', name: 'Bayern München', abbr: 'BAY', rating: 5 },
+  { id: 'BAY', name: 'Bayern München', shortName: 'Bayern', abbr: 'BAY', rating: 5 },
   { id: 'BAR', name: 'Barcelona', abbr: 'BAR', rating: 5 },
-  { id: 'MCI', name: 'Manchester City', abbr: 'MCI', rating: 5 },
-  { id: 'PSG', name: 'Paris Saint-Germain', abbr: 'PSG', rating: 5 },
+  { id: 'MCI', name: 'Manchester City', shortName: 'Man. City', abbr: 'MCI', rating: 5 },
+  { id: 'PSG', name: 'Paris Saint-Germain', shortName: 'PSG', abbr: 'PSG', rating: 5 },
   { id: 'RMA', name: 'Real Madrid', abbr: 'RMA', rating: 5 },
   { id: 'LIV', name: 'Liverpool', abbr: 'LIV', rating: 5 },
   { id: 'INT', name: 'Inter', abbr: 'INT', rating: 5 },
 
   { id: 'ATM', name: 'Atlético Madrid', abbr: 'ATM', rating: 4 },
-  { id: 'BVB', name: 'Borussia Dortmund', abbr: 'BVB', rating: 4 },
-  { id: 'MUN', name: 'Manchester United', abbr: 'MUN', rating: 4 },
+  { id: 'BVB', name: 'Borussia Dortmund', shortName: 'Dortmund', abbr: 'BVB', rating: 4 },
+  { id: 'MUN', name: 'Manchester United', shortName: 'Man. United', abbr: 'MUN', rating: 4 },
   { id: 'AVL', name: 'Aston Villa', abbr: 'AVL', rating: 4 },
   { id: 'ROM', name: 'AS Roma', abbr: 'ROM', rating: 4 },
   { id: 'SPO', name: 'Sporting CP', abbr: 'SPO', rating: 4 },
@@ -24,14 +24,14 @@ export const INITIAL_TEAMS = [
   { id: 'LIL', name: 'Lille', abbr: 'LIL', rating: 3 },
   { id: 'VIL', name: 'Villarreal', abbr: 'VIL', rating: 3 },
   { id: 'BET', name: 'Real Betis', abbr: 'BET', rating: 3 },
-  { id: 'STU', name: 'VfB Stuttgart', abbr: 'STU', rating: 3 },
+  { id: 'STU', name: 'VfB Stuttgart', shortName: 'Stuttgart', abbr: 'STU', rating: 3 },
   { id: 'CLU', name: 'Club Brugge', abbr: 'CLU', rating: 3 },
   { id: 'PSV', name: 'PSV', abbr: 'PSV', rating: 3 },
   { id: 'LEN', name: 'RC Lens', abbr: 'LEN', rating: 3 },
   { id: 'COM', name: 'Como', abbr: 'COM', rating: 3 },
 
   { id: 'SLA', name: 'Slavia Praha', abbr: 'SLA', rating: 2 },
-  { id: 'SHK', name: 'Shakhtar Donetsk', abbr: 'SHK', rating: 2 },
+  { id: 'SHK', name: 'Shakhtar Donetsk', shortName: 'Shakhtar', abbr: 'SHK', rating: 2 },
   { id: 'BOD', name: 'Bodø/Glimt', abbr: 'BOD', rating: 2 },
   { id: 'FEN', name: 'Fenerbahçe', abbr: 'FEN', rating: 2 },
   { id: 'GAL', name: 'Galatasaray', abbr: 'GAL', rating: 2 },
@@ -39,7 +39,7 @@ export const INITIAL_TEAMS = [
 
   { id: 'SAB', name: 'Sabah FK', abbr: 'SAB', rating: 1 },
   { id: 'VIK', name: 'Viking FK', abbr: 'VIK', rating: 1 },
-  { id: 'SLO', name: 'Slovan Bratislava', abbr: 'SLO', rating: 1 },
+  { id: 'SLO', name: 'Slovan Bratislava', shortName: 'S. Bratislava', abbr: 'SLO', rating: 1 },
   { id: 'LAS', name: 'LASK', abbr: 'LAS', rating: 1 },
   { id: 'AEK', name: 'AEK Athens', abbr: 'AEK', rating: 1 },
 ]

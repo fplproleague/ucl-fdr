@@ -8,7 +8,10 @@ import GwRangePicker from './GwRangePicker.jsx'
 import FixtureChip from './FixtureChip.jsx'
 
 const allGws = Array.from({ length: TOTAL_GAMEWEEKS }, (_, i) => i + 1)
-const TEAM_COL_WIDTH = 150
+// Narrower than a full team name column — long names use team.shortName here
+// (see src/data/teams.js) so the sticky column stays compact and leaves more
+// room for the fixture columns.
+const TEAM_COL_WIDTH = 118
 
 export default function FDRTable() {
   const { teams, teamsByAbbr } = useTeams()
@@ -61,7 +64,7 @@ export default function FDRTable() {
             <thead>
               <tr>
                 <th
-                  className="sticky left-0 z-20 bg-ucl-deep/95 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-star/60 backdrop-blur"
+                  className="sticky left-0 z-20 bg-ucl-deep/95 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-star/60 backdrop-blur"
                   style={{ minWidth: TEAM_COL_WIDTH, width: TEAM_COL_WIDTH }}
                 >
                   Team
@@ -80,12 +83,12 @@ export default function FDRTable() {
               {sorted.map(({ team, cells }, idx) => (
                 <tr key={team.id} className={idx % 2 === 0 ? 'bg-white/[0.015]' : ''}>
                   <td
-                    className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy/95 px-3 py-1.5 backdrop-blur"
+                    className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy/95 px-2 py-1.5 backdrop-blur"
                     style={{ minWidth: TEAM_COL_WIDTH, width: TEAM_COL_WIDTH }}
                   >
-                    <div className="flex items-center gap-2">
-                      <TeamBadge abbr={team.abbr} size={22} />
-                      <span className="truncate text-xs font-medium sm:text-sm">{team.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <TeamBadge abbr={team.abbr} size={20} />
+                      <span className="truncate text-xs font-medium sm:text-sm">{team.shortName ?? team.name}</span>
                     </div>
                   </td>
                   {cells.map((cell, i) => (
