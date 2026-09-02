@@ -55,11 +55,7 @@ export default function BestFixtureRuns() {
                 <TeamBadge abbr={s.team.abbr} size={18} />
                 <span className="min-w-0 flex-1 truncate font-semibold">{s.team.name}</span>
                 <span className="text-ucl-muted">
-                  {formatAvg(s.seasonAvg)} over MD1–{TOTAL_MATCHDAYS} → {formatAvg(s.avg)}{' '}
-                  <span className="text-[10px]">
-                    (MD{from}–MD{to}
-                    {skipMd ? `, skip MD${skipMd}` : ''})
-                  </span>
+                  {formatAvg(s.seasonAvg)} over MD1–{TOTAL_MATCHDAYS} → {formatAvg(s.avg)} here
                 </span>
               </li>
             ))}
@@ -84,14 +80,22 @@ export default function BestFixtureRuns() {
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {row.fixtures.map((f) => (
-                <FixtureChip
-                  key={f.gw}
-                  opp={f.opp}
-                  oppName={teamsByAbbr[f.opp]?.name}
-                  venue={f.venue}
-                  rating={teamsByAbbr[f.opp]?.rating ?? 3}
-                  venueAdjust={venueAdjust}
-                />
+                // The MD travels with its own chip (rather than one shared
+                // header above the list) so it survives flex-wrap at any
+                // width and stays correct if a single card gets screenshotted
+                // on its own.
+                <div key={f.gw} className="flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                    MD{f.gw}
+                  </span>
+                  <FixtureChip
+                    opp={f.opp}
+                    oppName={teamsByAbbr[f.opp]?.name}
+                    venue={f.venue}
+                    rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                    venueAdjust={venueAdjust}
+                  />
+                </div>
               ))}
             </div>
           </li>
