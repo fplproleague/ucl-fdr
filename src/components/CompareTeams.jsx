@@ -1,24 +1,22 @@
 import { useMemo, useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
-import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
+import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
-const allMds = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1)
-
 export default function CompareTeams() {
-  const { teams, teamsByAbbr, venueAdjust, from, to, compare, setCompare } = useTeams()
+  const { teams, teamsByAbbr, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
 
   const selectedTeams = compare.map((abbr) => teamsByAbbr[abbr]).filter(Boolean)
 
-  const mds = useMemo(() => allMds.filter((md) => md >= from && md <= to), [from, to])
+  const mds = useVisibleMds(from, to, skipMd)
   const rows = useFixtureRows(selectedTeams, teamsByAbbr, mds, venueAdjust)
   const sorted = useMemo(() => [...rows].sort(compareRuns), [rows])
 
@@ -33,7 +31,10 @@ export default function CompareTeams() {
 
   return (
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
-      <ViewHeading title="Compare Teams" subtitle={`Put teams side by side over MD${from}–MD${to}.`} />
+      <ViewHeading
+        title="Compare Teams"
+        subtitle={`Put teams side by side over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}.`}
+      />
 
       <ControlBar className="mb-3" />
 
@@ -149,7 +150,9 @@ export default function CompareTeams() {
             mds={mds}
             rows={sorted}
             fullNames
-            caption={`Fixture comparison for ${sorted.length} teams, matchday ${from} to ${to}`}
+            caption={`Fixture comparison for ${sorted.length} teams, matchday ${from} to ${to}${
+              skipMd ? `, matchday ${skipMd} skipped` : ''
+            }`}
           />
         </>
       )}

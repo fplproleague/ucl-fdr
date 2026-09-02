@@ -1,5 +1,6 @@
 // The whole app state lives in the hash so every view is linkable:
 //   #/table?from=1&to=8&va=1
+//   #/table?from=1&to=8&skip=3
 //   #/compare?from=3&to=6&teams=ARS,INT,BAY
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //
@@ -22,6 +23,7 @@ export function parseHash(hash = window.location.hash) {
     tab,
     from: num('from'),
     to: num('to'),
+    skip: num('skip'),
     teams: (params.get('teams') || '').split(',').filter(Boolean),
     venueAdjust: params.get('va') === null ? null : params.get('va') !== '0',
     ratings: parseRatings(params.get('r')),
@@ -49,10 +51,11 @@ export function serializeRatings(overrides) {
     .join('')
 }
 
-export function buildHash({ tab, from, to, teams, venueAdjust, ratings }) {
+export function buildHash({ tab, from, to, skip, teams, venueAdjust, ratings }) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
   if (to) params.set('to', String(to))
+  if (skip) params.set('skip', String(skip))
   if (teams && teams.length) params.set('teams', teams.join(','))
   if (venueAdjust === false) params.set('va', '0')
   const packed = ratings ? serializeRatings(ratings) : ''
