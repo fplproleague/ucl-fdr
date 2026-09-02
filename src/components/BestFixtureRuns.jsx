@@ -4,19 +4,19 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
+import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
-const allMds = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1)
 const PREVIEW = 8
 
 export default function BestFixtureRuns() {
-  const { teams, teamsByAbbr, venueAdjust, from, to } = useTeams()
+  const { teams, teamsByAbbr, venueAdjust, from, to, skipMd } = useTeams()
   const [showAll, setShowAll] = useState(false)
 
-  const mds = useMemo(() => allMds.filter((md) => md >= from && md <= to), [from, to])
+  const mds = useVisibleMds(from, to, skipMd)
   const rows = useFixtureRows(teams, teamsByAbbr, mds, venueAdjust)
   const ranked = useMemo(() => [...rows].sort(compareRuns), [rows])
 
@@ -38,7 +38,7 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`All 36 teams over MD${from}–MD${to}, easiest average first.`}
+        subtitle={`All 36 teams over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}, easiest average first.`}
       />
 
       <ControlBar className="mb-3" />
