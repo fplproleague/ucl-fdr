@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TrendingDown } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
@@ -46,7 +46,7 @@ export default function BestFixtureRuns() {
       {swings.length > 0 && (
         <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
-            <TrendingDown size={14} aria-hidden="true" />
+            <TrendingUp size={14} aria-hidden="true" />
             Biggest swing into this window
           </p>
           <ul className="space-y-1.5">
@@ -55,7 +55,11 @@ export default function BestFixtureRuns() {
                 <TeamBadge abbr={s.team.abbr} size={18} />
                 <span className="min-w-0 flex-1 truncate font-semibold">{s.team.name}</span>
                 <span className="text-ucl-muted">
-                  {formatAvg(s.seasonAvg)} over MD1–{TOTAL_MATCHDAYS} → {formatAvg(s.avg)} here
+                  {formatAvg(s.seasonAvg)} over MD1–{TOTAL_MATCHDAYS} → {formatAvg(s.avg)}{' '}
+                  <span className="text-[10px]">
+                    (MD{from}–MD{to}
+                    {skipMd ? `, skip MD${skipMd}` : ''})
+                  </span>
                 </span>
               </li>
             ))}
