@@ -9,12 +9,14 @@ import RatingLegend from './RatingLegend.jsx'
 // is still the range you're looking at on Best Runs and Compare. Two rows on a
 // phone instead of the two full-height cards this replaces.
 export default function ControlBar({ showRange = true, className = '' }) {
-  const { from, to, setRange, venueAdjust, setVenueAdjust, modifiedCount, setTab } = useTeams()
+  const { from, to, skipMd, setRange, setSkipMd, venueAdjust, setVenueAdjust, modifiedCount, setTab } = useTeams()
   const [openMethod, setOpenMethod] = useState(false)
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      {showRange && <MdRangePicker from={from} to={to} onChange={setRange} />}
+      {showRange && (
+        <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
+      )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <RatingLegend />

@@ -29,10 +29,16 @@ function readStoredVenueAdjust() {
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
   const url = parseHash()
+  const from = url.from ?? 1
+  const to = url.to ?? TOTAL_MATCHDAYS
   return {
     tab: url.tab,
-    from: url.from ?? 1,
-    to: url.to ?? TOTAL_MATCHDAYS,
+    from,
+    to,
+    // Only meaningful strictly inside the range — skipping an edge matchday
+    // is just narrowing "from"/"to", so a stale value from an old link that
+    // no longer sits inside the range is dropped rather than silently kept.
+    skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
     compare: url.teams,
     overrides: url.ratings ?? readStoredOverrides(),
     venueAdjust: url.venueAdjust ?? readStoredVenueAdjust(),
@@ -41,7 +47,7 @@ function initialState() {
 
 export function TeamsProvider({ children }) {
   const [state, setState] = useState(initialState)
-  const { tab, from, to, compare, overrides, venueAdjust } = state
+  const { tab, from, to, skipMd, compare, overrides, venueAdjust } = state
 
   // Whether the next hash write should create a history entry. Only tab
   // changes do, so the phone's back button steps through views instead of
@@ -60,6 +66,7 @@ export function TeamsProvider({ children }) {
         tab,
         from,
         to,
+        skip: skipMd,
         teams: tab === 'compare' ? compare : [],
         venueAdjust,
         ratings: overrides,
@@ -71,21 +78,26 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, compare, overrides, venueAdjust])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust])
 
   useEffect(() => {
     function onNav() {
       if (selfWrite.current) return
       const url = parseHash()
-      setState((prev) => ({
-        ...prev,
-        tab: url.tab,
-        from: url.from ?? prev.from,
-        to: url.to ?? prev.to,
-        compare: url.teams,
-        venueAdjust: url.venueAdjust ?? prev.venueAdjust,
-        overrides: url.ratings ?? prev.overrides,
-      }))
+      setState((prev) => {
+        const from = url.from ?? prev.from
+        const to = url.to ?? prev.to
+        return {
+          ...prev,
+          tab: url.tab,
+          from,
+          to,
+          skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
+          compare: url.teams,
+          venueAdjust: url.venueAdjust ?? prev.venueAdjust,
+          overrides: url.ratings ?? prev.overrides,
+        }
+      })
     }
     window.addEventListener('popstate', onNav)
     window.addEventListener('hashchange', onNav)
@@ -134,9 +146,18 @@ export function TeamsProvider({ children }) {
       tab,
       from,
       to,
+      skipMd,
       compare,
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
-      setRange: (nextFrom, nextTo) => patch({ from: nextFrom, to: Math.max(nextFrom, nextTo) }),
+      setRange: (nextFrom, nextTo) => {
+        const to = Math.max(nextFrom, nextTo)
+        // A range change can strand the skipped matchday outside it (or right
+        // on an edge, where "skip" and "narrow the range" mean the same
+        // thing) — drop it rather than keep a skip that no longer applies.
+        const stillInside = skipMd != null && skipMd > nextFrom && skipMd < to
+        patch({ from: nextFrom, to, skipMd: stillInside ? skipMd : null })
+      },
+      setSkipMd: (md) => patch({ skipMd: md }),
       setCompare: (ids) => patch({ compare: ids }),
       setVenueAdjust: (on) => patch({ venueAdjust: on }),
       setRating: (id, rating) =>
@@ -149,7 +170,7 @@ export function TeamsProvider({ children }) {
         }),
       resetRatings: () => patch({ overrides: {} }),
     }),
-    [teams, teamsByAbbr, modifiedCount, venueAdjust, tab, from, to, compare, patch],
+    [teams, teamsByAbbr, modifiedCount, venueAdjust, tab, from, to, skipMd, compare, patch],
   )
 
   return <TeamsContext.Provider value={value}>{children}</TeamsContext.Provider>
