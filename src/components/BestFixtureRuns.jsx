@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TrendingDown } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
@@ -46,7 +46,7 @@ export default function BestFixtureRuns() {
       {swings.length > 0 && (
         <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
-            <TrendingDown size={14} aria-hidden="true" />
+            <TrendingUp size={14} aria-hidden="true" />
             Biggest swing into this window
           </p>
           <ul className="space-y-1.5">
@@ -80,14 +80,22 @@ export default function BestFixtureRuns() {
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {row.fixtures.map((f) => (
-                <FixtureChip
-                  key={f.gw}
-                  opp={f.opp}
-                  oppName={teamsByAbbr[f.opp]?.name}
-                  venue={f.venue}
-                  rating={teamsByAbbr[f.opp]?.rating ?? 3}
-                  venueAdjust={venueAdjust}
-                />
+                // The MD travels with its own chip (rather than one shared
+                // header above the list) so it survives flex-wrap at any
+                // width and stays correct if a single card gets screenshotted
+                // on its own.
+                <div key={f.gw} className="flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                    MD{f.gw}
+                  </span>
+                  <FixtureChip
+                    opp={f.opp}
+                    oppName={teamsByAbbr[f.opp]?.name}
+                    venue={f.venue}
+                    rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                    venueAdjust={venueAdjust}
+                  />
+                </div>
               ))}
             </div>
           </li>
