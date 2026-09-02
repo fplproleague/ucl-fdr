@@ -7,7 +7,7 @@ import RatingLegend from './RatingLegend.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function TeamStrengthSettings() {
-  const { teams, setRating, resetTeam, resetRatings, modifiedCount } = useTeams()
+  const { teams, setRating, resetTeam, resetRatings, modifiedCount, showTeam } = useTeams()
   const [query, setQuery] = useState('')
 
   // Ordered by the seed rating, never the live one — otherwise a team jumps
@@ -59,24 +59,38 @@ export default function TeamStrengthSettings() {
         {filtered.map((team) => (
           <li
             key={team.id}
-            className={`flex items-center gap-3 rounded-2xl border bg-white/[0.03] p-2.5 shadow-card sm:p-3 ${
+            className={`flex items-center gap-3 rounded-2xl border bg-white/[0.03] p-2.5 shadow-card transition-opacity sm:p-3 ${
               team.modified ? 'border-ucl-accent/50' : 'border-white/10'
-            }`}
+            } ${team.hidden ? 'opacity-50' : ''}`}
           >
             <TeamBadge abbr={team.abbr} size={32} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold sm:text-base">{team.name}</p>
-              {team.modified ? (
-                <button
-                  type="button"
-                  onClick={() => resetTeam(team.id)}
-                  className="text-[11px] font-semibold text-ucl-accent transition hover:underline"
-                >
-                  was {team.baseRating} · reset
-                </button>
-              ) : (
-                <p className="text-[11px] uppercase tracking-wide text-ucl-muted">{team.abbr}</p>
-              )}
+              <p className="flex flex-wrap items-center gap-x-1.5 text-[11px]">
+                {team.modified ? (
+                  <button
+                    type="button"
+                    onClick={() => resetTeam(team.id)}
+                    className="font-semibold text-ucl-accent transition hover:underline"
+                  >
+                    was {team.baseRating} · reset
+                  </button>
+                ) : (
+                  <span className="uppercase tracking-wide text-ucl-muted">{team.abbr}</span>
+                )}
+                {team.hidden && (
+                  <>
+                    <span className="text-ucl-muted">· hidden from table</span>
+                    <button
+                      type="button"
+                      onClick={() => showTeam(team.id)}
+                      className="font-semibold text-ucl-accent transition hover:underline"
+                    >
+                      show
+                    </button>
+                  </>
+                )}
+              </p>
             </div>
             <div className="flex shrink-0 gap-1" role="group" aria-label={`${team.name} strength`}>
               {[1, 2, 3, 4, 5].map((r) => {

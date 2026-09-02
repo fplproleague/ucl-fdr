@@ -5,6 +5,7 @@ import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
 
 const STORAGE_KEY = 'ucl-fdr:ratings:v1'
 const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
+const HIDDEN_KEY = 'ucl-fdr:hidden-teams:v1'
 
 const TeamsContext = createContext(null)
 
@@ -25,6 +26,16 @@ function readStoredVenueAdjust() {
   }
 }
 
+function readStoredHidden() {
+  try {
+    const raw = localStorage.getItem(HIDDEN_KEY)
+    const ids = raw ? JSON.parse(raw) : []
+    return Array.isArray(ids) ? ids : []
+  } catch {
+    return []
+  }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
@@ -42,12 +53,17 @@ function initialState() {
     compare: url.teams,
     overrides: url.ratings ?? readStoredOverrides(),
     venueAdjust: url.venueAdjust ?? readStoredVenueAdjust(),
+    // Which teams to leave off the table/rankings — a per-device declutter
+    // preference (e.g. teams already eliminated, or outside your league),
+    // not something you'd want baked into a link you share, so this one
+    // lives only in localStorage.
+    hidden: readStoredHidden(),
   }
 }
 
 export function TeamsProvider({ children }) {
   const [state, setState] = useState(initialState)
-  const { tab, from, to, skipMd, compare, overrides, venueAdjust } = state
+  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden } = state
 
   // Whether the next hash write should create a history entry. Only tab
   // changes do, so the phone's back button steps through views instead of
@@ -111,15 +127,19 @@ export function TeamsProvider({ children }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
       localStorage.setItem(VENUE_KEY, venueAdjust ? '1' : '0')
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
     } catch {
       // private mode or quota — the URL still carries the whole state
+      // (hidden teams excepted: that one's local-only, see initialState)
     }
-  }, [overrides, venueAdjust])
+  }, [overrides, venueAdjust, hidden])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
     setState((prev) => ({ ...prev, ...next }))
   }, [])
+
+  const hiddenSet = useMemo(() => new Set(hidden), [hidden])
 
   const teams = useMemo(
     () =>
@@ -130,17 +150,25 @@ export function TeamsProvider({ children }) {
         // jump, and the value behind the "was 4" hint in the Strength tab.
         baseRating: t.rating,
         modified: overrides[t.id] != null && overrides[t.id] !== t.rating,
+        hidden: hiddenSet.has(t.id),
       })),
-    [overrides],
+    [overrides, hiddenSet],
   )
 
+  // teamsByAbbr always carries all 36 — a hidden team's rating is still
+  // needed to colour *other* teams' fixtures against them, it just doesn't
+  // get its own row. visibleTeams is what the table/rankings/comparisons
+  // actually iterate over.
   const teamsByAbbr = useMemo(() => Object.fromEntries(teams.map((t) => [t.abbr, t])), [teams])
+  const visibleTeams = useMemo(() => teams.filter((t) => !t.hidden), [teams])
   const modifiedCount = useMemo(() => teams.filter((t) => t.modified).length, [teams])
 
   const value = useMemo(
     () => ({
       teams,
       teamsByAbbr,
+      visibleTeams,
+      hiddenCount: hidden.length,
       modifiedCount,
       venueAdjust,
       tab,
@@ -149,6 +177,10 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
+      hideTeam: (id) =>
+        setState((prev) => (prev.hidden.includes(id) ? prev : { ...prev, hidden: [...prev.hidden, id] })),
+      showTeam: (id) => setState((prev) => ({ ...prev, hidden: prev.hidden.filter((x) => x !== id) })),
+      resetHidden: () => patch({ hidden: [] }),
       setRange: (nextFrom, nextTo) => {
         const to = Math.max(nextFrom, nextTo)
         // A range change can strand the skipped matchday outside it (or right
@@ -170,7 +202,7 @@ export function TeamsProvider({ children }) {
         }),
       resetRatings: () => patch({ overrides: {} }),
     }),
-    [teams, teamsByAbbr, modifiedCount, venueAdjust, tab, from, to, skipMd, compare, patch],
+    [teams, teamsByAbbr, visibleTeams, hidden.length, modifiedCount, venueAdjust, tab, from, to, skipMd, compare, patch],
   )
 
   return <TeamsContext.Provider value={value}>{children}</TeamsContext.Provider>
