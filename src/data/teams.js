@@ -62,5 +62,5 @@ export const RATING_METHOD = [
   'A fixture takes the difficulty of the opponent you face, not your own strength.',
   'Home ties are eased by half a step and away ties hardened by half a step, which moves most fixtures one colour band. Turn this off with the Home/away switch.',
   'Every rating is yours to override in the Strength tab — the table, runs and comparisons all recalculate live.',
-  'Building a separate Limitless/wildcard team for one matchday? Use "Skip" in the range picker to leave it out of this team’s table and averages.',
+  'Building a separate Limitless team for one matchday? Use "Skip" in the range picker to leave it out of this team’s table and averages.',
 ]
