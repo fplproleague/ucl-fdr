@@ -58,7 +58,7 @@ export const RATING_COLORS = {
 // Shown in the "How difficulty is calculated" panel. Kept here so the
 // explanation and the numbers it describes live in the same file.
 export const RATING_METHOD = [
-  'Every team starts on a 1–5 strength rating, seeded from its UEFA coefficient and league-phase seeding pot.',
+  'Every team starts on a 1–5 strength rating — adjust it to your own opinion any time.',
   'A fixture takes the difficulty of the opponent you face, not your own strength.',
   'Home ties are eased by half a step and away ties hardened by half a step, which moves most fixtures one colour band. Turn this off with the Home/away switch.',
   'Every rating is yours to override in the Strength tab — the table, runs and comparisons all recalculate live.',

@@ -1,17 +1,6 @@
-import { DATA_UPDATED, TOTAL_MATCHDAYS } from '../data/fixtures.js'
-
-const updated = new Date(DATA_UPDATED).toLocaleDateString('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
-
 export default function Footer() {
   return (
     <footer className="border-t border-white/10 px-4 py-5 text-center">
-      <p className="text-[11px] leading-relaxed text-ucl-muted">
-        MD1–MD{TOTAL_MATCHDAYS} fixtures taken from the official 2026/27 league phase draw · updated {updated}
-      </p>
       <a
         href="https://x.com/fpl_proleague"
         target="_blank"

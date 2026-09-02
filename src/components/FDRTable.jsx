@@ -27,7 +27,7 @@ export default function FDRTable() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`All 36 teams, MD${from}–MD${to}. The number under each team is its average difficulty.`}
+        subtitle={`All 36 teams, MD${from}–MD${to}.`}
         action={
           <div className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold">
             {[
@@ -55,6 +55,7 @@ export default function FDRTable() {
       <FixtureGrid
         mds={mds}
         rows={sorted}
+        showAvg={false}
         caption={`Fixture difficulty for all 36 Champions League teams, matchday ${from} to ${to}`}
       />
     </div>

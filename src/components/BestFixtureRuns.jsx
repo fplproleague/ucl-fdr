@@ -74,7 +74,7 @@ export default function BestFixtureRuns() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold sm:text-base">{row.team.name}</p>
                 <p className="text-[11px] text-ucl-muted">
-                  avg {formatAvg(row.avg)} · {row.homes} home · {row.veryHard} very hard
+                  avg {formatAvg(row.avg)} · {row.homes} home
                 </p>
               </div>
             </div>

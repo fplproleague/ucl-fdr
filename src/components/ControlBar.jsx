@@ -9,7 +9,7 @@ import RatingLegend from './RatingLegend.jsx'
 // is still the range you're looking at on Best Runs and Compare. Two rows on a
 // phone instead of the two full-height cards this replaces.
 export default function ControlBar({ showRange = true, className = '' }) {
-  const { from, to, setRange, venueAdjust, setVenueAdjust, modifiedCount } = useTeams()
+  const { from, to, setRange, venueAdjust, setVenueAdjust, modifiedCount, setTab } = useTeams()
   const [openMethod, setOpenMethod] = useState(false)
 
   return (
@@ -64,12 +64,26 @@ export default function ControlBar({ showRange = true, className = '' }) {
       {openMethod && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
           <ul className="space-y-1.5">
-            {RATING_METHOD.map((line) => (
+            {RATING_METHOD.map((line, i) => (
               <li key={line} className="flex gap-2">
                 <span aria-hidden="true" className="text-ucl-accent">
                   •
                 </span>
-                <span>{line}</span>
+                <span>
+                  {line}
+                  {i === 0 && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => setTab('strength')}
+                        className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+                      >
+                        Go to Strength tab
+                      </button>
+                    </>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

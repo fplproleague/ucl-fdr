@@ -11,7 +11,7 @@ const TEAM_COL = 122
 // Everything — matchday headers, every team's row — lives inside one
 // overflow container, so one swipe moves the lot and the labels can never
 // drift out of sync with the cells they label.
-export default function FixtureGrid({ mds, rows, fullNames = false, caption }) {
+export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, caption }) {
   const { teamsByAbbr, venueAdjust } = useTeams()
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
@@ -79,13 +79,15 @@ export default function FixtureGrid({ mds, rows, fullNames = false, caption }) {
                           <span className="block truncate text-xs font-semibold sm:text-sm">
                             {fullNames ? team.name : (team.shortName ?? team.name)}
                           </span>
-                          <span
-                            className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
-                            style={{ backgroundColor: band.bg, color: band.text }}
-                            title="Average fixture difficulty over the selected matchdays"
-                          >
-                            {formatAvg(avg)}
-                          </span>
+                          {showAvg && (
+                            <span
+                              className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
+                              style={{ backgroundColor: band.bg, color: band.text }}
+                              title="Average fixture difficulty over the selected matchdays"
+                            >
+                              {formatAvg(avg)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </th>
