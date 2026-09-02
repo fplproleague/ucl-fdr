@@ -9,7 +9,6 @@ import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
-const MAX_TEAMS = 5
 const allMds = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1)
 
 export default function CompareTeams() {
@@ -18,7 +17,6 @@ export default function CompareTeams() {
   const [open, setOpen] = useState(false)
 
   const selectedTeams = compare.map((abbr) => teamsByAbbr[abbr]).filter(Boolean)
-  const atMax = selectedTeams.length >= MAX_TEAMS
 
   const mds = useMemo(() => allMds.filter((md) => md >= from && md <= to), [from, to])
   const rows = useFixtureRows(selectedTeams, teamsByAbbr, mds, venueAdjust)
@@ -26,7 +24,7 @@ export default function CompareTeams() {
 
   function toggle(abbr) {
     if (compare.includes(abbr)) setCompare(compare.filter((x) => x !== abbr))
-    else if (!atMax) setCompare([...compare, abbr])
+    else setCompare([...compare, abbr])
   }
 
   const filtered = teams.filter((t) => t.name.toLowerCase().includes(query.trim().toLowerCase()))
@@ -35,10 +33,7 @@ export default function CompareTeams() {
 
   return (
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
-      <ViewHeading
-        title="Compare Teams"
-        subtitle={`Put up to ${MAX_TEAMS} teams side by side over MD${from}–MD${to}.`}
-      />
+      <ViewHeading title="Compare Teams" subtitle={`Put teams side by side over MD${from}–MD${to}.`} />
 
       <ControlBar className="mb-3" />
 
@@ -63,7 +58,7 @@ export default function CompareTeams() {
             aria-expanded={open}
             className="min-h-[36px] rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10"
           >
-            {open ? 'Done' : `Add team (${selectedTeams.length}/${MAX_TEAMS})`}
+            {open ? 'Done' : `Add team${selectedTeams.length ? ` (${selectedTeams.length} selected)` : ''}`}
           </button>
           {selectedTeams.length > 0 && (
             <button
@@ -94,30 +89,20 @@ export default function CompareTeams() {
               />
             </div>
 
-            {atMax && (
-              <p className="mb-2 rounded-lg bg-ucl-accent/15 px-2.5 py-1.5 text-[11px] font-medium text-ucl-star/80">
-                That&apos;s {MAX_TEAMS} teams — remove one above to swap someone in.
-              </p>
-            )}
-
             <div className="max-h-64 overflow-y-auto">
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                 {filtered.map((team) => {
                   const active = compare.includes(team.abbr)
-                  const blocked = !active && atMax
                   return (
                     <button
                       key={team.abbr}
                       type="button"
-                      disabled={blocked}
                       onClick={() => toggle(team.abbr)}
                       aria-pressed={active}
                       className={`flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-left text-xs font-medium transition ${
                         active
                           ? 'bg-ucl-accent/25 text-ucl-star ring-1 ring-ucl-accent/50'
-                          : blocked
-                            ? 'cursor-not-allowed text-ucl-star/30'
-                            : 'text-ucl-star/80 hover:bg-white/5'
+                          : 'text-ucl-star/80 hover:bg-white/5'
                       }`}
                     >
                       <TeamBadge abbr={team.abbr} size={18} />
