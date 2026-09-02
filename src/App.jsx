@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { SlidersHorizontal, Calendar, TrendingUp, Scale } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
-import { TeamsProvider } from './context/TeamsContext.jsx'
+import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
@@ -13,66 +12,86 @@ const TABS = [
   { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
-  { id: 'settings', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
+  { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
-export default function App() {
-  const [tab, setTab] = useState('table')
-  const Active = TABS.find((t) => t.id === tab).Component
+function Shell() {
+  const { tab, setTab } = useTeams()
+  const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
 
   return (
-    <TeamsProvider>
-      <div className="flex min-h-screen flex-col pb-20 sm:pb-0">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/80 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-3 sm:px-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white p-1.5 shadow-card sm:h-12 sm:w-12">
-              <img src={uclLogo} alt="UCL" className="h-full w-full object-contain" />
-            </span>
-            <div>
-              <h1 className="font-display text-base font-extrabold uppercase tracking-wide sm:text-lg">UCL FDR</h1>
-              <p className="text-[11px] text-ucl-star/50 sm:text-xs">Fixture Difficulty Rating</p>
-            </div>
-
-            <nav className="ml-auto hidden gap-1 sm:flex">
-              {TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                    tab === id ? 'bg-ucl-accent text-white shadow-card' : 'text-ucl-star/60 hover:bg-white/5'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {label}
-                </button>
-              ))}
-            </nav>
+    <div className="flex min-h-screen flex-col pb-[4.5rem] sm:pb-0">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-2 sm:px-4 sm:py-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white p-1 shadow-card sm:h-11 sm:w-11 sm:p-1.5">
+            <img src={uclLogo} alt="" width="44" height="44" className="h-full w-full object-contain" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-sm font-extrabold uppercase leading-tight tracking-wide sm:text-lg">
+              UCL FDR
+            </p>
+            <p className="truncate text-[11px] leading-tight text-ucl-muted sm:text-xs">
+              Every Champions League fixture, ranked
+            </p>
           </div>
-        </header>
 
-        <main className="flex-1">
-          <Active />
-        </main>
-
-        <Footer />
-
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ucl-navy/95 backdrop-blur-md sm:hidden">
-          <div className="mx-auto flex max-w-6xl">
+          <nav aria-label="Views" className="ml-auto hidden gap-1 sm:flex" role="tablist">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
                 onClick={() => setTab(id)}
-                className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${
-                  tab === id ? 'text-ucl-accent' : 'text-ucl-star/50'
+                className={`flex min-h-[40px] items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition ${
+                  tab === id ? 'bg-ucl-accent text-white shadow-card' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >
-                <Icon size={20} />
+                <Icon size={16} aria-hidden="true" />
                 {label}
               </button>
             ))}
-          </div>
-        </nav>
-      </div>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1">
+        <Active />
+      </main>
+
+      <Footer />
+
+      <nav
+        aria-label="Views"
+        role="tablist"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ucl-navy/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
+      >
+        <div className="mx-auto flex max-w-6xl">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
+                tab === id ? 'text-ucl-accent' : 'text-ucl-star/60'
+              }`}
+            >
+              <Icon size={20} aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <TeamsProvider>
+      <Shell />
       <Analytics />
     </TeamsProvider>
   )

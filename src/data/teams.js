@@ -44,10 +44,22 @@ export const INITIAL_TEAMS = [
   { id: 'AEK', name: 'AEK Athens', abbr: 'AEK', rating: 1 },
 ]
 
+// Every pair below clears 4.5:1 text-on-background contrast, so the number
+// printed inside a fixture chip stays readable at 11px bold. Bands 1 and 5 were
+// previously 4.19 and 4.45 — close, but under the line.
 export const RATING_COLORS = {
-  1: { bg: '#1e8a4c', text: '#eafff1', label: 'Very easy' },
+  1: { bg: '#1a7a44', text: '#eafff1', label: 'Very easy' },
   2: { bg: '#7fc242', text: '#0b2412', label: 'Easy' },
   3: { bg: '#f2c14e', text: '#3a2b00', label: 'Average' },
   4: { bg: '#e8722c', text: '#2c1200', label: 'Hard' },
-  5: { bg: '#d13438', text: '#fff0ef', label: 'Very hard' },
+  5: { bg: '#c62d31', text: '#ffffff', label: 'Very hard' },
 }
+
+// Shown in the "How difficulty is calculated" panel. Kept here so the
+// explanation and the numbers it describes live in the same file.
+export const RATING_METHOD = [
+  'Every team starts on a 1–5 strength rating — adjust it to your own opinion any time.',
+  'A fixture takes the difficulty of the opponent you face, not your own strength.',
+  'Home ties are eased by half a step and away ties hardened by half a step, which moves most fixtures one colour band. Turn this off with the Home/away switch.',
+  'Every rating is yours to override in the Strength tab — the table, runs and comparisons all recalculate live.',
+]
