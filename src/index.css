@@ -15,6 +15,31 @@
     background-attachment: fixed;
   }
 
+  /* Buttons had outline:none with nothing put back, so keyboard users had no
+     idea where they were. Focus is now visible everywhere, but only for
+     keyboard interaction. */
+  :focus-visible {
+    outline: 2px solid #7f95ff;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Horizontal scrollers keep their momentum feel on iOS and snap to columns
+     so a swipe lands on a matchday boundary rather than mid-cell. */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     height: 8px;
     width: 8px;
@@ -29,8 +54,10 @@
 }
 
 @layer utilities {
+  /* font-stretch: expanded was a no-op here — the loaded face has no width
+     axis — so it is gone rather than sitting in the stylesheet looking load-bearing. */
   .font-display {
-    font-family: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-    font-stretch: expanded;
+    font-family: 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
   }
 }

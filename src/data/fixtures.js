@@ -1,5 +1,13 @@
-// GW1-8 fixtures for the 2026/27 UEFA Champions League league phase.
-export const TOTAL_GAMEWEEKS = 8
+// MD1-8 fixtures for the 2026/27 UEFA Champions League league phase.
+// Verified against the official draw: every fixture has a matching reciprocal
+// with the opposite venue, all 36 teams play 8 matches (4 home, 4 away), no
+// team faces a domestic rival, and nobody faces more than two clubs from one
+// association. Run `node scripts/build-fixtures.mjs` to regenerate.
+export const TOTAL_MATCHDAYS = 8
+
+// Bumped whenever the fixture data changes, so the UI can show visitors how
+// fresh the numbers are without anyone hand-editing a date string in a component.
+export const DATA_UPDATED = '2026-09-01'
 
 export const FIXTURES = {
   "AEK": [

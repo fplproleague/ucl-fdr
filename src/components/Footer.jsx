@@ -1,17 +1,31 @@
+import { DATA_UPDATED, TOTAL_MATCHDAYS } from '../data/fixtures.js'
+
+const updated = new Date(DATA_UPDATED).toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 py-5 text-center">
+    <footer className="border-t border-white/10 px-4 py-5 text-center">
+      <p className="text-[11px] leading-relaxed text-ucl-muted">
+        MD1–MD{TOTAL_MATCHDAYS} fixtures taken from the official 2026/27 league phase draw · updated {updated}
+      </p>
       <a
         href="https://x.com/fpl_proleague"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-ucl-star/50 transition hover:text-ucl-star/80"
+        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-ucl-star/60 transition hover:text-ucl-star"
       >
         Made by @fpl_proleague
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current">
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 fill-current">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
       </a>
+      <p className="mt-2 text-[10px] text-ucl-star/25">
+        Not affiliated with UEFA. Club badges are the property of their respective clubs.
+      </p>
     </footer>
   )
 }
