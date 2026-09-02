@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import { difficultyBand, formatAvg, ratingColor } from '../utils/difficulty.js'
@@ -11,7 +12,7 @@ const TEAM_COL = 122
 // Everything — matchday headers, every team's row — lives inside one
 // overflow container, so one swipe moves the lot and the labels can never
 // drift out of sync with the cells they label.
-export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, caption }) {
+export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, onRemove, caption }) {
   const { teamsByAbbr, venueAdjust } = useTeams()
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
@@ -75,7 +76,7 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                     >
                       <div className="flex items-center gap-1.5">
                         <TeamBadge abbr={team.abbr} size={20} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <span className="block truncate text-xs font-semibold sm:text-sm">
                             {fullNames ? team.name : (team.shortName ?? team.name)}
                           </span>
@@ -89,6 +90,16 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                             </span>
                           )}
                         </div>
+                        {onRemove && (
+                          <button
+                            type="button"
+                            onClick={() => onRemove(team.id)}
+                            aria-label={`Remove ${team.name} from the table`}
+                            className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
+                          >
+                            <X size={12} aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
                     </th>
                     {cells.map((cell, i) => (

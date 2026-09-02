@@ -10,7 +10,7 @@ import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function CompareTeams() {
-  const { teams, teamsByAbbr, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
+  const { visibleTeams, teamsByAbbr, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -25,7 +25,7 @@ export default function CompareTeams() {
     else setCompare([...compare, abbr])
   }
 
-  const filtered = teams.filter((t) => t.name.toLowerCase().includes(query.trim().toLowerCase()))
+  const filtered = visibleTeams.filter((t) => t.name.toLowerCase().includes(query.trim().toLowerCase()))
   const best = sorted[0]
   const tied = best ? sorted.filter((r) => r.avg === best.avg) : []
 

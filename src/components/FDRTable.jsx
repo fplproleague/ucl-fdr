@@ -8,11 +8,11 @@ import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function FDRTable() {
-  const { teams, teamsByAbbr, venueAdjust, from, to, skipMd } = useTeams()
+  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, venueAdjust, from, to, skipMd } = useTeams()
   const [sortBy, setSortBy] = useState('avg')
 
   const mds = useVisibleMds(from, to, skipMd)
-  const rows = useFixtureRows(teams, teamsByAbbr, mds, venueAdjust)
+  const rows = useFixtureRows(visibleTeams, teamsByAbbr, mds, venueAdjust)
 
   const sorted = useMemo(() => {
     const copy = [...rows]
@@ -25,7 +25,7 @@ export default function FDRTable() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`All 36 teams, MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}.`}
+        subtitle={`${visibleTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}. Tap the × on a row to drop a team from the table.`}
         action={
           <div className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold">
             {[
@@ -50,14 +50,41 @@ export default function FDRTable() {
 
       <ControlBar className="mb-3" />
 
-      <FixtureGrid
-        mds={mds}
-        rows={sorted}
-        showAvg={false}
-        caption={`Fixture difficulty for all 36 Champions League teams, matchday ${from} to ${to}${
-          skipMd ? `, matchday ${skipMd} skipped` : ''
-        }`}
-      />
+      {hiddenCount > 0 && (
+        <p className="mb-3 flex items-center gap-2 text-xs text-ucl-muted">
+          {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
+          <button
+            type="button"
+            onClick={resetHidden}
+            className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+          >
+            Show all
+          </button>
+        </p>
+      )}
+
+      {visibleTeams.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+          <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
+          <button
+            type="button"
+            onClick={resetHidden}
+            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+          >
+            Show all teams
+          </button>
+        </div>
+      ) : (
+        <FixtureGrid
+          mds={mds}
+          rows={sorted}
+          showAvg={false}
+          onRemove={hideTeam}
+          caption={`Fixture difficulty for ${visibleTeams.length} Champions League teams, matchday ${from} to ${to}${
+            skipMd ? `, matchday ${skipMd} skipped` : ''
+          }`}
+        />
+      )}
     </div>
   )
 }

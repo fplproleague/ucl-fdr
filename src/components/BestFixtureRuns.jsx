@@ -13,11 +13,11 @@ import ViewHeading from './ViewHeading.jsx'
 const PREVIEW = 8
 
 export default function BestFixtureRuns() {
-  const { teams, teamsByAbbr, venueAdjust, from, to, skipMd } = useTeams()
+  const { visibleTeams, teamsByAbbr, venueAdjust, from, to, skipMd } = useTeams()
   const [showAll, setShowAll] = useState(false)
 
   const mds = useVisibleMds(from, to, skipMd)
-  const rows = useFixtureRows(teams, teamsByAbbr, mds, venueAdjust)
+  const rows = useFixtureRows(visibleTeams, teamsByAbbr, mds, venueAdjust)
   const ranked = useMemo(() => [...rows].sort(compareRuns), [rows])
 
   // Teams whose selected window is much kinder than their league phase as a
@@ -38,7 +38,7 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`All 36 teams over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}, easiest average first.`}
+        subtitle={`${visibleTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}, easiest average first.`}
       />
 
       <ControlBar className="mb-3" />
