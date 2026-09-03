@@ -3,7 +3,6 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import { compareRuns } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
-import AboutFdr from './AboutFdr.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
@@ -86,8 +85,6 @@ export default function FDRTable() {
           }`}
         />
       )}
-
-      <AboutFdr />
     </div>
   )
 }
