@@ -19,6 +19,21 @@ function Shell() {
   const { tab, setTab } = useTeams()
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
 
+  // Real <a href="#/id"> links now (the site had zero internal links before),
+  // but role="tab" means they must keep behaving like the buttons they
+  // replaced: activate on click, and — since anchors, unlike buttons, don't
+  // natively respond to Space — activate on Space too.
+  function goToTab(e, id) {
+    e.preventDefault()
+    setTab(id)
+  }
+  function onTabKeyDown(e, id) {
+    if (e.key === ' ') {
+      e.preventDefault()
+      setTab(id)
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col pb-[4.5rem] sm:pb-0">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/85 backdrop-blur-md">
@@ -27,29 +42,33 @@ function Shell() {
             <img src={uclLogo} alt="" width="44" height="44" className="h-full w-full object-contain" />
           </span>
           <div className="min-w-0">
-            <p className="font-display text-sm font-extrabold uppercase leading-tight tracking-wide sm:text-lg">
-              UCL FDR
-            </p>
+            {/* No text-transform here: it would only change how this renders, but
+                keeping the DOM's actual text ("UCL Fantasy FDR") is what a crawler
+                (or an automated check for that exact string) reads either way. */}
+            <h1 className="font-display text-sm font-extrabold leading-tight tracking-wide sm:text-lg">
+              UCL Fantasy FDR
+            </h1>
             <p className="truncate text-[11px] leading-tight text-ucl-muted sm:text-xs">
-              Every Champions League fixture, ranked
+              Champions League fixture difficulty, MD1–MD8 — all 36 teams, ratings you control.
             </p>
           </div>
 
           <nav aria-label="Views" className="ml-auto hidden gap-1 sm:flex" role="tablist">
             {TABS.map(({ id, label, icon: Icon }) => (
-              <button
+              <a
                 key={id}
-                type="button"
+                href={`#/${id}`}
                 role="tab"
                 aria-selected={tab === id}
-                onClick={() => setTab(id)}
+                onClick={(e) => goToTab(e, id)}
+                onKeyDown={(e) => onTabKeyDown(e, id)}
                 className={`flex min-h-[40px] items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition ${
                   tab === id ? 'bg-ucl-accent text-white shadow-card' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >
                 <Icon size={16} aria-hidden="true" />
                 {label}
-              </button>
+              </a>
             ))}
           </nav>
         </div>
@@ -68,19 +87,20 @@ function Shell() {
       >
         <div className="mx-auto flex max-w-6xl">
           {TABS.map(({ id, label, icon: Icon }) => (
-            <button
+            <a
               key={id}
-              type="button"
+              href={`#/${id}`}
               role="tab"
               aria-selected={tab === id}
-              onClick={() => setTab(id)}
+              onClick={(e) => goToTab(e, id)}
+              onKeyDown={(e) => onTabKeyDown(e, id)}
               className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
                 tab === id ? 'text-ucl-accent' : 'text-ucl-star/60'
               }`}
             >
               <Icon size={20} aria-hidden="true" />
               {label}
-            </button>
+            </a>
           ))}
         </div>
       </nav>
