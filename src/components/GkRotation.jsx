@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { GOALKEEPERS } from '../data/goalkeepers.js'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
@@ -75,8 +75,10 @@ export default function GkRotation() {
     if (!q) return GOALKEEPERS
     return GOALKEEPERS.filter((gk) => {
       const team = teamsByAbbr[gk.team]
-      const club = team?.shortName ?? team?.name ?? gk.team
-      return gk.name.toLowerCase().includes(q) || club.toLowerCase().includes(q)
+      // Match the full club name and the short one — "Bayern München" and
+      // "Bayern" should both find the same goalkeeper.
+      const names = [team?.name, team?.shortName, gk.team].filter(Boolean)
+      return gk.name.toLowerCase().includes(q) || names.some((n) => n.toLowerCase().includes(q))
     })
   }, [query, teamsByAbbr])
 
@@ -131,22 +133,15 @@ export default function GkRotation() {
           </button>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-            <div className="relative mb-2">
-              <Search
-                size={14}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ucl-muted"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="🔍 Search goalkeeper..."
-                aria-label="Search goalkeeper"
-                autoFocus={pickerOpen}
-                className="min-h-[40px] w-full rounded-lg border border-white/10 bg-ucl-deep pl-8 pr-2 text-sm text-ucl-star placeholder:text-ucl-star/30"
-              />
-            </div>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or club..."
+              aria-label="Search goalkeeper by name or club"
+              autoFocus={pickerOpen}
+              className="mb-2 min-h-[40px] w-full rounded-lg border border-white/10 bg-ucl-deep px-2.5 text-sm text-ucl-star placeholder:text-ucl-star/30"
+            />
             <div className="max-h-72 overflow-y-auto">
               <ul className="space-y-1">
                 {filteredGks.map((gk) => (
