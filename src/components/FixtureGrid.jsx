@@ -12,8 +12,8 @@ const TEAM_COL = 122
 // Everything — matchday headers, every team's row — lives inside one
 // overflow container, so one swipe moves the lot and the labels can never
 // drift out of sync with the cells they label.
-export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, onRemove, caption }) {
-  const { teamsByAbbr, venueAdjust } = useTeams()
+export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, onRemove, onTeamClick, caption }) {
+  const { teamsByAbbr, venueAdjust, showMatchday, dayFilter } = useTeams()
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
   const [scrollable, setScrollable] = useState(false)
@@ -67,8 +67,30 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
             <tbody>
               {rows.map(({ team, cells, avg }, idx) => {
                 const band = ratingColor(difficultyBand(avg))
+                const identity = (
+                  <>
+                    <span className="block truncate text-xs font-semibold sm:text-sm">
+                      {fullNames ? team.name : (team.shortName ?? team.name)}
+                    </span>
+                    {showAvg && (
+                      <span
+                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
+                        style={{ backgroundColor: band.bg, color: band.text }}
+                        title="Average fixture difficulty over the selected matchdays"
+                      >
+                        {formatAvg(avg)}
+                      </span>
+                    )}
+                  </>
+                )
                 return (
-                  <tr key={team.id} className={idx % 2 === 0 ? 'bg-white/[0.015]' : ''}>
+                  <tr
+                    key={team.id}
+                    onClick={onTeamClick ? () => onTeamClick(team) : undefined}
+                    className={`${idx % 2 === 0 ? 'bg-white/[0.015]' : ''} ${
+                      onTeamClick ? 'cursor-pointer transition hover:bg-white/[0.06]' : ''
+                    }`}
+                  >
                     <th
                       scope="row"
                       className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal"
@@ -76,24 +98,28 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                     >
                       <div className="flex items-center gap-1.5">
                         <TeamBadge abbr={team.abbr} size={20} />
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-semibold sm:text-sm">
-                            {fullNames ? team.name : (team.shortName ?? team.name)}
-                          </span>
-                          {showAvg && (
-                            <span
-                              className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
-                              style={{ backgroundColor: band.bg, color: band.text }}
-                              title="Average fixture difficulty over the selected matchdays"
-                            >
-                              {formatAvg(avg)}
-                            </span>
-                          )}
-                        </div>
+                        {onTeamClick ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onTeamClick(team)
+                            }}
+                            aria-label={`View ${team.name} details`}
+                            className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
+                          >
+                            {identity}
+                          </button>
+                        ) : (
+                          <div className="min-w-0 flex-1">{identity}</div>
+                        )}
                         {onRemove && (
                           <button
                             type="button"
-                            onClick={() => onRemove(team.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRemove(team.id)
+                            }}
                             aria-label={`Remove ${team.name} from the table`}
                             className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
                           >
@@ -111,6 +137,10 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                             venue={cell.venue}
                             rating={teamsByAbbr[cell.opp]?.rating ?? 3}
                             venueAdjust={venueAdjust}
+                            awayDifficulty={teamsByAbbr[cell.opp]?.awayDifficulty ?? 0}
+                            day={cell.day}
+                            showDay={showMatchday}
+                            dimmed={showMatchday && dayFilter !== 'ALL' && cell.day !== dayFilter}
                             className="mx-auto"
                           />
                         ) : (
