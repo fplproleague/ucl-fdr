@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
-import { GOALKEEPERS } from '../data/goalkeepers.js'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { useLiveGoalkeepers } from '../utils/useLiveGoalkeepers.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/gkRotation.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
@@ -27,6 +27,10 @@ function formatPrice(price) {
 
 export default function GkRotation() {
   const { teamsByAbbr, venueAdjust } = useTeams()
+  // Live from the published sheet, falling back to the bundled snapshot if
+  // it can't be reached right now — see useLiveGoalkeepers.js.
+  const { goalkeepers: GOALKEEPERS, loading: gkLoading, live: gkLive } = useLiveGoalkeepers()
+
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
   // silently change what those other views show.
@@ -80,7 +84,7 @@ export default function GkRotation() {
       const names = [team?.name, team?.shortName, gk.team].filter(Boolean)
       return gk.name.toLowerCase().includes(q) || names.some((n) => n.toLowerCase().includes(q))
     })
-  }, [query, teamsByAbbr])
+  }, [query, teamsByAbbr, GOALKEEPERS])
 
   function selectGk(id) {
     setSelectedId(id)
@@ -100,7 +104,7 @@ export default function GkRotation() {
         return { gk, rows, summary: summarizeComparison(rows) }
       })
       .sort(compareComplementSummaries)
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice])
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -112,6 +116,12 @@ export default function GkRotation() {
       />
 
       <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
+
+      {!gkLoading && !gkLive && (
+        <p className="mb-3 text-[11px] text-ucl-muted">
+          Couldn't reach the live goalkeeper sheet — showing the last saved list.
+        </p>
+      )}
 
       <div className="mb-4">
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Your goalkeeper</p>
