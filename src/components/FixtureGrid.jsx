@@ -13,7 +13,7 @@ const TEAM_COL = 122
 // overflow container, so one swipe moves the lot and the labels can never
 // drift out of sync with the cells they label.
 export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, onRemove, caption }) {
-  const { teamsByAbbr, venueAdjust } = useTeams()
+  const { teamsByAbbr, venueAdjust, showMatchday, dayFilter } = useTeams()
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
   const [scrollable, setScrollable] = useState(false)
@@ -111,6 +111,9 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                             venue={cell.venue}
                             rating={teamsByAbbr[cell.opp]?.rating ?? 3}
                             venueAdjust={venueAdjust}
+                            day={cell.day}
+                            showDay={showMatchday}
+                            dimmed={showMatchday && dayFilter !== 'ALL' && cell.day !== dayFilter}
                             className="mx-auto"
                           />
                         ) : (

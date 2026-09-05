@@ -1,6 +1,7 @@
 // The whole app state lives in the hash so every view is linkable:
 //   #/table?from=1&to=8&va=1
 //   #/table?from=1&to=8&skip=3
+//   #/table?from=1&to=1&md=1&day=TUE
 //   #/compare?from=3&to=6&teams=ARS,INT,BAY
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //
@@ -19,6 +20,7 @@ export function parseHash(hash = window.location.hash) {
     const v = Number(params.get(key))
     return Number.isInteger(v) && v > 0 ? v : null
   }
+  const day = params.get('day')
   return {
     tab,
     from: num('from'),
@@ -26,6 +28,8 @@ export function parseHash(hash = window.location.hash) {
     skip: num('skip'),
     teams: (params.get('teams') || '').split(',').filter(Boolean),
     venueAdjust: params.get('va') === null ? null : params.get('va') !== '0',
+    showMatchday: params.get('md') === null ? null : params.get('md') === '1',
+    dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
     ratings: parseRatings(params.get('r')),
   }
 }
@@ -51,13 +55,15 @@ export function serializeRatings(overrides) {
     .join('')
 }
 
-export function buildHash({ tab, from, to, skip, teams, venueAdjust, ratings }) {
+export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings }) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
   if (to) params.set('to', String(to))
   if (skip) params.set('skip', String(skip))
   if (teams && teams.length) params.set('teams', teams.join(','))
   if (venueAdjust === false) params.set('va', '0')
+  if (showMatchday) params.set('md', '1')
+  if (showMatchday && dayFilter && dayFilter !== 'ALL') params.set('day', dayFilter)
   const packed = ratings ? serializeRatings(ratings) : ''
   if (packed) params.set('r', packed)
   const query = params.toString()

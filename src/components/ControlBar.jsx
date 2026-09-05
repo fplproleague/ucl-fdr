@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Info } from 'lucide-react'
 import { RATING_METHOD } from '../data/teams.js'
 import { useTeams } from '../context/TeamsContext.jsx'
+import { DAY_LABEL } from '../utils/matchdaySplit.js'
 import MdRangePicker from './MdRangePicker.jsx'
 import RatingLegend from './RatingLegend.jsx'
 
@@ -9,7 +10,22 @@ import RatingLegend from './RatingLegend.jsx'
 // is still the range you're looking at on Best Runs and Compare. Two rows on a
 // phone instead of the two full-height cards this replaces.
 export default function ControlBar({ showRange = true, className = '' }) {
-  const { from, to, skipMd, setRange, setSkipMd, venueAdjust, setVenueAdjust, modifiedCount, setTab } = useTeams()
+  const {
+    from,
+    to,
+    skipMd,
+    setRange,
+    setSkipMd,
+    venueAdjust,
+    setVenueAdjust,
+    modifiedCount,
+    setTab,
+    showMatchday,
+    setShowMatchday,
+    dayFilter,
+    setDayFilter,
+    availableDayOptions,
+  } = useTeams()
   const [openMethod, setOpenMethod] = useState(false)
 
   return (
@@ -47,6 +63,30 @@ export default function ControlBar({ showRange = true, className = '' }) {
 
         <button
           type="button"
+          role="switch"
+          aria-checked={showMatchday}
+          onClick={() => setShowMatchday(!showMatchday)}
+          className={`flex min-h-[32px] items-center gap-2 rounded-full border px-2.5 text-xs font-semibold transition ${
+            showMatchday
+              ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+              : 'border-white/10 bg-white/5 text-ucl-star/60'
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
+              showMatchday ? 'bg-ucl-accent' : 'bg-white/20'
+            }`}
+          >
+            <span
+              className={`h-3 w-3 rounded-full bg-white transition-transform ${showMatchday ? 'translate-x-3' : ''}`}
+            />
+          </span>
+          Matchday Split
+        </button>
+
+        <button
+          type="button"
           onClick={() => setOpenMethod((v) => !v)}
           aria-expanded={openMethod}
           className="flex min-h-[32px] items-center gap-1.5 rounded-full px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
@@ -62,6 +102,26 @@ export default function ControlBar({ showRange = true, className = '' }) {
           </span>
         )}
       </div>
+
+      {showMatchday && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter fixtures by day">
+          {['ALL', ...availableDayOptions].map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={dayFilter === d}
+              onClick={() => setDayFilter(d)}
+              className={`min-h-[28px] rounded-full border px-2.5 text-[11px] font-semibold transition ${
+                dayFilter === d
+                  ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+                  : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
+              }`}
+            >
+              {d === 'ALL' ? 'All' : DAY_LABEL[d]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {openMethod && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">

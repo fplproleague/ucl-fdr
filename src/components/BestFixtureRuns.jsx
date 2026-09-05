@@ -13,7 +13,19 @@ import ViewHeading from './ViewHeading.jsx'
 const PREVIEW = 8
 
 export default function BestFixtureRuns() {
-  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, venueAdjust, from, to, skipMd } = useTeams()
+  const {
+    visibleTeams,
+    teamsByAbbr,
+    hiddenCount,
+    hideTeam,
+    resetHidden,
+    venueAdjust,
+    from,
+    to,
+    skipMd,
+    showMatchday,
+    dayFilter,
+  } = useTeams()
   const [showAll, setShowAll] = useState(false)
 
   const mds = useVisibleMds(from, to, skipMd)
@@ -127,6 +139,9 @@ export default function BestFixtureRuns() {
                       venue={f.venue}
                       rating={teamsByAbbr[f.opp]?.rating ?? 3}
                       venueAdjust={venueAdjust}
+                      day={f.day}
+                      showDay={showMatchday}
+                      dimmed={showMatchday && dayFilter !== 'ALL' && f.day !== dayFilter}
                     />
                   </div>
                 ))}

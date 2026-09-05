@@ -2,10 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { INITIAL_TEAMS } from '../data/teams.js'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
+import { availableDays } from '../utils/matchdaySplit.js'
+import { useVisibleMds } from '../utils/useVisibleMds.js'
 
 const STORAGE_KEY = 'ucl-fdr:ratings:v1'
 const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
 const HIDDEN_KEY = 'ucl-fdr:hidden-teams:v1'
+const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
 
 const TeamsContext = createContext(null)
 
@@ -36,6 +39,14 @@ function readStoredHidden() {
   }
 }
 
+function readStoredMatchdaySplit() {
+  try {
+    return localStorage.getItem(MATCHDAY_SPLIT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
@@ -58,12 +69,17 @@ function initialState() {
     // not something you'd want baked into a link you share, so this one
     // lives only in localStorage.
     hidden: readStoredHidden(),
+    showMatchday: url.showMatchday ?? readStoredMatchdaySplit(),
+    // Re-validated against the visible range right after mount (see the
+    // effect below) — a link or a stale localStorage value might name a day
+    // that isn't even played on this range's matchdays.
+    dayFilter: url.dayFilter ?? 'ALL',
   }
 }
 
 export function TeamsProvider({ children }) {
   const [state, setState] = useState(initialState)
-  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden } = state
+  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden, showMatchday, dayFilter } = state
 
   // Whether the next hash write should create a history entry. Only tab
   // changes do, so the phone's back button steps through views instead of
@@ -85,6 +101,8 @@ export function TeamsProvider({ children }) {
         skip: skipMd,
         teams: tab === 'compare' ? compare : [],
         venueAdjust,
+        showMatchday,
+        dayFilter,
         ratings: overrides,
       },
       { push: pushNext.current },
@@ -94,7 +112,7 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter])
 
   useEffect(() => {
     function onNav() {
@@ -111,6 +129,8 @@ export function TeamsProvider({ children }) {
           skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
           compare: url.teams,
           venueAdjust: url.venueAdjust ?? prev.venueAdjust,
+          showMatchday: url.showMatchday ?? prev.showMatchday,
+          dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
         }
       })
@@ -128,16 +148,32 @@ export function TeamsProvider({ children }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
       localStorage.setItem(VENUE_KEY, venueAdjust ? '1' : '0')
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
+      localStorage.setItem(MATCHDAY_SPLIT_KEY, showMatchday ? '1' : '0')
     } catch {
       // private mode or quota — the URL still carries the whole state
       // (hidden teams excepted: that one's local-only, see initialState)
     }
-  }, [overrides, venueAdjust, hidden])
+  }, [overrides, venueAdjust, hidden, showMatchday])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
     setState((prev) => ({ ...prev, ...next }))
   }, [])
+
+  // Which days (TUE/WED/THU) the day filter can even offer, given the
+  // currently visible matchdays — recomputed on every range/skip change.
+  const mds = useVisibleMds(from, to, skipMd)
+  const availableDayOptions = useMemo(() => availableDays(mds), [mds])
+
+  // A day filter can go stale the moment the range changes (e.g. it was set
+  // to "Thursday" while viewing MD1, then the range moved to MD2-8, which
+  // has no Thursday fixtures at all) — fall back to "All" rather than
+  // silently filtering everything out.
+  useEffect(() => {
+    if (dayFilter !== 'ALL' && !availableDayOptions.includes(dayFilter)) {
+      patch({ dayFilter: 'ALL' })
+    }
+  }, [dayFilter, availableDayOptions, patch])
 
   const hiddenSet = useMemo(() => new Set(hidden), [hidden])
 
@@ -171,12 +207,17 @@ export function TeamsProvider({ children }) {
       hiddenCount: hidden.length,
       modifiedCount,
       venueAdjust,
+      showMatchday,
+      dayFilter,
+      availableDayOptions,
       tab,
       from,
       to,
       skipMd,
       compare,
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
+      setShowMatchday: (on) => patch({ showMatchday: on }),
+      setDayFilter: (day) => patch({ dayFilter: day }),
       hideTeam: (id) =>
         setState((prev) => (prev.hidden.includes(id) ? prev : { ...prev, hidden: [...prev.hidden, id] })),
       showTeam: (id) => setState((prev) => ({ ...prev, hidden: prev.hidden.filter((x) => x !== id) })),
@@ -202,7 +243,23 @@ export function TeamsProvider({ children }) {
         }),
       resetRatings: () => patch({ overrides: {} }),
     }),
-    [teams, teamsByAbbr, visibleTeams, hidden.length, modifiedCount, venueAdjust, tab, from, to, skipMd, compare, patch],
+    [
+      teams,
+      teamsByAbbr,
+      visibleTeams,
+      hidden.length,
+      modifiedCount,
+      venueAdjust,
+      showMatchday,
+      dayFilter,
+      availableDayOptions,
+      tab,
+      from,
+      to,
+      skipMd,
+      compare,
+      patch,
+    ],
   )
 
   return <TeamsContext.Provider value={value}>{children}</TeamsContext.Provider>
