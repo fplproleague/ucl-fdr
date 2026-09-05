@@ -5,11 +5,14 @@ import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
+import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function FDRTable() {
-  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, venueAdjust, from, to, skipMd } = useTeams()
+  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, venueAdjust, from, to, skipMd, setCompare, setTab } =
+    useTeams()
   const [sortBy, setSortBy] = useState('avg')
+  const [detailAbbr, setDetailAbbr] = useState(null)
 
   const mds = useVisibleMds(from, to, skipMd)
   const rows = useFixtureRows(visibleTeams, teamsByAbbr, mds, venueAdjust)
@@ -80,9 +83,22 @@ export default function FDRTable() {
           rows={sorted}
           showAvg={false}
           onRemove={hideTeam}
+          onTeamClick={(team) => setDetailAbbr(team.abbr)}
           caption={`Fixture difficulty for ${visibleTeams.length} Champions League teams, matchday ${from} to ${to}${
             skipMd ? `, matchday ${skipMd} skipped` : ''
           }`}
+        />
+      )}
+
+      {detailAbbr && (
+        <TeamDetailPanel
+          abbr={detailAbbr}
+          onClose={() => setDetailAbbr(null)}
+          onCompare={() => {
+            setCompare([detailAbbr])
+            setTab('compare')
+            setDetailAbbr(null)
+          }}
         />
       )}
     </div>
