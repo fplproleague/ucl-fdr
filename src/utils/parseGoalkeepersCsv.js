@@ -8,7 +8,7 @@
 // Turkish/Nordic letters aren't reachable by NFD-stripping combining marks
 // (they're distinct code points, not base+accent), so map them explicitly
 // before the general accent-stripping pass below.
-const CHAR_MAP = { ı: 'i', İ: 'i', ğ: 'g', Ğ: 'g', ş: 's', Ş: 's', ø: 'o', Ø: 'o' }
+const CHAR_MAP = { ı: 'i', İ: 'i', ğ: 'g', Ğ: 'g', ş: 's', Ş: 's', ø: 'o', Ø: 'o', ö: 'o' }
 
 export function slugifyName(name) {
   const mapped = [...name].map((ch) => CHAR_MAP[ch] ?? ch).join('')
