@@ -11,11 +11,11 @@ import FixtureChip from './FixtureChip.jsx'
 
 const ALL_MDS = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1)
 
-// A right-side drawer on desktop (the rest of the table stays visible and in
-// context behind the dimmed backdrop), a full-screen panel on mobile — one
-// set of responsive classes gets both, rather than two components. Always
-// the full league phase, independent of whatever MD range the table itself
-// is currently showing: this is a team's whole-season profile.
+// A centred, wide rectangular modal on desktop (the table stays visible and
+// dimmed behind it), a full-screen panel on mobile — one set of responsive
+// classes gets both, rather than two components. Always the full league
+// phase, independent of whatever MD range the table itself is currently
+// showing: this is a team's whole-season profile.
 export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
   const { teamsByAbbr, venueAdjust } = useTeams()
   const team = teamsByAbbr[abbr]
@@ -64,13 +64,13 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
   const strengthColor = RATING_COLORS[team.rating] ?? RATING_COLORS[3]
 
   return (
-    <div className="fixed inset-0 z-40">
+    <div className="fixed inset-0 z-40 sm:flex sm:items-center sm:justify-center sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="team-detail-heading"
-        className="absolute inset-y-0 right-0 flex w-full flex-col overflow-y-auto border-l border-white/10 bg-ucl-navy shadow-2xl sm:max-w-md"
+        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10"
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
           <TeamBadge abbr={team.abbr} size={36} />
@@ -89,22 +89,33 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
         </div>
 
         <div className="flex-1 space-y-5 px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-            <span className="text-sm font-semibold text-ucl-star/80">Team Strength</span>
-            <span
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black"
-              style={{ backgroundColor: strengthColor.bg, color: strengthColor.text }}
-              title={strengthColor.label}
-            >
-              {team.rating}
-            </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Team Strength</p>
+              <span
+                className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black"
+                style={{ backgroundColor: strengthColor.bg, color: strengthColor.text }}
+                title={strengthColor.label}
+              >
+                {team.rating}
+              </span>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Average FDR</p>
+              <span
+                className="mt-1 inline-flex rounded-lg px-2.5 py-1 text-sm font-black"
+                style={{ backgroundColor: avgBand.bg, color: avgBand.text }}
+              >
+                {formatAvg(row.avg)}
+              </span>
+            </div>
           </div>
 
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
               MD1–MD{TOTAL_MATCHDAYS} fixtures
             </p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
               {row.cells.map((cell, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
                   <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
@@ -129,17 +140,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-            <span className="text-sm font-semibold text-ucl-star/80">Average FDR</span>
-            <span
-              className="rounded-lg px-2.5 py-1 text-sm font-black"
-              style={{ backgroundColor: avgBand.bg, color: avgBand.text }}
-            >
-              {formatAvg(row.avg)}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Best run', run: best },
               { label: 'Worst run', run: worst },
