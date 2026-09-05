@@ -9,7 +9,7 @@
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength']
+export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
