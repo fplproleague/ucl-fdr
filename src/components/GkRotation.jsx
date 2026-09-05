@@ -10,6 +10,7 @@ import FixtureChip from './FixtureChip.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'
+const PRICE_CEILINGS = [5.5, 5.0, 4.5, 4.0]
 
 function readStoredGkId() {
   try {
@@ -37,6 +38,9 @@ export default function GkRotation() {
   const [query, setQuery] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
+  // null = no cap. A budget filter on the complement list only — it never
+  // affects who you can pick as "your goalkeeper".
+  const [maxPrice, setMaxPrice] = useState(null)
 
   useEffect(() => {
     try {
@@ -76,12 +80,13 @@ export default function GkRotation() {
   const complements = useMemo(() => {
     if (!selectedGk) return []
     return GOALKEEPERS.filter((gk) => gk.id !== selectedGk.id)
+      .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
         const rows = compareTeamFixtures(selectedGk.team, gk.team, mds, teamsByAbbr, venueAdjust)
         return { gk, rows, summary: summarizeComparison(rows) }
       })
       .sort(compareComplementSummaries)
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust])
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -161,6 +166,31 @@ export default function GkRotation() {
           <p className="mb-3 text-xs text-ucl-muted">
             A favourable fixture is band 1–2 (green), under your current FDR settings.
           </p>
+
+          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter complements by max price">
+            <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Max price</span>
+            {[null, ...PRICE_CEILINGS].map((cap) => (
+              <button
+                key={cap ?? 'all'}
+                type="button"
+                aria-pressed={maxPrice === cap}
+                onClick={() => setMaxPrice(cap)}
+                className={`min-h-[28px] rounded-full border px-2.5 text-[11px] font-semibold transition ${
+                  maxPrice === cap
+                    ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+                    : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
+                }`}
+              >
+                {cap == null ? 'All' : `≤${formatPrice(cap)}`}
+              </button>
+            ))}
+          </div>
+
+          {complements.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
+              No goalkeeper matches this filter.
+            </p>
+          )}
 
           <ul className="space-y-2">
             {complements.map(({ gk, rows, summary }) => {
