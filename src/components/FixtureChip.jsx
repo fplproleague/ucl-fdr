@@ -15,16 +15,19 @@ export default function FixtureChip({
   venue,
   rating,
   venueAdjust = true,
+  awayDifficulty = 0,
   day,
   showDay = false,
   dimmed = false,
   className = '',
 }) {
-  const effective = effectiveDifficulty(rating, venue, venueAdjust)
+  const awayBumpApplied = venue === 'A' && awayDifficulty > 0
+  const effective = effectiveDifficulty(rating, venue, venueAdjust, awayDifficulty)
   const band = difficultyBand(effective)
   const color = ratingColor(band)
   const description = describeFixture(oppName ?? opp, venue, band)
-  const fullDescription = showDay && day ? `${description} · ${DAY_LABEL[day]}` : description
+  const awaySuffix = awayBumpApplied ? ` (+${awayDifficulty} away difficulty)` : ''
+  const fullDescription = (showDay && day ? `${description} · ${DAY_LABEL[day]}` : description) + awaySuffix
 
   const chip = (
     <div
@@ -41,6 +44,14 @@ export default function FixtureChip({
       >
         {band}
       </span>
+      {awayBumpApplied && (
+        <span
+          aria-hidden="true"
+          className="absolute bottom-[1px] left-[3px] text-[8px] font-black leading-none opacity-60"
+        >
+          +{awayDifficulty}
+        </span>
+      )}
       <span className="sr-only">{fullDescription}</span>
     </div>
   )

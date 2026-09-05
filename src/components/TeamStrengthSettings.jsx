@@ -6,8 +6,10 @@ import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
+const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
+
 export default function TeamStrengthSettings() {
-  const { teams, setRating, resetTeam, resetRatings, modifiedCount, showTeam } = useTeams()
+  const { teams, setRating, resetTeam, resetRatings, modifiedCount, showTeam, setAwayDifficulty } = useTeams()
   const [query, setQuery] = useState('')
 
   // Ordered by the seed rating, never the live one — otherwise a team jumps
@@ -17,6 +19,10 @@ export default function TeamStrengthSettings() {
     const q = query.trim().toLowerCase()
     return !q || t.name.toLowerCase().includes(q) || t.abbr.toLowerCase().includes(q)
   })
+
+  // Alphabetical, not by strength — this list is for finding one team fast,
+  // not for ranking them.
+  const byName = [...teams].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -122,6 +128,40 @@ export default function TeamStrengthSettings() {
             No team matches “{query}”.
           </li>
         )}
+      </ul>
+
+      <h2 className="mb-1 mt-6 text-base font-bold text-ucl-star sm:text-lg">Away Difficulty</h2>
+      <p className="mb-3 text-xs text-ucl-muted">
+        Pick teams that are tough to play away at — every visiting team's fixture there gets harder, on top of
+        Home/away.
+      </p>
+
+      <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+        {byName.map((team) => (
+          <li key={team.id} className="flex items-center gap-2.5 px-2.5 py-2 sm:gap-3 sm:px-3">
+            <TeamBadge abbr={team.abbr} size={24} />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{team.shortName ?? team.name}</span>
+            <div className="flex shrink-0 gap-1" role="group" aria-label={`${team.name} away difficulty`}>
+              {AWAY_DIFFICULTY_LEVELS.map((level) => {
+                const active = team.awayDifficulty === level
+                return (
+                  <button
+                    key={level}
+                    type="button"
+                    aria-pressed={active}
+                    aria-label={`${team.name}: ${level === 0 ? 'no away difficulty adjustment' : `+${level} away difficulty`}`}
+                    onClick={() => setAwayDifficulty(team.id, level)}
+                    className={`flex h-8 w-9 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90 ${
+                      active ? 'bg-ucl-accent text-white' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
+                    }`}
+                  >
+                    {level === 0 ? '0' : `+${level}`}
+                  </button>
+                )
+              })}
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   )

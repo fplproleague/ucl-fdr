@@ -111,6 +111,7 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                             venue={cell.venue}
                             rating={teamsByAbbr[cell.opp]?.rating ?? 3}
                             venueAdjust={venueAdjust}
+                            awayDifficulty={teamsByAbbr[cell.opp]?.awayDifficulty ?? 0}
                             day={cell.day}
                             showDay={showMatchday}
                             dimmed={showMatchday && dayFilter !== 'ALL' && cell.day !== dayFilter}

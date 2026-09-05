@@ -139,6 +139,7 @@ export default function BestFixtureRuns() {
                       venue={f.venue}
                       rating={teamsByAbbr[f.opp]?.rating ?? 3}
                       venueAdjust={venueAdjust}
+                      awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
                       day={f.day}
                       showDay={showMatchday}
                       dimmed={showMatchday && dayFilter !== 'ALL' && f.day !== dayFilter}

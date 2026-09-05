@@ -9,6 +9,7 @@ const STORAGE_KEY = 'ucl-fdr:ratings:v1'
 const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
 const HIDDEN_KEY = 'ucl-fdr:hidden-teams:v1'
 const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
+const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
 
 const TeamsContext = createContext(null)
 
@@ -47,6 +48,15 @@ function readStoredMatchdaySplit() {
   }
 }
 
+function readStoredAwayDifficulty() {
+  try {
+    const raw = localStorage.getItem(AWAY_DIFFICULTY_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
@@ -69,6 +79,11 @@ function initialState() {
     // not something you'd want baked into a link you share, so this one
     // lives only in localStorage.
     hidden: readStoredHidden(),
+    // How hard each team is to visit, on top of the home/away adjustment — a
+    // per-device opinion like team strength overrides, but not URL-shared
+    // (there's no scenario yet for sending someone else your away-difficulty
+    // picks), so it lives only in localStorage, same as hidden teams above.
+    awayDifficulty: readStoredAwayDifficulty(),
     showMatchday: url.showMatchday ?? readStoredMatchdaySplit(),
     // Re-validated against the visible range right after mount (see the
     // effect below) — a link or a stale localStorage value might name a day
@@ -79,7 +94,8 @@ function initialState() {
 
 export function TeamsProvider({ children }) {
   const [state, setState] = useState(initialState)
-  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden, showMatchday, dayFilter } = state
+  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden, awayDifficulty, showMatchday, dayFilter } =
+    state
 
   // Whether the next hash write should create a history entry. Only tab
   // changes do, so the phone's back button steps through views instead of
@@ -149,11 +165,13 @@ export function TeamsProvider({ children }) {
       localStorage.setItem(VENUE_KEY, venueAdjust ? '1' : '0')
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
       localStorage.setItem(MATCHDAY_SPLIT_KEY, showMatchday ? '1' : '0')
+      localStorage.setItem(AWAY_DIFFICULTY_KEY, JSON.stringify(awayDifficulty))
     } catch {
       // private mode or quota — the URL still carries the whole state
-      // (hidden teams excepted: that one's local-only, see initialState)
+      // (hidden teams and away difficulty excepted: those are local-only,
+      // see initialState)
     }
-  }, [overrides, venueAdjust, hidden, showMatchday])
+  }, [overrides, venueAdjust, hidden, showMatchday, awayDifficulty])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
@@ -187,8 +205,12 @@ export function TeamsProvider({ children }) {
         baseRating: t.rating,
         modified: overrides[t.id] != null && overrides[t.id] !== t.rating,
         hidden: hiddenSet.has(t.id),
+        // How much harder this team's away fixtures get for whoever visits
+        // them (0/1/2) — read by effectiveDifficulty via teamsByAbbr[opp], so
+        // it only ever affects the *other* team's away leg against this one.
+        awayDifficulty: awayDifficulty[t.id] ?? 0,
       })),
-    [overrides, hiddenSet],
+    [overrides, hiddenSet, awayDifficulty],
   )
 
   // teamsByAbbr always carries all 36 — a hidden team's rating is still
@@ -242,6 +264,13 @@ export function TeamsProvider({ children }) {
           return { ...prev, overrides: next }
         }),
       resetRatings: () => patch({ overrides: {} }),
+      setAwayDifficulty: (id, level) =>
+        setState((prev) => {
+          const next = { ...prev.awayDifficulty }
+          if (level) next[id] = level
+          else delete next[id]
+          return { ...prev, awayDifficulty: next }
+        }),
     }),
     [
       teams,
