@@ -7,6 +7,7 @@ import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/gkRotation.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
+import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'
@@ -26,10 +27,21 @@ function formatPrice(price) {
 
 export default function GkRotation() {
   const { teamsByAbbr, venueAdjust } = useTeams()
-  // Always the full league phase — this finder is about how two teams'
-  // schedules relate across the whole season, independent of whatever range
-  // the FDR Table/Best Runs/Compare happen to be showing right now.
-  const mds = useVisibleMds(1, TOTAL_MATCHDAYS, null)
+  // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
+  // TeamsContext — narrowing this to plan around one cup week shouldn't
+  // silently change what those other views show.
+  const [from, setFrom] = useState(1)
+  const [to, setTo] = useState(TOTAL_MATCHDAYS)
+  const [skipMd, setSkipMd] = useState(null)
+  const mds = useVisibleMds(from, to, skipMd)
+
+  function setRange(nextFrom, nextTo) {
+    const clampedTo = Math.max(nextFrom, nextTo)
+    const stillInside = skipMd != null && skipMd > nextFrom && skipMd < clampedTo
+    setFrom(nextFrom)
+    setTo(clampedTo)
+    if (!stillInside) setSkipMd(null)
+  }
 
   const [selectedId, setSelectedId] = useState(() => {
     const stored = readStoredGkId()
@@ -92,8 +104,12 @@ export default function GkRotation() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="GK Rotation"
-        subtitle="Pick a goalkeeper you own to see who complements their fixtures across the league phase."
+        subtitle={`Pick a goalkeeper you own to see who complements their fixtures over MD${from}–MD${to}${
+          skipMd ? ` (skipping MD${skipMd})` : ''
+        }.`}
       />
+
+      <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
 
       <div className="mb-4">
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Your goalkeeper</p>
