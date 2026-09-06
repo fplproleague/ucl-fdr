@@ -53,11 +53,14 @@ export function summarizeComparison(rows) {
 // different-day matchdays first, then more matchdays with at least one
 // favourable fixture, then more matchdays where both are favourable. Three
 // separate tie-breakers applied in order — never combined into one number.
+// Expects each candidate shaped { candidate: { name }, summary } — the
+// caller decides what "candidate" is (a goalkeeper in GK Rotation, a plain
+// team elsewhere), this function only ever reads its name.
 export function compareComplementSummaries(a, b) {
   if (a.summary.differentDays !== b.summary.differentDays) return b.summary.differentDays - a.summary.differentDays
   if (a.summary.atLeastOneFavourable !== b.summary.atLeastOneFavourable) {
     return b.summary.atLeastOneFavourable - a.summary.atLeastOneFavourable
   }
   if (a.summary.bothFavourable !== b.summary.bothFavourable) return b.summary.bothFavourable - a.summary.bothFavourable
-  return a.gk.name.localeCompare(b.gk.name)
+  return a.candidate.name.localeCompare(b.candidate.name)
 }

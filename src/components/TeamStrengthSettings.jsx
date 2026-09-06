@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { RotateCcw, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
-import { RATING_COLORS } from '../data/teams.js'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
+import StrengthPicker from './StrengthPicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
@@ -125,29 +125,7 @@ export default function TeamStrengthSettings() {
                     )}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-1" role="group" aria-label={`${team.name} strength`}>
-                  {[1, 2, 3, 4, 5].map((r) => {
-                    const active = team.rating === r
-                    const color = RATING_COLORS[r]
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        aria-label={`Set ${team.name} to ${r} — ${color.label}`}
-                        aria-pressed={active}
-                        onClick={() => setRating(team.id, r)}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90"
-                        style={{
-                          backgroundColor: active ? color.bg : 'rgba(255,255,255,0.06)',
-                          color: active ? color.text : 'rgba(230,233,255,0.55)',
-                          boxShadow: active ? `0 0 0 2px ${color.bg}55` : 'none',
-                        }}
-                      >
-                        {r}
-                      </button>
-                    )
-                  })}
-                </div>
+                <StrengthPicker team={team} onSetRating={setRating} />
               </li>
             ))}
             {filtered.length === 0 && (

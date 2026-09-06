@@ -4,7 +4,7 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useLiveGoalkeepers } from '../utils/useLiveGoalkeepers.js'
-import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/gkRotation.js'
+import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
@@ -101,7 +101,7 @@ export default function GkRotation() {
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
         const rows = compareTeamFixtures(selectedGk.team, gk.team, mds, teamsByAbbr, venueAdjust)
-        return { gk, rows, summary: summarizeComparison(rows) }
+        return { candidate: gk, rows, summary: summarizeComparison(rows) }
       })
       .sort(compareComplementSummaries)
   }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS])
@@ -111,7 +111,7 @@ export default function GkRotation() {
       <ViewHeading
         title="GK Rotation"
         subtitle={`Pick a goalkeeper you own to see who complements their fixtures over MD${from}–MD${to}${
-          skipMd ? ` (skipping MD${skipMd})` : ''
+          skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
       />
 
@@ -214,7 +214,7 @@ export default function GkRotation() {
           )}
 
           <ul className="space-y-2">
-            {complements.map(({ gk, rows, summary }) => {
+            {complements.map(({ candidate: gk, rows, summary }) => {
               const isOpen = expandedId === gk.id
               return (
                 <li key={gk.id} className="rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">

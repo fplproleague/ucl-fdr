@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { INITIAL_TEAMS } from '../data/teams.js'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
+import { currentMatchday } from '../data/matchdays.js'
 import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
 import { availableDays } from '../utils/matchdaySplit.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
@@ -10,6 +11,8 @@ const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
 const HIDDEN_KEY = 'ucl-fdr:hidden-teams:v1'
 const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
 const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
+const PINNED_KEY = 'ucl-fdr:pinned-teams:v1'
+const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
 
 const TeamsContext = createContext(null)
 
@@ -57,12 +60,34 @@ function readStoredAwayDifficulty() {
   }
 }
 
+function readStoredPinned() {
+  try {
+    const raw = localStorage.getItem(PINNED_KEY)
+    const ids = raw ? JSON.parse(raw) : []
+    return Array.isArray(ids) ? ids : []
+  } catch {
+    return []
+  }
+}
+
+function readStoredMyTeamsOnly() {
+  try {
+    return localStorage.getItem(MY_TEAMS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
   const url = parseHash()
-  const from = url.from ?? 1
-  const to = url.to ?? TOTAL_MATCHDAYS
+  // Once a matchday's window has closed it drops off the site entirely — not
+  // just the default view, the floor itself — so a stale link or a
+  // leftover from/skip value from before it passed can't resurrect it.
+  const floor = currentMatchday()
+  const from = Math.max(url.from ?? floor, floor)
+  const to = Math.max(url.to ?? TOTAL_MATCHDAYS, from)
   return {
     tab: url.tab,
     from,
@@ -79,6 +104,11 @@ function initialState() {
     // not something you'd want baked into a link you share, so this one
     // lives only in localStorage.
     hidden: readStoredHidden(),
+    // The teams you actually own/target — a personal shortlist, local-only
+    // for the same reason "hidden" is: it says nothing useful to whoever
+    // opens a link you share.
+    pinned: readStoredPinned(),
+    myTeamsOnly: readStoredMyTeamsOnly(),
     // How hard each team is to visit, on top of the home/away adjustment — a
     // per-device opinion like team strength overrides, but not URL-shared
     // (there's no scenario yet for sending someone else your away-difficulty
@@ -94,8 +124,21 @@ function initialState() {
 
 export function TeamsProvider({ children }) {
   const [state, setState] = useState(initialState)
-  const { tab, from, to, skipMd, compare, overrides, venueAdjust, hidden, awayDifficulty, showMatchday, dayFilter } =
-    state
+  const {
+    tab,
+    from,
+    to,
+    skipMd,
+    compare,
+    overrides,
+    venueAdjust,
+    hidden,
+    pinned,
+    myTeamsOnly,
+    awayDifficulty,
+    showMatchday,
+    dayFilter,
+  } = state
 
   // Whether the next hash write should create a history entry. Only tab
   // changes do, so the phone's back button steps through views instead of
@@ -135,8 +178,9 @@ export function TeamsProvider({ children }) {
       if (selfWrite.current) return
       const url = parseHash()
       setState((prev) => {
-        const from = url.from ?? prev.from
-        const to = url.to ?? prev.to
+        const floor = currentMatchday()
+        const from = Math.max(url.from ?? prev.from, floor)
+        const to = Math.max(url.to ?? prev.to, from)
         return {
           ...prev,
           tab: url.tab,
@@ -164,14 +208,16 @@ export function TeamsProvider({ children }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
       localStorage.setItem(VENUE_KEY, venueAdjust ? '1' : '0')
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden))
+      localStorage.setItem(PINNED_KEY, JSON.stringify(pinned))
+      localStorage.setItem(MY_TEAMS_KEY, myTeamsOnly ? '1' : '0')
       localStorage.setItem(MATCHDAY_SPLIT_KEY, showMatchday ? '1' : '0')
       localStorage.setItem(AWAY_DIFFICULTY_KEY, JSON.stringify(awayDifficulty))
     } catch {
       // private mode or quota — the URL still carries the whole state
-      // (hidden teams and away difficulty excepted: those are local-only,
-      // see initialState)
+      // (hidden/pinned teams and away difficulty excepted: those are
+      // local-only, see initialState)
     }
-  }, [overrides, venueAdjust, hidden, showMatchday, awayDifficulty])
+  }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
@@ -194,6 +240,7 @@ export function TeamsProvider({ children }) {
   }, [dayFilter, availableDayOptions, patch])
 
   const hiddenSet = useMemo(() => new Set(hidden), [hidden])
+  const pinnedSet = useMemo(() => new Set(pinned), [pinned])
 
   const teams = useMemo(
     () =>
@@ -205,12 +252,15 @@ export function TeamsProvider({ children }) {
         baseRating: t.rating,
         modified: overrides[t.id] != null && overrides[t.id] !== t.rating,
         hidden: hiddenSet.has(t.id),
+        // "My teams" — a personal shortlist, independent of (and the inverse
+        // intent of) hiding: hiding declutters, pinning focuses.
+        pinned: pinnedSet.has(t.id),
         // How much harder this team's away fixtures get for whoever visits
         // them (0/1/2) — read by effectiveDifficulty via teamsByAbbr[opp], so
         // it only ever affects the *other* team's away leg against this one.
         awayDifficulty: awayDifficulty[t.id] ?? 0,
       })),
-    [overrides, hiddenSet, awayDifficulty],
+    [overrides, hiddenSet, pinnedSet, awayDifficulty],
   )
 
   // teamsByAbbr always carries all 36 — a hidden team's rating is still
@@ -227,6 +277,8 @@ export function TeamsProvider({ children }) {
       teamsByAbbr,
       visibleTeams,
       hiddenCount: hidden.length,
+      pinnedCount: pinned.length,
+      myTeamsOnly,
       modifiedCount,
       venueAdjust,
       showMatchday,
@@ -244,13 +296,23 @@ export function TeamsProvider({ children }) {
         setState((prev) => (prev.hidden.includes(id) ? prev : { ...prev, hidden: [...prev.hidden, id] })),
       showTeam: (id) => setState((prev) => ({ ...prev, hidden: prev.hidden.filter((x) => x !== id) })),
       resetHidden: () => patch({ hidden: [] }),
+      togglePin: (id) =>
+        setState((prev) => ({
+          ...prev,
+          pinned: prev.pinned.includes(id) ? prev.pinned.filter((x) => x !== id) : [...prev.pinned, id],
+        })),
+      setMyTeamsOnly: (on) => patch({ myTeamsOnly: on }),
       setRange: (nextFrom, nextTo) => {
-        const to = Math.max(nextFrom, nextTo)
+        // A matchday that's already passed can't be dragged back in via the
+        // range controls either — same floor as the initial load.
+        const floor = currentMatchday()
+        const from = Math.max(nextFrom, floor)
+        const to = Math.max(from, nextTo)
         // A range change can strand the skipped matchday outside it (or right
         // on an edge, where "skip" and "narrow the range" mean the same
         // thing) — drop it rather than keep a skip that no longer applies.
-        const stillInside = skipMd != null && skipMd > nextFrom && skipMd < to
-        patch({ from: nextFrom, to, skipMd: stillInside ? skipMd : null })
+        const stillInside = skipMd != null && skipMd > from && skipMd < to
+        patch({ from, to, skipMd: stillInside ? skipMd : null })
       },
       setSkipMd: (md) => patch({ skipMd: md }),
       setCompare: (ids) => patch({ compare: ids }),
@@ -277,6 +339,8 @@ export function TeamsProvider({ children }) {
       teamsByAbbr,
       visibleTeams,
       hidden.length,
+      pinned.length,
+      myTeamsOnly,
       modifiedCount,
       venueAdjust,
       showMatchday,

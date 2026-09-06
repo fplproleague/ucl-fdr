@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Star, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import { difficultyBand, formatAvg, ratingColor } from '../utils/difficulty.js'
@@ -12,7 +12,16 @@ const TEAM_COL = 122
 // Everything — matchday headers, every team's row — lives inside one
 // overflow container, so one swipe moves the lot and the labels can never
 // drift out of sync with the cells they label.
-export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = true, onRemove, onTeamClick, caption }) {
+export default function FixtureGrid({
+  mds,
+  rows,
+  fullNames = false,
+  showAvg = true,
+  onRemove,
+  onTogglePin,
+  onTeamClick,
+  caption,
+}) {
   const { teamsByAbbr, venueAdjust, showMatchday, dayFilter } = useTeams()
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
@@ -112,6 +121,22 @@ export default function FixtureGrid({ mds, rows, fullNames = false, showAvg = tr
                           </button>
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
+                        )}
+                        {onTogglePin && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onTogglePin(team.id)
+                            }}
+                            aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
+                            aria-pressed={team.pinned}
+                            className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
+                              team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                            }`}
+                          >
+                            <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
+                          </button>
                         )}
                         {onRemove && (
                           <button

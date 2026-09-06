@@ -1,18 +1,22 @@
 import { useMemo, useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
-import { compareRuns, formatAvg } from '../utils/difficulty.js'
+import { compareRuns, effectiveDifficulty, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { useTeamDetail } from '../utils/useTeamDetail.js'
+import { compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
+import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function CompareTeams() {
-  const { visibleTeams, teamsByAbbr, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
+  const { visibleTeams, teamsByAbbr, togglePin, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
 
   const selectedTeams = compare.map((abbr) => teamsByAbbr[abbr]).filter(Boolean)
 
@@ -29,11 +33,57 @@ export default function CompareTeams() {
   const best = sorted[0]
   const tied = best ? sorted.filter((r) => r.avg === best.avg) : []
 
+  // Exactly two teams is the case a manager actually agonises over — a
+  // per-matchday verdict and a rotation check, both built from the same
+  // per-fixture numbers the grid above already shows, just diffed.
+  const headToHead = useMemo(() => {
+    if (sorted.length !== 2) return null
+    const [a, b] = sorted
+    let totalDelta = 0
+    let compared = 0
+    let aEasier = 0
+    let bEasier = 0
+    const perMd = mds.map((md, i) => {
+      const cellA = a.cells[i]
+      const cellB = b.cells[i]
+      if (!cellA || !cellB) return { md, easier: null }
+      const effA = effectiveDifficulty(
+        teamsByAbbr[cellA.opp]?.rating ?? 3,
+        cellA.venue,
+        venueAdjust,
+        teamsByAbbr[cellA.opp]?.awayDifficulty ?? 0,
+      )
+      const effB = effectiveDifficulty(
+        teamsByAbbr[cellB.opp]?.rating ?? 3,
+        cellB.venue,
+        venueAdjust,
+        teamsByAbbr[cellB.opp]?.awayDifficulty ?? 0,
+      )
+      compared += 1
+      totalDelta += effB - effA
+      const easier = effA < effB ? 'a' : effB < effA ? 'b' : null
+      if (easier === 'a') aEasier += 1
+      if (easier === 'b') bEasier += 1
+      return { md, easier }
+    })
+    const rotationRows = compareTeamFixtures(a.team.abbr, b.team.abbr, mds, teamsByAbbr, venueAdjust)
+    return {
+      a,
+      b,
+      perMd,
+      compared,
+      aEasier,
+      bEasier,
+      avgDelta: compared > 0 ? totalDelta / compared : 0,
+      rotation: summarizeComparison(rotationRows),
+    }
+  }, [sorted, mds, teamsByAbbr, venueAdjust])
+
   return (
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Compare Teams"
-        subtitle={`Put teams side by side over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}.`}
+        subtitle={`Put teams side by side over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
       />
 
       <ControlBar className="mb-3" />
@@ -146,15 +196,89 @@ export default function CompareTeams() {
               )}
             </p>
           )}
+
+          {headToHead && headToHead.compared > 0 && (
+            <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Head-to-head</p>
+              <p className="mb-2 text-xs text-ucl-star/80">
+                {headToHead.avgDelta > 0.05 ? (
+                  <>
+                    <span className="font-semibold text-ucl-star">{headToHead.a.team.name}</span>'s fixtures are{' '}
+                    <strong className="text-ucl-star">{formatAvg(Math.abs(headToHead.avgDelta))}</strong> easier on
+                    average here ({headToHead.aEasier} of {headToHead.compared} matchdays).
+                  </>
+                ) : headToHead.avgDelta < -0.05 ? (
+                  <>
+                    <span className="font-semibold text-ucl-star">{headToHead.b.team.name}</span>'s fixtures are{' '}
+                    <strong className="text-ucl-star">{formatAvg(Math.abs(headToHead.avgDelta))}</strong> easier on
+                    average here ({headToHead.bEasier} of {headToHead.compared} matchdays).
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-ucl-star">{headToHead.a.team.name}</span> and{' '}
+                    <span className="font-semibold text-ucl-star">{headToHead.b.team.name}</span> have almost identical
+                    fixture difficulty here.
+                  </>
+                )}
+              </p>
+              <div className="mb-3 flex flex-wrap gap-1">
+                {headToHead.perMd.map((p) => (
+                  <span
+                    key={p.md}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      p.easier === 'a'
+                        ? 'bg-ucl-accent/20 text-ucl-accent'
+                        : p.easier === 'b'
+                          ? 'bg-white/10 text-ucl-star/70'
+                          : 'bg-white/5 text-ucl-muted'
+                    }`}
+                    title={`MD${p.md}: ${p.easier === 'a' ? headToHead.a.team.name : p.easier === 'b' ? headToHead.b.team.name : 'Even'} easier`}
+                  >
+                    MD{p.md}: {p.easier === 'a' ? headToHead.a.team.abbr : p.easier === 'b' ? headToHead.b.team.abbr : '='}
+                  </span>
+                ))}
+              </div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">
+                Rotation check over this range
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ucl-star/80">
+                <span>
+                  Different days:{' '}
+                  <strong className="text-ucl-star">
+                    {headToHead.rotation.differentDays}/{headToHead.rotation.total}
+                  </strong>
+                </span>
+                <span>
+                  ≥1 favourable:{' '}
+                  <strong className="text-ucl-star">
+                    {headToHead.rotation.atLeastOneFavourable}/{headToHead.rotation.total}
+                  </strong>
+                </span>
+                <span>
+                  Both favourable:{' '}
+                  <strong className="text-ucl-star">
+                    {headToHead.rotation.bothFavourable}/{headToHead.rotation.total}
+                  </strong>
+                </span>
+              </div>
+            </div>
+          )}
+
           <FixtureGrid
             mds={mds}
             rows={sorted}
             fullNames
+            onTogglePin={togglePin}
+            onTeamClick={openTeam}
             caption={`Fixture comparison for ${sorted.length} teams, matchday ${from} to ${to}${
-              skipMd ? `, matchday ${skipMd} skipped` : ''
+              skipMd ? `, matchday ${skipMd} ignored` : ''
             }`}
           />
         </>
+      )}
+
+      {detailAbbr && (
+        <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
       )}
     </div>
   )

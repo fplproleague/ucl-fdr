@@ -11,10 +11,14 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
   const presets = [
     { label: 'Next 4', from: now, to: Math.min(TOTAL_MATCHDAYS, now + 3) },
     { label: 'Next 6', from: now, to: Math.min(TOTAL_MATCHDAYS, now + 5) },
-    { label: `All ${TOTAL_MATCHDAYS}`, from: 1, to: TOTAL_MATCHDAYS },
+    // "All" means all *remaining* matchdays — a played one has already
+    // dropped off the site, so the count here shrinks as the season goes.
+    { label: `All ${TOTAL_MATCHDAYS - now + 1}`, from: now, to: TOTAL_MATCHDAYS },
   ]
 
-  const all = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1)
+  // A matchday whose window has closed is gone from every selector, not just
+  // the default — there's nothing to plan for there any more.
+  const all = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1).filter((md) => md >= now)
   // Only matchdays strictly inside the range can be "skipped" — skipping an
   // edge one is exactly the same as narrowing from/to, so those don't need a
   // separate control (and, per the note this shipped for: skipping MD1 or
@@ -89,7 +93,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
       {skippable.length > 0 && (
         <div className="flex items-center gap-1.5">
           <label className="text-[11px] font-medium text-ucl-muted" htmlFor="md-skip">
-            Skip
+            Ignore MD
           </label>
           <select
             id="md-skip"
