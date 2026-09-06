@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { X, Search } from 'lucide-react'
+import { Plus, X, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { compareRuns, effectiveDifficulty, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
@@ -107,8 +107,9 @@ export default function CompareTeams() {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="min-h-[36px] rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10"
+            className="flex min-h-[36px] items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10"
           >
+            {open ? null : <Plus size={13} aria-hidden="true" />}
             {open ? 'Done' : `Add team${selectedTeams.length ? ` (${selectedTeams.length} selected)` : ''}`}
           </button>
           {selectedTeams.length > 0 && (
