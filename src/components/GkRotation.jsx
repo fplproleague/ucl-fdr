@@ -33,9 +33,11 @@ export default function GkRotation() {
 
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
-  // silently change what those other views show.
+  // silently change what those other views show. Defaults to MD7 rather
+  // than the full MD8: the last matchday plays entirely on a Wednesday, so
+  // it can't show a "different day" rotation win either way.
   const [from, setFrom] = useState(1)
-  const [to, setTo] = useState(TOTAL_MATCHDAYS)
+  const [to, setTo] = useState(Math.min(7, TOTAL_MATCHDAYS))
   const [skipMd, setSkipMd] = useState(null)
   const mds = useVisibleMds(from, to, skipMd)
 
