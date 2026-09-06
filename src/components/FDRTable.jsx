@@ -6,14 +6,16 @@ import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
+import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import MatchdayMatches from './MatchdayMatches.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 export default function FDRTable() {
-  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, togglePin, myTeamsOnly, setMyTeamsOnly, venueAdjust, from, to, skipMd } =
+  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, togglePin, myTeamsOnly, setMyTeamsOnly, venueAdjust, from, to, skipMd } =
     useTeams()
   const [sortBy, setSortBy] = useState('avg')
+  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false)
   // Match view only makes sense for a single matchday — force back to Teams
   // the moment the range widens again.
   const [viewMode, setViewMode] = useState('teams')
@@ -94,10 +96,10 @@ export default function FDRTable() {
           {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
           <button
             type="button"
-            onClick={resetHidden}
+            onClick={() => setHiddenPanelOpen(true)}
             className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
           >
-            Show all
+            Show hidden teams
           </button>
         </p>
       )}
@@ -107,10 +109,10 @@ export default function FDRTable() {
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
             type="button"
-            onClick={resetHidden}
+            onClick={() => setHiddenPanelOpen(true)}
             className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
           >
-            Show all teams
+            Show hidden teams
           </button>
         </div>
       ) : myTeamsOnly && shownTeams.length === 0 ? (
@@ -146,6 +148,8 @@ export default function FDRTable() {
       {detailAbbr && (
         <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
       )}
+
+      {hiddenPanelOpen && <HiddenTeamsPanel onClose={() => setHiddenPanelOpen(false)} />}
     </div>
   )
 }

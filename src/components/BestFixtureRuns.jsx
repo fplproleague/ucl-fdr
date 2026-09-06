@@ -9,6 +9,7 @@ import { useTeamDetail } from '../utils/useTeamDetail.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureChip from './FixtureChip.jsx'
+import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
@@ -20,7 +21,6 @@ export default function BestFixtureRuns() {
     teamsByAbbr,
     hiddenCount,
     hideTeam,
-    resetHidden,
     togglePin,
     myTeamsOnly,
     setMyTeamsOnly,
@@ -32,6 +32,7 @@ export default function BestFixtureRuns() {
     dayFilter,
   } = useTeams()
   const [showAll, setShowAll] = useState(false)
+  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false)
   const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
 
   const shownTeams = myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
@@ -68,10 +69,10 @@ export default function BestFixtureRuns() {
           {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
           <button
             type="button"
-            onClick={resetHidden}
+            onClick={() => setHiddenPanelOpen(true)}
             className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
           >
-            Show all
+            Show hidden teams
           </button>
         </p>
       )}
@@ -101,10 +102,10 @@ export default function BestFixtureRuns() {
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
             type="button"
-            onClick={resetHidden}
+            onClick={() => setHiddenPanelOpen(true)}
             className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
           >
-            Show all teams
+            Show hidden teams
           </button>
         </div>
       ) : myTeamsOnly && ranked.length === 0 ? (
@@ -216,6 +217,8 @@ export default function BestFixtureRuns() {
       {detailAbbr && (
         <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
       )}
+
+      {hiddenPanelOpen && <HiddenTeamsPanel onClose={() => setHiddenPanelOpen(false)} />}
     </div>
   )
 }

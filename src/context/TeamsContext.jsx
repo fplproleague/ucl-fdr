@@ -269,6 +269,7 @@ export function TeamsProvider({ children }) {
   // actually iterate over.
   const teamsByAbbr = useMemo(() => Object.fromEntries(teams.map((t) => [t.abbr, t])), [teams])
   const visibleTeams = useMemo(() => teams.filter((t) => !t.hidden), [teams])
+  const hiddenTeams = useMemo(() => teams.filter((t) => t.hidden), [teams])
   const modifiedCount = useMemo(() => teams.filter((t) => t.modified).length, [teams])
 
   const value = useMemo(
@@ -276,6 +277,7 @@ export function TeamsProvider({ children }) {
       teams,
       teamsByAbbr,
       visibleTeams,
+      hiddenTeams,
       hiddenCount: hidden.length,
       pinnedCount: pinned.length,
       myTeamsOnly,
@@ -338,6 +340,7 @@ export function TeamsProvider({ children }) {
       teams,
       teamsByAbbr,
       visibleTeams,
+      hiddenTeams,
       hidden.length,
       pinned.length,
       myTeamsOnly,
