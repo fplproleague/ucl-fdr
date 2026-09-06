@@ -1,10 +1,11 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Scale } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
+import GkRotation from './components/GkRotation.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
 
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
+  { id: 'gk', label: 'GK Rotation', icon: Repeat, Component: GkRotation },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 

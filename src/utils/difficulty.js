@@ -10,10 +10,17 @@ export function clamp(n, min = 1, max = 5) {
   return Math.min(max, Math.max(min, n))
 }
 
-// Difficulty of one fixture on a continuous 1–5 scale.
-export function effectiveDifficulty(oppRating, venue, venueAdjust = true) {
-  if (!venueAdjust) return oppRating
-  return clamp(oppRating + (venue === 'A' ? VENUE_DELTA : -VENUE_DELTA))
+// Difficulty of one fixture on a continuous 1–5 scale. awayDifficulty is the
+// opponent's own "hard to play away against" setting (0/1/2, see
+// TeamStrengthSettings) — it only ever applies on top of an away fixture, and
+// stacks with (rather than replaces) the existing home/away adjustment above.
+// Everything is summed first and clamped once at the end, which is what keeps
+// "4.5 + 1" pinned at 5 instead of overshooting.
+export function effectiveDifficulty(oppRating, venue, venueAdjust = true, awayDifficulty = 0) {
+  let value = oppRating
+  if (venueAdjust) value += venue === 'A' ? VENUE_DELTA : -VENUE_DELTA
+  if (venue === 'A') value += awayDifficulty
+  return clamp(value)
 }
 
 // Continuous difficulty → one of the five colour bands.
@@ -34,7 +41,14 @@ export function formatAvg(avg) {
 export function averageDifficulty(fixtures, teamsByAbbr, venueAdjust = true) {
   if (!fixtures.length) return Infinity
   const total = fixtures.reduce(
-    (sum, f) => sum + effectiveDifficulty(teamsByAbbr[f.opp]?.rating ?? 3, f.venue, venueAdjust),
+    (sum, f) =>
+      sum +
+      effectiveDifficulty(
+        teamsByAbbr[f.opp]?.rating ?? 3,
+        f.venue,
+        venueAdjust,
+        teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
+      ),
     0,
   )
   return total / fixtures.length

@@ -1,23 +1,43 @@
 import { useMemo, useState } from 'react'
-import { TrendingUp, X } from 'lucide-react'
+import { Star, TrendingUp, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { useTeamDetail } from '../utils/useTeamDetail.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
 import FixtureChip from './FixtureChip.jsx'
+import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const PREVIEW = 8
 
 export default function BestFixtureRuns() {
-  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, resetHidden, venueAdjust, from, to, skipMd } = useTeams()
+  const {
+    visibleTeams,
+    teamsByAbbr,
+    hiddenCount,
+    hideTeam,
+    resetHidden,
+    togglePin,
+    myTeamsOnly,
+    setMyTeamsOnly,
+    venueAdjust,
+    from,
+    to,
+    skipMd,
+    showMatchday,
+    dayFilter,
+  } = useTeams()
   const [showAll, setShowAll] = useState(false)
+  const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
+
+  const shownTeams = myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
 
   const mds = useVisibleMds(from, to, skipMd)
-  const rows = useFixtureRows(visibleTeams, teamsByAbbr, mds, venueAdjust)
+  const rows = useFixtureRows(shownTeams, teamsByAbbr, mds, venueAdjust)
   const ranked = useMemo(() => [...rows].sort(compareRuns), [rows])
 
   // Teams whose selected window is much kinder than their league phase as a
@@ -38,10 +58,10 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${visibleTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (skipping MD${skipMd})` : ''}, easiest average first.`}
+        subtitle={`${shownTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, easiest average first.`}
       />
 
-      <ControlBar className="mb-3" />
+      <ControlBar className="mb-3" showMyTeamsFilter />
 
       {hiddenCount > 0 && (
         <p className="mb-3 flex items-center gap-2 text-xs text-ucl-muted">
@@ -76,7 +96,7 @@ export default function BestFixtureRuns() {
         </div>
       )}
 
-      {ranked.length === 0 ? (
+      {visibleTeams.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
@@ -87,24 +107,67 @@ export default function BestFixtureRuns() {
             Show all teams
           </button>
         </div>
+      ) : myTeamsOnly && ranked.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+          <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
+            Tap the star on a team's card (or in its detail view) to add it to My teams.
+          </p>
+          <button
+            type="button"
+            onClick={() => setMyTeamsOnly(false)}
+            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+          >
+            Show all teams
+          </button>
+        </div>
       ) : (
         <ol className="space-y-2">
           {visible.map((row, idx) => (
-            <li key={row.team.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card">
+            <li
+              key={row.team.id}
+              onClick={() => openTeam(row.team)}
+              className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card transition hover:bg-white/[0.06]"
+            >
               <div className="flex items-center gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ucl-accent/20 text-sm font-extrabold text-ucl-accent">
                   {idx + 1}
                 </span>
                 <TeamBadge abbr={row.team.abbr} size={30} />
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openTeam(row.team)
+                  }}
+                  aria-label={`View ${row.team.name} details`}
+                  className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
+                >
                   <p className="truncate text-sm font-semibold sm:text-base">{row.team.name}</p>
                   <p className="text-[11px] text-ucl-muted">
                     avg {formatAvg(row.avg)} · {row.homes} home
                   </p>
-                </div>
+                </button>
                 <button
                   type="button"
-                  onClick={() => hideTeam(row.team.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    togglePin(row.team.id)
+                  }}
+                  aria-label={row.team.pinned ? `Unpin ${row.team.name} from My teams` : `Pin ${row.team.name} to My teams`}
+                  aria-pressed={row.team.pinned}
+                  className={`shrink-0 rounded p-1 transition hover:bg-white/10 ${
+                    row.team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                  }`}
+                >
+                  <Star size={16} aria-hidden="true" fill={row.team.pinned ? 'currentColor' : 'none'} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    hideTeam(row.team.id)
+                  }}
                   aria-label={`Remove ${row.team.name} from this ranking`}
                   className="shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
                 >
@@ -127,6 +190,10 @@ export default function BestFixtureRuns() {
                       venue={f.venue}
                       rating={teamsByAbbr[f.opp]?.rating ?? 3}
                       venueAdjust={venueAdjust}
+                      awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+                      day={f.day}
+                      showDay={showMatchday}
+                      dimmed={showMatchday && dayFilter !== 'ALL' && f.day !== dayFilter}
                     />
                   </div>
                 ))}
@@ -144,6 +211,10 @@ export default function BestFixtureRuns() {
         >
           {showAll ? 'Show top 8 only' : `Show all ${ranked.length} teams`}
         </button>
+      )}
+
+      {detailAbbr && (
+        <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
       )}
     </div>
   )

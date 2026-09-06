@@ -17,7 +17,15 @@ export function useFixtureRows(teams, teamsByAbbr, mds, venueAdjust) {
         avg: averageDifficulty(inRange, teamsByAbbr, venueAdjust),
         homes: homeCount(inRange),
         veryHard: inRange.filter(
-          (f) => difficultyBand(effectiveDifficulty(teamsByAbbr[f.opp]?.rating ?? 3, f.venue, venueAdjust)) === 5,
+          (f) =>
+            difficultyBand(
+              effectiveDifficulty(
+                teamsByAbbr[f.opp]?.rating ?? 3,
+                f.venue,
+                venueAdjust,
+                teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
+              ),
+            ) === 5,
         ).length,
         seasonAvg: averageDifficulty(all, teamsByAbbr, venueAdjust),
       }
