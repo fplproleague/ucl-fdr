@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
+import { currentMatchday } from '../data/matchdays.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useLiveGoalkeepers } from '../utils/useLiveGoalkeepers.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
@@ -33,11 +34,13 @@ export default function GkRotation() {
 
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
-  // silently change what those other views show. Defaults to MD7 rather
-  // than the full MD8: the last matchday plays entirely on a Wednesday, so
-  // it can't show a "different day" rotation win either way.
-  const [from, setFrom] = useState(1)
-  const [to, setTo] = useState(Math.min(7, TOTAL_MATCHDAYS))
+  // silently change what those other views show. Starts at the same floor
+  // as every other selector (a matchday that's passed is gone here too),
+  // defaulting to MD7 rather than the full MD8: the last matchday plays
+  // entirely on a Wednesday, so it can't show a "different day" rotation
+  // win either way.
+  const [from, setFrom] = useState(() => currentMatchday())
+  const [to, setTo] = useState(() => Math.max(currentMatchday(), Math.min(7, TOTAL_MATCHDAYS)))
   const [skipMd, setSkipMd] = useState(null)
   const mds = useVisibleMds(from, to, skipMd)
 

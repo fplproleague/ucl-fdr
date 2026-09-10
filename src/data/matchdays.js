@@ -2,7 +2,7 @@
 // Source: UEFA competition calendar (matchday windows, not individual kick-offs).
 // If UEFA shifts a window, edit the entry here — nothing else needs to change.
 export const MATCHDAYS = [
-  { md: 1, start: '2026-09-08', end: '2026-09-10', label: '8–10 Sep' },
+  { md: 1, start: '2026-09-08', end: '2026-09-09', label: '8–10 Sep' },
   { md: 2, start: '2026-10-13', end: '2026-10-14', label: '13–14 Oct' },
   { md: 3, start: '2026-10-20', end: '2026-10-21', label: '20–21 Oct' },
   { md: 4, start: '2026-11-03', end: '2026-11-04', label: '3–4 Nov' },
