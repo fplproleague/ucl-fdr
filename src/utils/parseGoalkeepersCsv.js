@@ -64,12 +64,26 @@ export function parseCsv(text) {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ''))
 }
 
+// Club -> abbreviation lookup for parseGoalkeeperRows. Keys are slugified,
+// so case, accents and punctuation don't matter ("Bodo Glimt" finds
+// "Bodø/Glimt"), and a team can be named by its full name, short name,
+// abbreviation or an explicit alias ("PSV Eindhoven" for "PSV").
+export function buildClubLookup(teams) {
+  const lookup = {}
+  for (const t of teams) {
+    for (const label of [t.name, t.shortName, t.abbr, ...(t.aliases ?? [])]) {
+      if (label) lookup[slugifyName(label)] = t.abbr
+    }
+  }
+  return lookup
+}
+
 // Parses the GK database CSV (Player / Club / Price columns, any order,
-// case-insensitive header) into goalkeeper records, given a map of team
-// name -> abbreviation. "Club" must match a team name exactly — that's the
-// only link back to the app's existing fixture/FDR data, so a mismatch is
-// reported as an error rather than guessed at.
-export function parseGoalkeeperRows(csvText, nameToAbbr) {
+// case-insensitive header) into goalkeeper records, given a lookup from
+// buildClubLookup. "Club" is the only link back to the app's existing
+// fixture/FDR data, so a club the lookup doesn't know is reported as an
+// error rather than guessed at.
+export function parseGoalkeeperRows(csvText, clubLookup) {
   const rows = parseCsv(csvText)
   if (rows.length < 2) return { goalkeepers: [], errors: ['CSV has no data rows'] }
 
@@ -95,9 +109,9 @@ export function parseGoalkeeperRows(csvText, nameToAbbr) {
       errors.push(`Empty player name in row: ${cells.join(', ')}`)
       continue
     }
-    const abbr = nameToAbbr[club]
+    const abbr = clubLookup[slugifyName(club)]
     if (!abbr) {
-      errors.push(`Unknown club "${club}" for ${player} — must match a team name exactly`)
+      errors.push(`Unknown club "${club}" for ${player} — must match a team name, short name or abbreviation`)
       continue
     }
     const price = Number(priceRaw.replace(',', '.').replace(/[^0-9.]/g, ''))
