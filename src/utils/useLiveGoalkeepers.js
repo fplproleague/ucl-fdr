@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { INITIAL_TEAMS } from '../data/teams.js'
 import { GOALKEEPERS as FALLBACK_GOALKEEPERS } from '../data/goalkeepers.js'
-import { parseGoalkeeperRows } from './parseGoalkeepersCsv.js'
+import { buildClubLookup, parseGoalkeeperRows } from './parseGoalkeepersCsv.js'
 
 // Same published sheet scripts/build-goalkeepers.mjs reads — one source,
 // fetched directly by the browser here so editing the sheet takes effect
 // immediately, with no rebuild or redeploy. The bundled src/data/
-// goalkeepers.js is only the offline fallback for when the sheet can't be
-// reached right now (network hiccup, ad-blocker, offline).
+// goalkeepers.js is the fallback for when the sheet can't be reached (ad-
+// blocker, privacy extension, restrictive network, offline) and what shows
+// while it loads; it's refreshed from the sheet on every deploy.
 const SHEET_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT05F7C7W82oQEVdr3tSg_h5T3u3xXEh-FobEgnXwKvuGGWxwusdau5eeREapT28lRxgia51VVoXYPw/pub?gid=0&single=true&output=csv'
 
-const NAME_TO_ABBR = Object.fromEntries(INITIAL_TEAMS.map((t) => [t.name, t.abbr]))
+const CLUB_LOOKUP = buildClubLookup(INITIAL_TEAMS)
 
 export function useLiveGoalkeepers() {
   const [state, setState] = useState({ goalkeepers: FALLBACK_GOALKEEPERS, loading: true, live: false })
@@ -26,7 +27,7 @@ export function useLiveGoalkeepers() {
       })
       .then((text) => {
         if (cancelled) return
-        const { goalkeepers, errors } = parseGoalkeeperRows(text, NAME_TO_ABBR)
+        const { goalkeepers, errors } = parseGoalkeeperRows(text, CLUB_LOOKUP)
         if (errors.length) console.warn('GK sheet: skipped invalid rows —', errors)
         if (goalkeepers.length === 0) throw new Error('Sheet had no valid rows')
         setState({ goalkeepers, loading: false, live: true })

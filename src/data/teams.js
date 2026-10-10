@@ -26,7 +26,7 @@ export const INITIAL_TEAMS = [
   { id: 'BET', name: 'Real Betis', abbr: 'BET', rating: 3 },
   { id: 'STU', name: 'VfB Stuttgart', shortName: 'Stuttgart', abbr: 'STU', rating: 3 },
   { id: 'CLU', name: 'Club Brugge', abbr: 'CLU', rating: 3 },
-  { id: 'PSV', name: 'PSV', abbr: 'PSV', rating: 3 },
+  { id: 'PSV', name: 'PSV', abbr: 'PSV', aliases: ['PSV Eindhoven'], rating: 3 },
   { id: 'LEN', name: 'RC Lens', abbr: 'LEN', rating: 3 },
   { id: 'COM', name: 'Como', abbr: 'COM', rating: 3 },
 
