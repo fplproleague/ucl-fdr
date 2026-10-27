@@ -9,6 +9,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
+- **Players** — expected fantasy points per player over the selected matchdays: points per club match so far (which prices in rotation) × each fixture, nudged by its difficulty. Filter by position and price, sort by points or points per €m. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 
 ## How difficulty is calculated
@@ -57,6 +58,23 @@ Bump `DATA_UPDATED` in the same file when the data changes — the footer reads 
 
 Matchday dates live in `src/data/matchdays.js`.
 
+## Player sheet
+
+The Players tab reads a published Google Sheet, the same way GK Rotation reads the goalkeeper one.
+
+1. A sheet with this header row (any order, see `scripts/players-template.csv`):
+   `Player, Club, Position, Price, Points, Minutes`
+   - **Club**: the club's name as the site knows it (full name, short name or 3-letter code all work).
+   - **Position**: `GK`, `DEF`, `MID` or `FWD`.
+   - **Points** / **Minutes**: season totals so far; leave empty for someone who hasn't played.
+2. File → Share → Publish to web → pick that tab → *Comma-separated values (.csv)* → Publish, and copy the link.
+3. Paste the link into `PLAYERS_SHEET_URL` in `src/utils/useLivePlayers.js`. The tab then shows up in the menu.
+
+From then on edits to the sheet show up live; every deploy also saves a fallback copy to `src/data/players.js`
+(`scripts/build-players.mjs`, run by `npm run build`). Rows the site can't read (unknown club, bad position or price)
+are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
+match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -73,6 +91,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
+npm test          # player sheet parsing + projection checks
 ```
 
 ## Deploy

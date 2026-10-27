@@ -119,6 +119,8 @@ function initialState() {
     // effect below) — a link or a stale localStorage value might name a day
     // that isn't even played on this range's matchdays.
     dayFilter: url.dayFilter ?? 'ALL',
+    // Preview with made-up data (#/players?demo=1). Link-only, never stored.
+    demo: url.demo,
   }
 }
 
@@ -138,6 +140,7 @@ export function TeamsProvider({ children }) {
     awayDifficulty,
     showMatchday,
     dayFilter,
+    demo,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
@@ -163,6 +166,7 @@ export function TeamsProvider({ children }) {
         showMatchday,
         dayFilter,
         ratings: overrides,
+        demo,
       },
       { push: pushNext.current },
     )
@@ -171,7 +175,7 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, demo])
 
   useEffect(() => {
     function onNav() {
@@ -192,6 +196,7 @@ export function TeamsProvider({ children }) {
           showMatchday: url.showMatchday ?? prev.showMatchday,
           dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
+          demo: url.demo,
         }
       })
     }
@@ -291,6 +296,7 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      demo,
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
@@ -354,6 +360,7 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      demo,
       patch,
     ],
   )
