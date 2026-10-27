@@ -67,11 +67,14 @@ The Players tab reads a published Google Sheet, the same way GK Rotation reads t
    - **Club**: the club's name as the site knows it (full name, short name or 3-letter code all work).
    - **Position**: `GK`, `DEF`, `MID` or `FWD`.
    - **Points** / **Minutes**: season totals so far; leave empty for someone who hasn't played.
+   - Optional, used when present: `Player ID` (stable row key), `Ownership %` (the Differentials filter), `Apps`,
+     `MD1`, `MD2`, … (points per matchday, shown in a player's details), and `Goals`, `Assists`, `Clean sheets`,
+     `Saves`, `Balls recovered`, `POTM`. Any other column is ignored.
 2. File → Share → Publish to web → pick that tab → *Comma-separated values (.csv)* → Publish, and copy the link.
 3. Paste the link into `PLAYERS_SHEET_URL` in `src/utils/useLivePlayers.js`. The tab then shows up in the menu.
 
 From then on edits to the sheet show up live; every deploy also saves a fallback copy to `src/data/players.js`
-(`scripts/build-players.mjs`, run by `npm run build`). Rows the site can't read (unknown club, bad position or price)
+(`scripts/build-players.mjs`, run by `npm run build`), which the browser only downloads when the Players tab opens. Rows the site can't read (unknown club, bad position or price)
 are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
 match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
 

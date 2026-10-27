@@ -9,7 +9,6 @@ import GkRotation from './components/GkRotation.jsx'
 import PlayerProjections from './components/PlayerProjections.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
-import { PLAYERS } from './data/players.js'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 
 const TABS = [
@@ -21,11 +20,11 @@ const TABS = [
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
-// The Players tab joins the nav once there's player data to show (a sheet
-// configured, or a saved copy of one). Until then it's only reachable by its
-// link (#/players, or #/players?demo=1 to preview it with made-up players),
-// so the menu doesn't advertise an empty page.
-const PLAYERS_OPEN = PLAYERS.length > 0 || PLAYERS_SHEET_URL != null
+// The Players tab joins the nav once a player sheet is configured. Until
+// then it's only reachable by its link (#/players, or #/players?demo=1 to
+// preview it with made-up players), so the menu doesn't advertise an empty
+// page.
+const PLAYERS_OPEN = PLAYERS_SHEET_URL != null
 
 function Shell() {
   const { tab, setTab } = useTeams()

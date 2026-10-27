@@ -74,4 +74,48 @@ test('demo players are valid sheet rows for every club', () => {
   assert.equal(players.length, INITIAL_TEAMS.length * 6)
   assert.equal(new Set(players.map((p) => p.id)).size, players.length)
   assert.ok(players.every((p) => p.price > 0 && p.points >= 0 && p.minutes <= 720))
+  assert.ok(players.every((p) => p.form.reduce((s, f) => s + f.points, 0) === p.points))
+})
+
+test('optional columns: player id, ownership, apps, per-matchday points and stats', () => {
+  const csv = [
+    'Player,Club,Position,Price,Points,Minutes,Apps,MD1,MD2,MD3,MD4,Goals,Assists,Saves,Ownership %,Player ID,Pts/90',
+    'H. Kane,Bayern München,FWD,"11,1",34,270,3,9,13,12,,4,2,0,51,250016833.0,11.33',
+    'No Extras,Arsenal,MID,5,0,0,0,,,,,,,,,,',
+  ].join('\n')
+  const { players, errors } = parsePlayerRows(csv, lookup)
+  assert.deepEqual(errors, [])
+  const [kane, blank] = players
+  // A spreadsheet's "250016833.0" is the same id as "250016833".
+  assert.equal(kane.id, 'p250016833')
+  assert.equal(kane.ownership, 51)
+  assert.equal(kane.apps, 3)
+  // MD4 is blank: not played yet, so not in the form line (and not a zero).
+  assert.deepEqual(
+    kane.form.map((f) => f.points),
+    [9, 13, 12],
+  )
+  assert.deepEqual(kane.stats, { goals: 4, assists: 2, saves: 0 })
+  // Blank optional cells leave the field out rather than inventing a 0.
+  assert.equal(blank.ownership, undefined)
+  assert.equal(blank.form, undefined)
+  assert.equal(blank.id, 'no-extras')
+})
+
+test('the saved copy of the player sheet is valid', async () => {
+  const { PLAYERS } = await import('../src/data/players.js')
+  const clubs = new Set(INITIAL_TEAMS.map((t) => t.id))
+  assert.equal(new Set(PLAYERS.map((p) => p.id)).size, PLAYERS.length)
+  for (const p of PLAYERS) {
+    assert.ok(clubs.has(p.team), `${p.name}: ${p.team}`)
+    assert.ok(['GK', 'DEF', 'MID', 'FWD'].includes(p.position), p.name)
+    assert.ok(p.price > 0 && p.minutes >= 0, p.name)
+    // Where the sheet gives per-matchday points, they add up to the total.
+    if (p.form)
+      assert.equal(
+        p.form.reduce((s, f) => s + f.points, 0),
+        p.points,
+        p.name,
+      )
+  }
 })

@@ -28,6 +28,12 @@ export function demoPlayers(matchesPlayed = 8) {
         price: Math.round((basePrice + (team.rating - 3) * 0.75 + wobble) * 2) / 2,
         points,
         minutes: Math.round(matchesPlayed * 90 * share),
+        ownership: Math.round((team.rating - 1) * 6 * share + wobble * 10),
+        // Spread evenly over the matchdays played, so the details have a form line.
+        form: Array.from({ length: matchesPlayed }, (_, i) => ({
+          md: i + 1,
+          points: Math.floor(points / matchesPlayed) + (i < points % matchesPlayed ? 1 : 0),
+        })),
       }
     }),
   )

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Fragment, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -15,6 +15,20 @@ import ViewHeading from './ViewHeading.jsx'
 
 const PRICE_CAPS = [null, 5, 6, 7, 8, 10]
 const PREVIEW = 40
+// "Differential": owned by at most this share of managers.
+const DIFFERENTIAL_MAX = 5
+
+// The per-player stats shown in a row's details, in this order, when the
+// sheet has them. Saves only mean something for a goalkeeper, clean sheets
+// not for a forward.
+const STAT_LABELS = [
+  ['goals', 'goals', null],
+  ['assists', 'assists', null],
+  ['cleanSheets', 'clean sheets', ['GK', 'DEF', 'MID']],
+  ['saves', 'saves', ['GK']],
+  ['ballsRecovered', 'balls recovered', null],
+  ['potm', 'POTM', null],
+]
 
 // Expected points per player over the selected matchdays: form (points per
 // club match so far, which also prices in rotation) times the fixtures. The
@@ -28,6 +42,8 @@ export default function PlayerProjections() {
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState('xPts')
   const [showAll, setShowAll] = useState(false)
+  const [differentialsOnly, setDifferentialsOnly] = useState(false)
+  const [openId, setOpenId] = useState(null)
 
   const clubMatches = leagueMatchesPlayed()
   // The demo's made-up totals are sized to the matchdays played so far, so
@@ -43,6 +59,7 @@ export default function PlayerProjections() {
     return players
       .filter((p) => position === 'ALL' || p.position === position)
       .filter((p) => maxPrice == null || p.price <= maxPrice)
+      .filter((p) => !differentialsOnly || (p.ownership != null && p.ownership <= DIFFERENTIAL_MAX))
       .filter((p) => {
         if (!q) return true
         const team = teamsByAbbr[p.team]
@@ -61,7 +78,8 @@ export default function PlayerProjections() {
         return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches) }
       })
       .sort((a, b) => b[sortBy] - a[sortBy] || b.xPts - a.xPts || a.price - b.price)
-  }, [players, position, maxPrice, query, teamsByAbbr, mds, venueAdjust, clubMatches, sortBy])
+  }, [players, position, maxPrice, differentialsOnly, query, teamsByAbbr, mds, venueAdjust, clubMatches, sortBy])
+  const hasOwnership = players.some((p) => p.ownership != null)
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
@@ -156,6 +174,19 @@ export default function PlayerProjections() {
                 Per €m
               </button>
             </div>
+            {hasOwnership && (
+              <button
+                type="button"
+                aria-pressed={differentialsOnly}
+                onClick={() => setDifferentialsOnly(!differentialsOnly)}
+                title={`Only players owned by ${DIFFERENTIAL_MAX}% of managers or fewer`}
+                className={`min-h-[40px] rounded-lg px-3 text-xs font-semibold transition ${
+                  differentialsOnly ? 'bg-ucl-accent text-white' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
+                }`}
+              >
+                Differentials ≤{DIFFERENTIAL_MAX}%
+              </button>
+            )}
           </div>
 
           <div className="relative mb-3">
@@ -205,44 +236,65 @@ export default function PlayerProjections() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((p) => (
-                  <tr key={p.id} className="border-t border-white/5">
-                    <th scope="row" className="w-full max-w-0 px-2 py-1.5 text-left font-normal">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <TeamBadge abbr={p.team} size={22} />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{p.name}</p>
-                          <p className="truncate text-[11px] text-ucl-muted">
-                            {p.position} · {nameOf(p.team)} · {Math.round(p.minutesShare * 100)}% mins
-                          </p>
-                        </div>
-                      </div>
-                    </th>
-                    <td className="hidden px-1 py-1.5 lg:table-cell">
-                      <div className="flex gap-1">
-                        {p.fixtures.map((f) => (
-                          <FixtureChip
-                            key={f.gw}
-                            opp={f.opp}
-                            oppName={teamsByAbbr[f.opp]?.name}
-                            venue={f.venue}
-                            rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                {visible.map((p) => {
+                  const open = openId === p.id
+                  return (
+                    <Fragment key={p.id}>
+                      <tr
+                        className={`cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04] ${open ? 'bg-white/[0.04]' : ''}`}
+                        onClick={() => setOpenId(open ? null : p.id)}
+                      >
+                        <th scope="row" className="w-full max-w-0 px-2 py-1.5 text-left font-normal">
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            className="flex w-full min-w-0 items-center gap-2 text-left"
+                          >
+                            <TeamBadge abbr={p.team} size={22} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold">{p.name}</span>
+                              <span className="block truncate text-[11px] text-ucl-muted">
+                                {/* Ownership before minutes: on a phone the line gets
+                                    cut short, and ownership is the one people scan for. */}
+                                {p.position} · {nameOf(p.team)}
+                                {p.ownership != null && ` · ${p.ownership}% owned`} · {Math.round(p.minutesShare * 100)}
+                                % mins
+                              </span>
+                            </span>
+                            {open ? (
+                              <ChevronUp size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                            ) : (
+                              <ChevronDown size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                            )}
+                          </button>
+                        </th>
+                        <td className="hidden px-1 py-1.5 lg:table-cell">
+                          <Fixtures
+                            fixtures={p.fixtures}
+                            teamsByAbbr={teamsByAbbr}
                             venueAdjust={venueAdjust}
-                            awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+                            wrap={false}
                           />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-1 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
-                    <td className="hidden px-1 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
-                      {p.ppm.toFixed(1)}
-                    </td>
-                    <td className="px-1 py-1.5 text-right font-display font-extrabold tabular-nums">
-                      {p.xPts.toFixed(1)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-ucl-star/75">{p.value.toFixed(2)}</td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-1 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
+                        <td className="hidden px-1 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
+                          {p.ppm.toFixed(1)}
+                        </td>
+                        <td className="px-1 py-1.5 text-right font-display font-extrabold tabular-nums">
+                          {p.xPts.toFixed(1)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-ucl-star/75">{p.value.toFixed(2)}</td>
+                      </tr>
+                      {open && (
+                        <tr className="bg-white/[0.04]">
+                          <td colSpan={6} className="whitespace-normal px-2 pb-3 pt-1">
+                            <PlayerDetails player={p} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-3 py-6 text-center text-sm text-ucl-muted">
@@ -263,6 +315,67 @@ export default function PlayerProjections() {
             </button>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+// One line in the table (the name column would otherwise squeeze the chips
+// into a stack), wrapping in a row's details on a phone.
+function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
+  return (
+    <div className={`flex gap-1 ${wrap ? 'flex-wrap' : ''}`}>
+      {fixtures.map((f) => (
+        <FixtureChip
+          key={f.gw}
+          opp={f.opp}
+          oppName={teamsByAbbr[f.opp]?.name}
+          venue={f.venue}
+          rating={teamsByAbbr[f.opp]?.rating ?? 3}
+          venueAdjust={venueAdjust}
+          awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+        />
+      ))}
+    </div>
+  )
+}
+
+// What's behind the numbers: points per matchday (is that average one big
+// haul or steady returns?), the season stats, and — for phones, where the
+// fixtures column is hidden — the fixtures in the range.
+function PlayerDetails({ player, teamsByAbbr, venueAdjust }) {
+  const stats = STAT_LABELS.filter(
+    ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
+  )
+  return (
+    <div className="space-y-2.5">
+      {player.form?.length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Points per matchday</p>
+          <div className="flex flex-wrap gap-1">
+            {player.form.map((f) => (
+              <span
+                key={f.md}
+                className="inline-flex min-w-[44px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs"
+              >
+                <span className="text-[10px] text-ucl-muted">MD{f.md}</span>
+                <span className="font-bold tabular-nums">{f.points}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {stats.length > 0 && (
+        <p className="text-xs text-ucl-star/80">
+          {stats.map(([field, label]) => `${player.stats[field]} ${label}`).join(' · ')}
+          {player.apps != null && ` · ${player.apps} apps, ${player.minutes} mins`}
+        </p>
+      )}
+      {player.fixtures.length > 0 && (
+        <div className="lg:hidden">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>
+          <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} />
+        </div>
       )}
     </div>
   )
