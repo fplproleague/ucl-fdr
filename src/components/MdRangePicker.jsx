@@ -8,12 +8,17 @@ import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 // is the window people can actually act on.
 export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange, className = '' }) {
   const now = currentMatchday()
+  // "All" means all *remaining* matchdays — a played one has already dropped
+  // off the site, so the count here shrinks as the season goes. A "Next N"
+  // preset only shows while N is smaller than that: once it would be clamped
+  // to the same range as "All" (Next 6 with five left), it's a duplicate
+  // button that lights up together with "All" and just reads as a bug.
+  const remaining = TOTAL_MATCHDAYS - now + 1
   const presets = [
-    { label: 'Next 4', from: now, to: Math.min(TOTAL_MATCHDAYS, now + 3) },
-    { label: 'Next 6', from: now, to: Math.min(TOTAL_MATCHDAYS, now + 5) },
-    // "All" means all *remaining* matchdays — a played one has already
-    // dropped off the site, so the count here shrinks as the season goes.
-    { label: `All ${TOTAL_MATCHDAYS - now + 1}`, from: now, to: TOTAL_MATCHDAYS },
+    ...[4, 6]
+      .filter((n) => n < remaining)
+      .map((n) => ({ label: `Next ${n}`, from: now, to: now + n - 1 })),
+    { label: `All ${remaining}`, from: now, to: TOTAL_MATCHDAYS },
   ]
 
   // A matchday whose window has closed is gone from every selector, not just
@@ -71,24 +76,26 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
         </select>
       </div>
 
-      <div className="flex rounded-lg bg-white/5 p-0.5">
-        {presets.map((p) => {
-          const active = from === p.from && to === p.to
-          return (
-            <button
-              key={p.label}
-              type="button"
-              onClick={() => onChange(p.from, p.to)}
-              aria-pressed={active}
-              className={`min-h-[36px] rounded-[6px] px-2 text-[11px] font-semibold transition ${
-                active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
-              }`}
-            >
-              {p.label}
-            </button>
-          )
-        })}
-      </div>
+      {remaining > 1 && (
+        <div className="flex rounded-lg bg-white/5 p-0.5">
+          {presets.map((p) => {
+            const active = from === p.from && to === p.to
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => onChange(p.from, p.to)}
+                aria-pressed={active}
+                className={`min-h-[36px] rounded-[6px] px-2 text-[11px] font-semibold transition ${
+                  active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+                }`}
+              >
+                {p.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {skippable.length > 0 && (
         <div className="flex items-center gap-1.5">
