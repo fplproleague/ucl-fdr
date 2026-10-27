@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Trophy } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -6,20 +6,30 @@ import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
 import GkRotation from './components/GkRotation.jsx'
+import KnockoutBracket from './components/KnockoutBracket.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
+import { KNOCKOUT } from './data/knockout.js'
+import { koStage } from './utils/bracket.js'
 
 const TABS = [
   { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
   { id: 'gk', label: 'GK Rotation', icon: Repeat, Component: GkRotation },
+  { id: 'bracket', label: 'Bracket', icon: Trophy, Component: KnockoutBracket },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
+
+// The Bracket tab joins the nav once the league phase is over. Until then
+// it's only reachable by its link (#/bracket, or #/bracket?demo=bracket to
+// preview it with made-up draws), so the menu doesn't advertise an empty page.
+const KO_OPEN = koStage(KNOCKOUT) !== 'pre'
 
 function Shell() {
   const { tab, setTab } = useTeams()
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
+  const tabs = TABS.filter((t) => t.id !== 'bracket' || KO_OPEN || tab === 'bracket')
 
   // Real <a href="#/id"> links now (the site had zero internal links before),
   // but role="tab" means they must keep behaving like the buttons they
@@ -56,7 +66,7 @@ function Shell() {
           </div>
 
           <nav aria-label="Views" className="ml-auto hidden gap-1 sm:flex" role="tablist">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {tabs.map(({ id, label, icon: Icon }) => (
               <a
                 key={id}
                 href={`#/${id}`}
@@ -64,12 +74,18 @@ function Shell() {
                 aria-selected={tab === id}
                 onClick={(e) => goToTab(e, id)}
                 onKeyDown={(e) => onTabKeyDown(e, id)}
-                className={`flex min-h-[40px] items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition ${
+                title={label}
+                className={`flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold transition ${
                   tab === id ? 'bg-ucl-accent text-white shadow-card' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >
                 <Icon size={16} aria-hidden="true" />
-                {label}
+                {/* The labelled tabs don't fit beside the title on a tablet (the
+                    title was wrapping onto three lines at 768px), so between the
+                    phone layout and a full desktop only the active tab keeps its
+                    label; the rest show it on hover via title. not-sr-only resets
+                    white-space, hence the explicit lg:whitespace-nowrap. */}
+                <span className={tab === id ? '' : 'sr-only lg:not-sr-only lg:whitespace-nowrap'}>{label}</span>
               </a>
             ))}
           </nav>
@@ -88,7 +104,7 @@ function Shell() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ucl-navy/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
       >
         <div className="mx-auto flex max-w-6xl">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {tabs.map(({ id, label, icon: Icon }) => (
             <a
               key={id}
               href={`#/${id}`}

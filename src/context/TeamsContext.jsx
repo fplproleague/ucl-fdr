@@ -5,6 +5,7 @@ import { currentMatchday } from '../data/matchdays.js'
 import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
 import { availableDays } from '../utils/matchdaySplit.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { serializePicks } from '../utils/bracket.js'
 
 const STORAGE_KEY = 'ucl-fdr:ratings:v1'
 const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
@@ -13,6 +14,7 @@ const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
 const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
 const PINNED_KEY = 'ucl-fdr:pinned-teams:v1'
 const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
+const PICKS_KEY = 'ucl-fdr:bracket-picks:v1'
 
 const TeamsContext = createContext(null)
 
@@ -78,6 +80,29 @@ function readStoredMyTeamsOnly() {
   }
 }
 
+function readStoredPicks() {
+  try {
+    const raw = localStorage.getItem(PICKS_KEY)
+    const picks = raw ? JSON.parse(raw) : {}
+    return picks && typeof picks === 'object' && !Array.isArray(picks) ? picks : {}
+  } catch {
+    return {}
+  }
+}
+
+const samePicks = (a, b) => serializePicks(a ?? {}) === serializePicks(b ?? {})
+
+// Bracket picks from a link. Unlike ratings, someone else's bracket must not
+// overwrite your own just by opening their link: a link that differs from
+// what this device has saved opens as a read-only "shared" bracket, and only
+// becomes yours if you say so. Demo picks are never saved at all.
+function picksFromUrl(url) {
+  if (url.demo) return { picks: url.picks ?? {}, viewingShared: false }
+  const stored = readStoredPicks()
+  if (!url.picks) return { picks: stored, viewingShared: false }
+  return { picks: url.picks, viewingShared: !samePicks(url.picks, stored) }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
@@ -119,6 +144,8 @@ function initialState() {
     // effect below) — a link or a stale localStorage value might name a day
     // that isn't even played on this range's matchdays.
     dayFilter: url.dayFilter ?? 'ALL',
+    demo: url.demo,
+    ...picksFromUrl(url),
   }
 }
 
@@ -138,6 +165,9 @@ export function TeamsProvider({ children }) {
     awayDifficulty,
     showMatchday,
     dayFilter,
+    demo,
+    picks,
+    viewingShared,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
@@ -163,6 +193,8 @@ export function TeamsProvider({ children }) {
         showMatchday,
         dayFilter,
         ratings: overrides,
+        picks,
+        demo,
       },
       { push: pushNext.current },
     )
@@ -171,7 +203,7 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, picks, demo])
 
   useEffect(() => {
     function onNav() {
@@ -192,6 +224,13 @@ export function TeamsProvider({ children }) {
           showMatchday: url.showMatchday ?? prev.showMatchday,
           dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
+          demo: url.demo,
+          // A pasted or edited link with different picks (or a switch in or
+          // out of the demo) re-runs the shared-bracket check; anything else
+          // leaves the bracket alone.
+          ...(url.demo !== prev.demo || (url.picks && !samePicks(url.picks, prev.picks))
+            ? picksFromUrl(url)
+            : {}),
         }
       })
     }
@@ -218,6 +257,15 @@ export function TeamsProvider({ children }) {
       // local-only, see initialState)
     }
   }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty])
+
+  useEffect(() => {
+    if (demo || viewingShared) return
+    try {
+      localStorage.setItem(PICKS_KEY, JSON.stringify(picks))
+    } catch {
+      // private mode or quota — the link still carries the bracket
+    }
+  }, [picks, demo, viewingShared])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
@@ -291,6 +339,14 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      demo,
+      picks,
+      viewingShared,
+      setPicks: (next) => setState((prev) => (prev.viewingShared ? prev : { ...prev, picks: next })),
+      // Keep the shared bracket as your own (it's saved from here on), or
+      // drop it and go back to the one saved on this device.
+      adoptSharedPicks: () => patch({ viewingShared: false }),
+      discardSharedPicks: () => patch({ picks: readStoredPicks(), viewingShared: false }),
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
@@ -354,6 +410,9 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      demo,
+      picks,
+      viewingShared,
       patch,
     ],
   )

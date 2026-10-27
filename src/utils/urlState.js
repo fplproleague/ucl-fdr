@@ -4,12 +4,17 @@
 //   #/table?from=1&to=1&md=1&day=TUE
 //   #/compare?from=3&to=6&teams=ARS,INT,BAY
 //   #/runs?from=2&to=5&r=ARS4BVB2
+//   #/bracket?p=ARS---BAY       (bracket picks, see serializePicks)
+//   #/bracket?demo=playoffs     (preview with made-up draws)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk']
+import { parsePicks, serializePicks } from './bracket.js'
+import { DEMO_STAGES } from '../data/knockoutDemo.js'
+
+export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'bracket']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
@@ -21,6 +26,7 @@ export function parseHash(hash = window.location.hash) {
     return Number.isInteger(v) && v > 0 ? v : null
   }
   const day = params.get('day')
+  const demo = params.get('demo')
   return {
     tab,
     from: num('from'),
@@ -31,6 +37,8 @@ export function parseHash(hash = window.location.hash) {
     showMatchday: params.get('md') === null ? null : params.get('md') === '1',
     dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
     ratings: parseRatings(params.get('r')),
+    picks: parsePicks(params.get('p')),
+    demo: DEMO_STAGES.includes(demo) ? demo : null,
   }
 }
 
@@ -55,7 +63,7 @@ export function serializeRatings(overrides) {
     .join('')
 }
 
-export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings }) {
+export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings, picks, demo }) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
   if (to) params.set('to', String(to))
@@ -66,6 +74,11 @@ export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchda
   if (showMatchday && dayFilter && dayFilter !== 'ALL') params.set('day', dayFilter)
   const packed = ratings ? serializeRatings(ratings) : ''
   if (packed) params.set('r', packed)
+  // Bracket picks only ride along on the Bracket tab — they'd just be noise
+  // in a link to the FDR table.
+  const packedPicks = tab === 'bracket' && picks ? serializePicks(picks) : ''
+  if (packedPicks) params.set('p', packedPicks)
+  if (tab === 'bracket' && demo) params.set('demo', demo)
   const query = params.toString()
   return `#/${tab}${query ? `?${query}` : ''}`
 }

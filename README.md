@@ -10,6 +10,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Knockout Bracket** — predict the knockout phase round by round up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link, so a bracket can be shared; opening someone else's link shows their bracket read-only without touching your own. Also lists the UCL Fantasy rules per round (club limit, free transfers).
 
 ## How difficulty is calculated
 
@@ -57,6 +58,25 @@ Bump `DATA_UPDATED` in the same file when the data changes — the footer reads 
 
 Matchday dates live in `src/data/matchdays.js`.
 
+## Knockout data
+
+`src/data/knockout.js` drives the Bracket tab. It starts empty and is filled in by hand as the season goes; each block
+unlocks the next step:
+
+| When | Fill in | Unlocks |
+|---|---|---|
+| After MD8 (27 Jan) | `LEAGUE_STANDINGS` — club ids 1st to 36th | Tab appears in the menu; qualified clubs and play-off pairings |
+| After the play-off draw | `PLAYOFF_DRAW` — `[seeded, unseeded]` per tie | Play-off picks |
+| After the R16 draw | `R16_DRAW` — `{ seed, playoff }` per tie, in bracket order | The full bracket to the final |
+| After each tie | `RESULTS` — `{ tieId: winner }` | Locks that tie |
+
+Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishes the 2026/27 ones
+(then set `FANTASY_RULES_CONFIRMED = true`).
+
+`npm test` checks this file against the format rules (seeding pairs, bracket slots, known club ids), so run it after
+every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
+`#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -73,6 +93,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
+npm test          # bracket logic + knockout data checks
 ```
 
 ## Deploy
