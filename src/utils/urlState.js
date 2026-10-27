@@ -7,6 +7,7 @@
 //   #/bracket?p=ARS---BAY       (bracket picks, see serializePicks)
 //   #/bracket?demo=playoffs     (preview with made-up draws)
 //   #/bracket?v=odds            (Bracket tab sub-view: odds, players or legs)
+//   #/players?demo=1            (Players with made-up players, for previews)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
@@ -15,7 +16,7 @@
 import { parsePicks, serializePicks } from './bracket.js'
 import { DEMO_STAGES } from '../data/knockoutDemo.js'
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'bracket']
+export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players', 'bracket']
 export const KO_VIEWS = ['bracket', 'odds', 'players', 'legs']
 
 export function parseHash(hash = window.location.hash) {
@@ -41,7 +42,8 @@ export function parseHash(hash = window.location.hash) {
     dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
     ratings: parseRatings(params.get('r')),
     picks: parsePicks(params.get('p')),
-    demo: DEMO_STAGES.includes(demo) ? demo : null,
+    // A knockout stage for the Bracket tab, or "1" for the Players tab.
+    demo: DEMO_STAGES.includes(demo) || demo === '1' ? demo : null,
     koView: KO_VIEWS.includes(koView) ? koView : 'bracket',
   }
 }
@@ -102,7 +104,7 @@ export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchda
   const packedPicks = tab === 'bracket' && picks ? serializePicks(picks) : ''
   if (packedPicks) params.set('p', packedPicks)
   if (tab === 'bracket' && koView && koView !== 'bracket') params.set('v', koView)
-  if (tab === 'bracket' && demo) params.set('demo', demo)
+  if ((tab === 'bracket' || tab === 'players') && demo) params.set('demo', demo)
   const query = params.toString()
   return `#/${tab}${query ? `?${query}` : ''}`
 }

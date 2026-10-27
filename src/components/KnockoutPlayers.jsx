@@ -5,7 +5,13 @@ import { KO_ROUNDS } from '../data/knockout.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
-import { FIXTURE_WEIGHT, clubMatchesPlayed, projectPlayer } from '../utils/playerProjection.js'
+import {
+  FIXTURE_WEIGHT,
+  PRIOR_MINUTES,
+  clubMatchesPlayed,
+  positionRates,
+  projectPlayer,
+} from '../utils/playerProjection.js'
 import { windowLabel } from '../utils/koWindow.js'
 import TeamBadge from './TeamBadge.jsx'
 import KnockoutPlanPicker from './KnockoutPlanPicker.jsx'
@@ -30,6 +36,8 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
 
   const players = useMemo(() => (demo ? demoPlayers() : live.players), [demo, live.players])
   const { byClub, league } = useMemo(() => clubMatchesPlayed(ko, demo ? DEMO_TODAY : new Date()), [ko, demo])
+  // Over the whole sheet, before any filter (same as the league-phase tab).
+  const rates = useMemo(() => positionRates(players), [players])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -42,9 +50,9 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
         const team = teamsByAbbr[p.team]
         return [p.name, team?.name, team?.shortName, p.team].some((s) => s?.toLowerCase().includes(q))
       })
-      .map((p) => ({ ...p, ...projectPlayer(p, clubStats[p.team], byClub[p.team] ?? league) }))
+      .map((p) => ({ ...p, ...projectPlayer(p, clubStats[p.team], byClub[p.team] ?? league, rates[p.position]) }))
       .sort((a, b) => b[sortBy] - a[sortBy] || b.xPts - a.xPts || a.price - b.price)
-  }, [players, clubStats, position, maxPrice, query, teamsByAbbr, byClub, league, sortBy])
+  }, [players, clubStats, position, maxPrice, query, teamsByAbbr, byClub, league, rates, sortBy])
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
@@ -73,9 +81,10 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
   return (
     <section className="mb-4">
       <p className="mb-3 text-xs text-ucl-muted">
-        Expected points = points per club match so far × the club&rsquo;s expected matches in the chosen rounds, nudged{' '}
-        {Math.round(FIXTURE_WEIGHT * 100)}% per step of opponent strength. Dividing by the club&rsquo;s matches (not the
-        player&rsquo;s) prices in rotation. {source}
+        Expected points = points per match × the club&rsquo;s expected matches in the chosen rounds, nudged{' '}
+        {Math.round(FIXTURE_WEIGHT * 100)}% per step of opponent strength. Points per match is his points per 90 × his
+        share of the club&rsquo;s minutes, so rotation counts, with points per 90 pulled towards his position&rsquo;s
+        average as if he&rsquo;d played {PRIOR_MINUTES} extra average minutes. {source}
       </p>
 
       <KnockoutPlanPicker presets={presets} plan={plan} onChange={setPlan} />

@@ -9,11 +9,12 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
+- **Players** — expected fantasy points per player over the selected matchdays: points per 90 (pulled towards the position average as if every player had 180 extra average minutes, so a cameo haul doesn't outrank a regular) × his share of the club's minutes (rotation) × each fixture, nudged by its difficulty. Filter by position and price, sort by points or points per €m. Appears in the menu once a player sheet is connected (see below) and makes way for the Knockouts tab once the league phase is over; `#/players?demo=1` previews it with made-up players.
 - **Team Strength** — override any team's 1–5 rating, in half steps (+½) for sides between two levels. Searchable, changed teams are flagged with their original value, and everything recalculates live.
-- **Knockouts** — three views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
+- **Knockouts** — four views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
   - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
   - *Outlook*: each club's chance to reach every round, and its expected matches and average opponent strength over the rounds you plan for (by default, until the next round with unlimited transfers: a squad picked then has to last that long), with a stacking note per window and a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
-  - *Players*: expected fantasy points per player over the same window (points per club match so far × the club's expected matches, nudged by opponent strength), filterable by position and price, sortable by points or points per €m.
+  - *Players*: expected fantasy points per player over the same window, from the same player sheet and the same points-per-match model as the Players tab, × the club's expected matches, nudged by opponent strength.
   - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
 
   Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
@@ -84,24 +85,27 @@ Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishe
 every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
 `#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
 
-### Player sheet
+## Player sheet
 
-The Players view reads a published Google Sheet, the same way GK Rotation reads the goalkeeper one.
+The Players tab reads a published Google Sheet, the same way GK Rotation reads the goalkeeper one.
 
-1. Make a sheet (or a new tab) with this header row — any order, see `scripts/players-template.csv`:
+1. A sheet with this header row (any order, see `scripts/players-template.csv`):
    `Player, Club, Position, Price, Points, Minutes`
    - **Club**: the club's name as the site knows it (full name, short name or 3-letter code all work).
    - **Position**: `GK`, `DEF`, `MID` or `FWD`.
    - **Points** / **Minutes**: season totals so far; leave empty for someone who hasn't played.
+   - Optional, used when present: `Player ID` (stable row key), `Ownership %` (the Differentials filter), `Apps`,
+     `MD1`, `MD2`, … (points per matchday, shown in a player's details), and `Goals`, `Assists`, `Clean sheets`,
+     `Saves`, `Balls recovered`, `POTM`. Any other column is ignored.
 2. File → Share → Publish to web → pick that tab → *Comma-separated values (.csv)* → Publish, and copy the link.
-3. Paste the link into `PLAYERS_SHEET_URL` in `src/utils/useLivePlayers.js`.
+3. Paste the link into `PLAYERS_SHEET_URL` in `src/utils/useLivePlayers.js`. The tab then shows up in the menu.
 
 From then on edits to the sheet show up live; every deploy also saves a fallback copy to `src/data/players.js`
-(`scripts/build-players.mjs`, run by `npm run build`). Rows the site can't read (unknown club, bad position or price)
+(`scripts/build-players.mjs`, run by `npm run build`), which the browser only downloads when the Players tab opens. Rows the site can't read (unknown club, bad position or price)
 are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
-match divide by the matches each club has played *by today*, so a sheet that lags behind under-rates everyone (evenly).
+match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
 
-### Knockout odds
+## Knockout odds
 
 `src/utils/koOdds.js` turns the strength ratings into tie odds with a logistic curve (`MODEL`: one rating step ≈ 68% over
 two legs, a bit flatter for the one-off final, a tenth of a step for hosting the second leg) and propagates them through
@@ -124,7 +128,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # bracket logic + knockout data checks
+npm test          # bracket logic, knockout data and player sheet checks
 ```
 
 ## Deploy

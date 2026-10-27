@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Trophy } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Trophy, Users } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -6,17 +6,20 @@ import FDRTable from './components/FDRTable.jsx'
 import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
 import GkRotation from './components/GkRotation.jsx'
+import PlayerProjections from './components/PlayerProjections.jsx'
 import KnockoutBracket from './components/KnockoutBracket.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
 import { KNOCKOUT } from './data/knockout.js'
 import { koStage } from './utils/bracket.js'
+import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 
 const TABS = [
   { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
   { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
   { id: 'gk', label: 'GK Rotation', icon: Repeat, Component: GkRotation },
+  { id: 'players', label: 'Players', icon: Users, Component: PlayerProjections },
   { id: 'bracket', label: 'Bracket', icon: Trophy, Component: KnockoutBracket },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
@@ -26,10 +29,20 @@ const TABS = [
 // preview it with made-up draws), so the menu doesn't advertise an empty page.
 const KO_OPEN = koStage(KNOCKOUT) !== 'pre'
 
+// The Players tab is for the league phase: it joins the nav once a player
+// sheet is configured, and leaves it again when the knockouts open, since
+// the Bracket tab has its own Players view for those (and there are no
+// league fixtures left to project). Either way it stays reachable by its
+// link (#/players, or #/players?demo=1 with made-up players).
+const PLAYERS_OPEN = PLAYERS_SHEET_URL != null && !KO_OPEN
+
 function Shell() {
   const { tab, setTab } = useTeams()
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
-  const tabs = TABS.filter((t) => t.id !== 'bracket' || KO_OPEN || tab === 'bracket')
+  const tabs = TABS.filter(
+    (t) =>
+      (t.id !== 'bracket' || KO_OPEN || tab === 'bracket') && (t.id !== 'players' || PLAYERS_OPEN || tab === 'players'),
+  )
 
   // Real <a href="#/id"> links now (the site had zero internal links before),
   // but role="tab" means they must keep behaving like the buttons they

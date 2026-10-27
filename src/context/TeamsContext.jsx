@@ -144,6 +144,8 @@ function initialState() {
     // effect below) — a link or a stale localStorage value might name a day
     // that isn't even played on this range's matchdays.
     dayFilter: url.dayFilter ?? 'ALL',
+    // Preview with made-up data (#/bracket?demo=…, #/players?demo=1).
+    // Link-only, never stored.
     demo: url.demo,
     koView: url.koView,
     ...picksFromUrl(url),

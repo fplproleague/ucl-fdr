@@ -7,6 +7,13 @@
 //   Position: GK / DEF / MID / FWD (full words and common short forms work)
 //   Points:   total UCL Fantasy points so far this season
 //   Minutes:  total minutes played so far this season
+//
+// Optional, used when present (any other column is ignored):
+//   Player ID     a stable id, so a renamed player keeps the same row key
+//   Ownership %   share of managers who own him (0–100)
+//   Apps          appearances
+//   MD1, MD2, …   points per matchday: the form line in the details
+//   Goals, Assists, Clean sheets, Saves, Balls recovered, POTM
 import { parseCsv, slugifyName } from './parseGoalkeepersCsv.js'
 
 export const POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
@@ -30,6 +37,17 @@ const POSITION_ALIASES = {
   attacker: 'FWD',
 }
 
+// Header → field name for the optional per-player stats shown in the details.
+const STAT_COLUMNS = {
+  goals: 'goals',
+  assists: 'assists',
+  'clean sheets': 'cleanSheets',
+  saves: 'saves',
+  'balls recovered': 'ballsRecovered',
+  potm: 'potm',
+}
+const OWNERSHIP_HEADERS = ['ownership %', 'ownership', 'selected %', 'selected by %']
+
 const number = (raw) =>
   Number(
     String(raw)
@@ -51,6 +69,24 @@ export function parsePlayerRows(csvText, clubLookup) {
     .map(([name]) => name)
   if (missing.length)
     return { players: [], errors: [`Missing column(s) ${missing.join(', ')} in header: ${rows[0].join(', ')}`] }
+
+  const idCol = header.indexOf('player id')
+  const ownershipCol = header.findIndex((h) => OWNERSHIP_HEADERS.includes(h))
+  const appsCol = header.indexOf('apps')
+  const mdCols = header
+    .map((h, i) => ({ md: Number(h.match(/^md\s*(\d+)$/)?.[1]), i }))
+    .filter(({ md }) => Number.isInteger(md))
+    .sort((a, b) => a.md - b.md)
+  const statCols = Object.entries(STAT_COLUMNS)
+    .map(([h, field]) => ({ field, i: header.indexOf(h) }))
+    .filter(({ i }) => i !== -1)
+  // An optional number: blank or unreadable reads as "not given", never as 0.
+  const optional = (cells, i) => {
+    const raw = (cells[i] ?? '').trim()
+    if (i === -1 || raw === '') return undefined
+    const n = number(raw)
+    return Number.isFinite(n) ? n : undefined
+  }
 
   const errors = []
   const players = []
@@ -87,10 +123,39 @@ export function parsePlayerRows(csvText, clubLookup) {
       continue
     }
 
-    const baseId = slugifyName(name)
+    // "250016833", "250016833.0" (a spreadsheet's number) and "250.016.833"
+    // (a Dutch-formatted export) are all the same id.
+    const externalId =
+      idCol === -1
+        ? ''
+        : (cells[idCol] ?? '')
+            .trim()
+            .replace(/[.,]0+$/, '')
+            .replace(/[^0-9A-Za-z]/g, '')
+    const baseId = externalId ? `p${externalId}` : slugifyName(name)
     const seen = idCounts.get(baseId) ?? 0
     idCounts.set(baseId, seen + 1)
-    players.push({ id: seen === 0 ? baseId : `${baseId}-${seen + 1}`, name, team, position, price, points, minutes })
+    const player = { id: seen === 0 ? baseId : `${baseId}-${seen + 1}`, name, team, position, price, points, minutes }
+
+    const ownership = optional(cells, ownershipCol)
+    if (ownership != null) player.ownership = ownership
+    const apps = optional(cells, appsCol)
+    if (apps != null) player.apps = apps
+    if (mdCols.length) {
+      // Only matchdays with a number in them: a blank MD5 column added ahead
+      // of time is "not played yet", not a zero.
+      const form = mdCols.map(({ md, i }) => ({ md, points: optional(cells, i) })).filter((f) => f.points != null)
+      if (form.length) player.form = form
+    }
+    if (statCols.length) {
+      const stats = {}
+      for (const { field, i } of statCols) {
+        const v = optional(cells, i)
+        if (v != null) stats[field] = v
+      }
+      if (Object.keys(stats).length) player.stats = stats
+    }
+    players.push(player)
   }
 
   return { players, errors }
