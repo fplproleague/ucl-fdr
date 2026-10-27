@@ -81,7 +81,8 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
   if (!team || !row) return null
 
   const avgBand = ratingColor(difficultyBand(row.avg))
-  const strengthColor = RATING_COLORS[team.rating] ?? RATING_COLORS[3]
+  // Floored, not banded: a 4½ is still a "Hard" side, just a strong one.
+  const strengthColor = RATING_COLORS[Math.floor(team.rating)] ?? RATING_COLORS[3]
 
   function openRotationPartner(partnerAbbr) {
     setCompare([team.abbr, partnerAbbr])

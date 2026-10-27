@@ -99,3 +99,21 @@ test('the full unknown-draw case stays fast', () => {
   knockoutOdds(demoKnockout('standings'), ratingOf, { today })
   assert.ok(performance.now() - t0 < 1500)
 })
+
+test('the squad window runs to the next unlimited-transfer round, or the final', async () => {
+  const { squadWindow, nextRound, windowStats } = await import('../src/utils/koWindow.js')
+  assert.deepEqual(squadWindow('PO'), { from: 'PO', to: 'PO' })
+  assert.deepEqual(squadWindow('R16'), { from: 'R16', to: 'F' })
+  assert.deepEqual(squadWindow('SF'), { from: 'SF', to: 'F' })
+
+  const ko = demoKnockout('bracket')
+  const odds = knockoutOdds(ko, ratingOf, { today })
+  // The demo's play-offs are already decided, so the R16 is next.
+  assert.equal(nextRound(odds), 'R16')
+  // Over the whole window, matches equal the expected matches left.
+  for (const t of odds) close(windowStats(t, { from: 'PO', to: 'F' }, ratingOf).matches, t.expMatches, t.abbr)
+  const seed = odds.find((t) => t.rank === 1)
+  const r16 = windowStats(seed, { from: 'R16', to: 'R16' }, ratingOf)
+  close(r16.matches, 2, 'R16 legs')
+  close(r16.oppAvg, ratingOf(seed.path.R16.opponents[0].abbr), 'known R16 opponent')
+})

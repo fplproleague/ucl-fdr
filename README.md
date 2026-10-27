@@ -9,10 +9,10 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Team Strength** — override any team's 1–5 rating, in half steps (+½) for sides between two levels. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 - **Knockouts** — three views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
   - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
-  - *Outlook*: each club's chance to reach every round and its expected number of knockout matches left, with a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
+  - *Outlook*: each club's chance to reach every round, and its expected matches and average opponent strength over the rounds you plan for (by default, until the next round with unlimited transfers: a squad picked then has to last that long), with a stacking note per window and a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
   - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
 
   Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
@@ -35,6 +35,7 @@ The whole view lives in the hash, so any state is linkable:
 #/runs?from=2&to=5
 #/compare?from=1&to=8&teams=ARS,INT,BAY
 #/table?r=ARS4BVB2          # custom ratings, packed 4 chars per team
+#/table?r=ARSdBVB2          # half steps as a–d (1½–4½), so older links read the same
 ```
 
 Changing tab pushes a history entry (so mobile back walks through views); every other change replaces, so the back button doesn't fill up with rating taps.

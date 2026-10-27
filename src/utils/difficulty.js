@@ -34,6 +34,11 @@ export function ratingColor(band) {
   return RATING_COLORS[band] ?? RATING_COLORS[3]
 }
 
+// 4 → "4", 4.5 → "4½".
+export function formatRating(r) {
+  return Number.isInteger(r) ? String(r) : `${Math.floor(r)}½`
+}
+
 export function formatAvg(avg) {
   return Number.isFinite(avg) ? avg.toFixed(2) : '–'
 }

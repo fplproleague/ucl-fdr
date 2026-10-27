@@ -48,22 +48,41 @@ export function parseHash(hash = window.location.hash) {
 
 // Ratings are packed as fixed-width 4-character chunks — "ARS4BVB2" — so a
 // shared link carrying a full custom ticker stays short enough to tweet.
+// Half steps take a lowercase letter in the same one character (a = 1½,
+// b = 2½, c = 3½, d = 4½), so every link made before half steps existed
+// still reads exactly the same.
+const HALF_CODES = 'abcd'
+
+function decodeRating(ch) {
+  if (/^[1-5]$/.test(ch)) return Number(ch)
+  const half = HALF_CODES.indexOf(ch)
+  return half >= 0 ? half + 1.5 : null
+}
+
+function encodeRating(r) {
+  return Number.isInteger(r) ? String(r) : HALF_CODES[r - 1.5]
+}
+
+export function isValidRating(r) {
+  return r >= 1 && r <= 5 && Number.isInteger(r * 2)
+}
+
 export function parseRatings(str) {
   if (!str) return null
   const out = {}
   for (let i = 0; i + 4 <= str.length; i += 4) {
     const id = str.slice(i, i + 3).toUpperCase()
-    const rating = Number(str[i + 3])
-    if (/^[A-Z]{3}$/.test(id) && rating >= 1 && rating <= 5) out[id] = rating
+    const rating = decodeRating(str[i + 3])
+    if (/^[A-Z]{3}$/.test(id) && rating != null) out[id] = rating
   }
   return Object.keys(out).length ? out : null
 }
 
 export function serializeRatings(overrides) {
   return Object.entries(overrides)
-    .filter(([, r]) => r >= 1 && r <= 5)
+    .filter(([, r]) => isValidRating(r))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, r]) => `${id}${r}`)
+    .map(([id, r]) => `${id}${encodeRating(r)}`)
     .join('')
 }
 
