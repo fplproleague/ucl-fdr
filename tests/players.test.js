@@ -4,7 +4,13 @@ import { INITIAL_TEAMS } from '../src/data/teams.js'
 import { demoPlayers } from '../src/data/playersDemo.js'
 import { buildClubLookup } from '../src/utils/parseGoalkeepersCsv.js'
 import { parsePlayerRows } from '../src/utils/parsePlayersCsv.js'
-import { fixtureFactor, leagueMatchesPlayed, projectLeaguePlayer } from '../src/utils/playerProjection.js'
+import {
+  PRIOR_MINUTES,
+  fixtureFactor,
+  leagueMatchesPlayed,
+  positionRates,
+  projectLeaguePlayer,
+} from '../src/utils/playerProjection.js'
 
 const lookup = buildClubLookup(INITIAL_TEAMS)
 
@@ -118,4 +124,25 @@ test('the saved copy of the player sheet is valid', async () => {
         p.name,
       )
   }
+})
+
+test('regression to the mean: a cameo haul is pulled back, a regular barely moves', () => {
+  const rates = positionRates([
+    { position: 'MID', points: 12, minutes: 270 },
+    { position: 'MID', points: 0, minutes: 0 }, // didn't play: not part of the average
+  ])
+  assert.equal(rates.MID, 4)
+
+  // 3 club matches. Regular: every minute, 12 points per match.
+  const regular = projectLeaguePlayer({ points: 36, minutes: 270, price: 8 }, [3], 3, rates.MID)
+  // Cameo: one 30-minute appearance worth 17 points.
+  const cameo = projectLeaguePlayer({ points: 17, minutes: 30, price: 6 }, [3], 3, rates.MID)
+  assert.equal(regular.rawPpm, 12)
+  // (36 + 2 × 4) / (270 + 180) × 90 × 1 = 8.8
+  assert.ok(Math.abs(regular.ppm - ((36 + (PRIOR_MINUTES / 90) * 4) / 450) * 90) < 1e-9)
+  // Raw, the cameo looks like 5.7 a match; pulled back, well under the regular.
+  assert.ok(cameo.rawPpm > 5 && cameo.ppm < 1.5, String(cameo.ppm))
+  assert.ok(regular.xPts > cameo.xPts * 5)
+  // Without a position rate there's no regression at all.
+  assert.equal(projectLeaguePlayer({ points: 36, minutes: 270, price: 8 }, [3], 3).ppm, 12)
 })

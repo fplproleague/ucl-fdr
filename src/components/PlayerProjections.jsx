@@ -5,7 +5,13 @@ import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
-import { FIXTURE_WEIGHT, leagueMatchesPlayed, projectLeaguePlayer } from '../utils/playerProjection.js'
+import {
+  FIXTURE_WEIGHT,
+  PRIOR_MINUTES,
+  leagueMatchesPlayed,
+  positionRates,
+  projectLeaguePlayer,
+} from '../utils/playerProjection.js'
 import { effectiveDifficulty } from '../utils/difficulty.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
@@ -31,7 +37,8 @@ const STAT_LABELS = [
 ]
 
 // Expected points per player over the selected matchdays: form (points per
-// club match so far, which also prices in rotation) times the fixtures. The
+// 90, pulled towards the position average, times his share of the minutes)
+// times the fixtures. The
 // FDR table answers "whose fixtures are good"; this answers "who do I want
 // for them". Same matchday range as every other view.
 export default function PlayerProjections() {
@@ -53,6 +60,9 @@ export default function PlayerProjections() {
     [demo, live.players, clubMatches],
   )
   const mds = useVisibleMds(from, to, skipMd)
+  // Computed over the whole sheet, before any filter: the average a player
+  // is pulled towards mustn't change because someone set a price cap.
+  const rates = useMemo(() => positionRates(players), [players])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -75,10 +85,10 @@ export default function PlayerProjections() {
             teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
           ),
         )
-        return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches) }
+        return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches, rates[p.position]) }
       })
       .sort((a, b) => b[sortBy] - a[sortBy] || b.xPts - a.xPts || a.price - b.price)
-  }, [players, position, maxPrice, differentialsOnly, query, teamsByAbbr, mds, venueAdjust, clubMatches, sortBy])
+  }, [players, position, maxPrice, differentialsOnly, query, teamsByAbbr, mds, venueAdjust, clubMatches, rates, sortBy])
   const hasOwnership = players.some((p) => p.ownership != null)
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
@@ -123,9 +133,11 @@ export default function PlayerProjections() {
           />
 
           <p className="mb-3 text-xs text-ucl-muted">
-            Expected points = points per club match so far × each fixture in the range, nudged{' '}
-            {Math.round(FIXTURE_WEIGHT * 100)}% per step of difficulty. Dividing by the club&rsquo;s matches (
-            {clubMatches} played so far), not the player&rsquo;s, prices in rotation. {source}
+            Expected points = points per match × each fixture in the range, nudged {Math.round(FIXTURE_WEIGHT * 100)}%
+            per step of difficulty. Points per match is his points per 90 × his share of the club&rsquo;s minutes (
+            {clubMatches} matches so far), so rotation counts. Each player&rsquo;s points per 90 is pulled towards his
+            position&rsquo;s average as if he&rsquo;d played {PRIOR_MINUTES} extra average minutes: one big haul in a
+            cameo doesn&rsquo;t outrank a regular. {source}
           </p>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -371,6 +383,10 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust }) {
           {player.apps != null && ` · ${player.apps} apps, ${player.minutes} mins`}
         </p>
       )}
+      <p className="text-xs text-ucl-muted">
+        Points per match: {player.rawPpm.toFixed(1)} so far, {player.ppm.toFixed(1)} after the pull towards the{' '}
+        {player.position} average.
+      </p>
       {player.fixtures.length > 0 && (
         <div className="lg:hidden">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>

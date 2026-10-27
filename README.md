@@ -9,7 +9,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Players** — expected fantasy points per player over the selected matchdays: points per club match so far (which prices in rotation) × each fixture, nudged by its difficulty. Filter by position and price, sort by points or points per €m. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
+- **Players** — expected fantasy points per player over the selected matchdays: points per 90 (pulled towards the position average as if every player had 180 extra average minutes, so a cameo haul doesn't outrank a regular) × his share of the club's minutes (rotation) × each fixture, nudged by its difficulty. Filter by position and price, sort by points or points per €m. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 
 ## How difficulty is calculated
