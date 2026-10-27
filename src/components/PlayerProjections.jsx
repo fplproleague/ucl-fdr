@@ -5,13 +5,7 @@ import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
-import {
-  FIXTURE_WEIGHT,
-  PRIOR_MINUTES,
-  leagueMatchesPlayed,
-  positionRates,
-  projectLeaguePlayer,
-} from '../utils/playerProjection.js'
+import { leagueMatchesPlayed, positionRates, projectLeaguePlayer, relativeScores } from '../utils/playerProjection.js'
 import { effectiveDifficulty } from '../utils/difficulty.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
@@ -19,8 +13,8 @@ import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
-const PRICE_CAPS = [null, 5, 6, 7, 8, 10]
 const PREVIEW = 40
+const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
 
@@ -36,18 +30,17 @@ const STAT_LABELS = [
   ['potm', 'POTM', null],
 ]
 
-// Expected points per player over the selected matchdays: form (points per
-// 90, pulled towards the position average, times his share of the minutes)
-// times the fixtures. The
-// FDR table answers "whose fixtures are good"; this answers "who do I want
-// for them". Same matchday range as every other view.
+// Form and fixtures per player over the selected matchdays, as a relative
+// score (see relativeScores for why it isn't shown as points). The FDR table
+// answers "whose fixtures are good"; this answers "who do I want for them".
+// Same matchday range as every other view.
 export default function PlayerProjections() {
   const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo } = useTeams()
   const live = useLivePlayers()
   const [position, setPosition] = useState('ALL')
   const [maxPrice, setMaxPrice] = useState(null)
   const [query, setQuery] = useState('')
-  const [sortBy, setSortBy] = useState('xPts')
+  const [sortBy, setSortBy] = useState('score')
   const [showAll, setShowAll] = useState(false)
   const [differentialsOnly, setDifferentialsOnly] = useState(false)
   const [openId, setOpenId] = useState(null)
@@ -64,9 +57,40 @@ export default function PlayerProjections() {
   // is pulled towards mustn't change because someone set a price cap.
   const rates = useMemo(() => positionRates(players), [players])
 
+  // Every player's projection and score first, over the whole sheet: the
+  // filters below only hide rows, they never change anyone's score.
+  const scored = useMemo(() => {
+    const projected = players.map((p) => {
+      const fixtures = mds.map((md) => (FIXTURES[p.team] ?? []).find((f) => f.gw === md)).filter(Boolean)
+      const difficulties = fixtures.map((f) =>
+        effectiveDifficulty(
+          teamsByAbbr[f.opp]?.rating ?? 3,
+          f.venue,
+          venueAdjust,
+          teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
+        ),
+      )
+      return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches, rates[p.position]) }
+    })
+    const scores = relativeScores(projected)
+    return projected.map((p) => ({ ...p, ...scores.get(p.id) }))
+  }, [players, mds, teamsByAbbr, venueAdjust, clubMatches, rates])
+
+  // The price slider runs in €0.5m steps from just under the cheapest player
+  // to just over the dearest; its top end means "any price".
+  const priceBounds = useMemo(() => {
+    const prices = players.map((p) => p.price)
+    if (!prices.length) return { min: 4, max: 12 }
+    return {
+      min: Math.floor(Math.min(...prices) / PRICE_STEP) * PRICE_STEP,
+      max: Math.ceil(Math.max(...prices) / PRICE_STEP) * PRICE_STEP,
+    }
+  }, [players])
+
+  const sortKey = { score: 'score', value: 'valueScore', form: 'rawPpm' }[sortBy]
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return players
+    return scored
       .filter((p) => position === 'ALL' || p.position === position)
       .filter((p) => maxPrice == null || p.price <= maxPrice)
       .filter((p) => !differentialsOnly || (p.ownership != null && p.ownership <= DIFFERENTIAL_MAX))
@@ -75,20 +99,8 @@ export default function PlayerProjections() {
         const team = teamsByAbbr[p.team]
         return [p.name, team?.name, team?.shortName, p.team].some((s) => s?.toLowerCase().includes(q))
       })
-      .map((p) => {
-        const fixtures = mds.map((md) => (FIXTURES[p.team] ?? []).find((f) => f.gw === md)).filter(Boolean)
-        const difficulties = fixtures.map((f) =>
-          effectiveDifficulty(
-            teamsByAbbr[f.opp]?.rating ?? 3,
-            f.venue,
-            venueAdjust,
-            teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
-          ),
-        )
-        return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches, rates[p.position]) }
-      })
-      .sort((a, b) => b[sortBy] - a[sortBy] || b.xPts - a.xPts || a.price - b.price)
-  }, [players, position, maxPrice, differentialsOnly, query, teamsByAbbr, mds, venueAdjust, clubMatches, rates, sortBy])
+      .sort((a, b) => b[sortKey] - a[sortKey] || b.score - a.score || a.price - b.price)
+  }, [scored, position, maxPrice, differentialsOnly, query, teamsByAbbr, sortKey])
   const hasOwnership = players.some((p) => p.ownership != null)
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
@@ -108,7 +120,7 @@ export default function PlayerProjections() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Players"
-        subtitle={`Expected points per player over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
+        subtitle={`Form and fixtures per player over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
       />
 
       {demo && (
@@ -119,7 +131,7 @@ export default function PlayerProjections() {
 
       {!players.length ? (
         <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
-          {live.loading ? 'Loading players…' : 'Player projections appear here once the player database is connected.'}
+          {live.loading ? 'Loading players…' : 'Players appear here once the player database is connected.'}
         </p>
       ) : (
         <>
@@ -133,11 +145,10 @@ export default function PlayerProjections() {
           />
 
           <p className="mb-3 text-xs text-ucl-muted">
-            Expected points = points per match × each fixture in the range, nudged {Math.round(FIXTURE_WEIGHT * 100)}%
-            per step of difficulty. Points per match is his points per 90 × his share of the club&rsquo;s minutes (
-            {clubMatches} matches so far), so rotation counts. Each player&rsquo;s points per 90 is pulled towards his
-            position&rsquo;s average as if he&rsquo;d played {PRIOR_MINUTES} extra average minutes: one big haul in a
-            cameo doesn&rsquo;t outrank a regular. {source}
+            <span className="font-semibold text-ucl-star/80">Score</span> combines form (points per match so far, taking
+            minutes played into account) with the fixtures in the range; 100 is the best player for these matchdays.
+            It&rsquo;s a form-and-fixtures guide, not a points prediction: it doesn&rsquo;t know about injuries, team
+            news or expected goals. {source}
           </p>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -154,37 +165,22 @@ export default function PlayerProjections() {
                 </button>
               ))}
             </div>
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">
-              Max
-              <select
-                value={maxPrice ?? ''}
-                onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : null)}
-                className="min-h-[36px] rounded-lg border border-white/10 bg-ucl-deep px-2 text-xs font-semibold normal-case tracking-normal text-ucl-star"
-              >
-                {PRICE_CAPS.map((c) => (
-                  <option key={c ?? 'any'} value={c ?? ''}>
-                    {c == null ? 'Any price' : `€${c.toFixed(1)}m`}
-                  </option>
-                ))}
-              </select>
-            </label>
             <div role="group" aria-label="Sort by" className="flex rounded-lg bg-white/5 p-0.5">
-              <button
-                type="button"
-                aria-pressed={sortBy === 'xPts'}
-                onClick={() => setSortBy('xPts')}
-                className={chip(sortBy === 'xPts')}
-              >
-                Points
-              </button>
-              <button
-                type="button"
-                aria-pressed={sortBy === 'value'}
-                onClick={() => setSortBy('value')}
-                className={chip(sortBy === 'value')}
-              >
-                Per €m
-              </button>
+              {[
+                ['score', 'Score'],
+                ['value', 'Per €m'],
+                ['form', 'Form'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={sortBy === id}
+                  onClick={() => setSortBy(id)}
+                  className={chip(sortBy === id)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {hasOwnership && (
               <button
@@ -200,6 +196,8 @@ export default function PlayerProjections() {
               </button>
             )}
           </div>
+
+          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
           <div className="relative mb-3">
             <Search
@@ -229,21 +227,22 @@ export default function PlayerProjections() {
                   <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
                     Fixtures
                   </th>
-                  <th scope="col" className="px-1 py-2 text-right font-semibold">
+                  <th scope="col" className="px-1.5 py-2 text-right font-semibold">
                     €m
+                  </th>
+                  <th scope="col" className="px-1.5 py-2 text-right font-semibold" title="Points per match so far">
+                    Form
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-1 py-2 text-right font-semibold sm:table-cell"
-                    title="Points per club match so far"
+                    className="px-2 py-2 text-left font-semibold"
+                    title={
+                      sortBy === 'value'
+                        ? 'Score per €1m, 100 = best value over these matchdays'
+                        : 'Form and fixtures, 100 = best player over these matchdays'
+                    }
                   >
-                    Pts/m
-                  </th>
-                  <th scope="col" className="px-1 py-2 text-right font-semibold" title="Expected points over the range">
-                    xPts
-                  </th>
-                  <th scope="col" className="px-2 py-2 text-right font-semibold" title="Expected points per €1m">
-                    /€m
+                    {sortBy === 'value' ? 'Score / €m' : 'Score'}
                   </th>
                 </tr>
               </thead>
@@ -288,18 +287,17 @@ export default function PlayerProjections() {
                             wrap={false}
                           />
                         </td>
-                        <td className="px-1 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
-                        <td className="hidden px-1 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
-                          {p.ppm.toFixed(1)}
+                        <td className="px-1.5 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
+                        <td className="px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75">
+                          {p.rawPpm.toFixed(1)}
                         </td>
-                        <td className="px-1 py-1.5 text-right font-display font-extrabold tabular-nums">
-                          {p.xPts.toFixed(1)}
+                        <td className="px-2 py-1.5">
+                          <ScoreBar value={sortBy === 'value' ? p.valueScore : p.score} />
                         </td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-ucl-star/75">{p.value.toFixed(2)}</td>
                       </tr>
                       {open && (
                         <tr className="bg-white/[0.04]">
-                          <td colSpan={6} className="whitespace-normal px-2 pb-3 pt-1">
+                          <td colSpan={5} className="whitespace-normal px-2 pb-3 pt-1">
                             <PlayerDetails player={p} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} />
                           </td>
                         </tr>
@@ -309,7 +307,7 @@ export default function PlayerProjections() {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-ucl-muted">
+                    <td colSpan={5} className="px-3 py-6 text-center text-sm text-ucl-muted">
                       No players match these filters.
                     </td>
                   </tr>
@@ -329,6 +327,44 @@ export default function PlayerProjections() {
         </>
       )}
     </div>
+  )
+}
+
+// The score as a bar with the number on it, so the column reads at a glance
+// instead of as one more figure next to price and form.
+function ScoreBar({ value }) {
+  const pct = Math.max(0, Math.min(100, value))
+  return (
+    <div className="relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28">
+      <div className="absolute inset-y-0 left-0 rounded-md bg-ucl-accent/60" style={{ width: `${pct}%` }} />
+      <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
+    </div>
+  )
+}
+
+// Max price in €0.5m steps. The top of the slider means no cap.
+function PriceSlider({ bounds, value, onChange }) {
+  const current = value ?? bounds.max
+  return (
+    <label className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">Max price</span>
+      <input
+        type="range"
+        min={bounds.min}
+        max={bounds.max}
+        step={PRICE_STEP}
+        value={current}
+        onChange={(e) => {
+          const v = Number(e.target.value)
+          onChange(v >= bounds.max ? null : v)
+        }}
+        aria-valuetext={value == null ? 'Any price' : `€${current.toFixed(1)}m`}
+        className="h-10 min-w-0 flex-1 accent-ucl-accent"
+      />
+      <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">
+        {value == null ? 'Any' : `€${current.toFixed(1)}m`}
+      </span>
+    </label>
   )
 }
 
@@ -383,10 +419,6 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust }) {
           {player.apps != null && ` · ${player.apps} apps, ${player.minutes} mins`}
         </p>
       )}
-      <p className="text-xs text-ucl-muted">
-        Points per match: {player.rawPpm.toFixed(1)} so far, {player.ppm.toFixed(1)} after the pull towards the{' '}
-        {player.position} average.
-      </p>
       {player.fixtures.length > 0 && (
         <div className="lg:hidden">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>

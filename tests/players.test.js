@@ -146,3 +146,17 @@ test('regression to the mean: a cameo haul is pulled back, a regular barely move
   // Without a position rate there's no regression at all.
   assert.equal(projectLeaguePlayer({ points: 36, minutes: 270, price: 8 }, [3], 3).ppm, 12)
 })
+
+test('scores are relative: 100 for the best, and per €m judged separately', async () => {
+  const { relativeScores } = await import('../src/utils/playerProjection.js')
+  const scores = relativeScores([
+    { id: 'a', xPts: 40, value: 4 },
+    { id: 'b', xPts: 20, value: 5 },
+    { id: 'c', xPts: 0, value: 0 },
+  ])
+  assert.deepEqual(scores.get('a'), { score: 100, valueScore: 80 })
+  assert.deepEqual(scores.get('b'), { score: 50, valueScore: 100 })
+  assert.deepEqual(scores.get('c'), { score: 0, valueScore: 0 })
+  // Nobody with any points (before MD1): everyone 0, no division by zero.
+  assert.deepEqual(relativeScores([{ id: 'x', xPts: 0, value: 0 }]).get('x'), { score: 0, valueScore: 0 })
+})

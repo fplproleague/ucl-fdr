@@ -64,3 +64,23 @@ export function projectLeaguePlayer(player, difficulties, clubMatches, positionR
   const xPts = difficulties.reduce((sum, d) => sum + ppm * fixtureFactor(d), 0)
   return { ppm, rawPpm, minutesShare, matches: difficulties.length, xPts, value: xPts / player.price }
 }
+
+// The Players tab shows a relative score rather than a points total: this
+// model only knows form and fixtures — not injuries, team news, expected
+// minutes or expected goals — so it shouldn't dress up as a points
+// prediction. 100 is the best player over the range; `valueScore` does the
+// same per €1m. Taken over every player passed in (the whole sheet, before
+// any filter), so a filter never changes anyone's score.
+export function relativeScores(projections) {
+  const best = Math.max(0, ...projections.map((p) => p.xPts))
+  const bestValue = Math.max(0, ...projections.map((p) => p.value))
+  return new Map(
+    projections.map((p) => [
+      p.id,
+      {
+        score: best > 0 ? (p.xPts / best) * 100 : 0,
+        valueScore: bestValue > 0 ? (p.value / bestValue) * 100 : 0,
+      },
+    ]),
+  )
+}
