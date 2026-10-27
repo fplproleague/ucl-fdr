@@ -36,7 +36,10 @@ test('the validator catches a play-off tie the format does not allow', () => {
   // 9th against 17th instead of 23rd/24th.
   swapped[0][1] = ko.standings[16]
   const errors = validateKnockout({ ...ko, playoffDraw: swapped }, IDS)
-  assert.ok(errors.some((e) => e.includes('can only meet')), errors.join('\n'))
+  assert.ok(
+    errors.some((e) => e.includes('can only meet')),
+    errors.join('\n'),
+  )
 })
 
 test('the validator catches an R16 seed in the wrong bracket slot', () => {
@@ -48,7 +51,10 @@ test('the validator catches an R16 seed in the wrong bracket slot', () => {
 
 test('seeds host the second leg, and the higher slot keeps it from the QF on', () => {
   const ko = demoKnockout('bracket')
-  const b = buildBracket(ko, favouritePicks(ko, {}, (a) => rating[a]))
+  const b = buildBracket(
+    ko,
+    favouritePicks(ko, {}, (a) => rating[a]),
+  )
   for (const t of [...b.rounds.PO, ...b.rounds.R16]) assert.equal(t.home2, 0)
   // QF1 is the 1st seed's slot against the 7th's: the 1st seed's side hosts.
   assert.equal(b.rounds.QF[0].slotRank, 1)
@@ -61,7 +67,7 @@ test('seeds host the second leg, and the higher slot keeps it from the QF on', (
   assert.equal(b.rounds.F[0].home2, null)
 })
 
-test('a club that knocks out a seed inherits that seed\'s slot', () => {
+test("a club that knocks out a seed inherits that seed's slot", () => {
   const ko = demoKnockout('bracket')
   const r16 = buildBracket(ko).rounds.R16[0]
   const upset = r16.sides[1].abbr
@@ -72,7 +78,10 @@ test('a club that knocks out a seed inherits that seed\'s slot', () => {
 
 test('favourites fill the whole bracket and name a champion', () => {
   const ko = demoKnockout('bracket')
-  const b = buildBracket(ko, favouritePicks(ko, {}, (a) => rating[a]))
+  const b = buildBracket(
+    ko,
+    favouritePicks(ko, {}, (a) => rating[a]),
+  )
   assert.ok(b.champion)
   assert.ok([...b.rounds.R16, ...b.rounds.QF, ...b.rounds.SF, ...b.rounds.F].every((t) => t.winner))
 })

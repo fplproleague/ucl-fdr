@@ -145,6 +145,7 @@ function initialState() {
     // that isn't even played on this range's matchdays.
     dayFilter: url.dayFilter ?? 'ALL',
     demo: url.demo,
+    koView: url.koView,
     ...picksFromUrl(url),
   }
 }
@@ -166,6 +167,7 @@ export function TeamsProvider({ children }) {
     showMatchday,
     dayFilter,
     demo,
+    koView,
     picks,
     viewingShared,
   } = state
@@ -195,6 +197,7 @@ export function TeamsProvider({ children }) {
         ratings: overrides,
         picks,
         demo,
+        koView,
       },
       { push: pushNext.current },
     )
@@ -203,7 +206,7 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, picks, demo])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, picks, demo, koView])
 
   useEffect(() => {
     function onNav() {
@@ -225,6 +228,7 @@ export function TeamsProvider({ children }) {
           dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
           demo: url.demo,
+          koView: url.koView,
           // A pasted or edited link with different picks (or a switch in or
           // out of the demo) re-runs the shared-bracket check; anything else
           // leaves the bracket alone.
@@ -340,6 +344,9 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       demo,
+      koView,
+      // A sub-view switch is a step the back button should undo, like a tab.
+      setKoView: (view) => patch({ koView: view }, { push: true }),
       picks,
       viewingShared,
       setPicks: (next) => setState((prev) => (prev.viewingShared ? prev : { ...prev, picks: next })),
@@ -411,6 +418,7 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       demo,
+      koView,
       picks,
       viewingShared,
       patch,

@@ -6,6 +6,7 @@
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/bracket?p=ARS---BAY       (bracket picks, see serializePicks)
 //   #/bracket?demo=playoffs     (preview with made-up draws)
+//   #/bracket?v=odds            (Bracket tab sub-view: odds or legs)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
@@ -15,6 +16,7 @@ import { parsePicks, serializePicks } from './bracket.js'
 import { DEMO_STAGES } from '../data/knockoutDemo.js'
 
 export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'bracket']
+export const KO_VIEWS = ['bracket', 'odds', 'legs']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
@@ -27,6 +29,7 @@ export function parseHash(hash = window.location.hash) {
   }
   const day = params.get('day')
   const demo = params.get('demo')
+  const koView = params.get('v')
   return {
     tab,
     from: num('from'),
@@ -39,6 +42,7 @@ export function parseHash(hash = window.location.hash) {
     ratings: parseRatings(params.get('r')),
     picks: parsePicks(params.get('p')),
     demo: DEMO_STAGES.includes(demo) ? demo : null,
+    koView: KO_VIEWS.includes(koView) ? koView : 'bracket',
   }
 }
 
@@ -63,7 +67,7 @@ export function serializeRatings(overrides) {
     .join('')
 }
 
-export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings, picks, demo }) {
+export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings, picks, demo, koView }) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
   if (to) params.set('to', String(to))
@@ -78,6 +82,7 @@ export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchda
   // in a link to the FDR table.
   const packedPicks = tab === 'bracket' && picks ? serializePicks(picks) : ''
   if (packedPicks) params.set('p', packedPicks)
+  if (tab === 'bracket' && koView && koView !== 'bracket') params.set('v', koView)
   if (tab === 'bracket' && demo) params.set('demo', demo)
   const query = params.toString()
   return `#/${tab}${query ? `?${query}` : ''}`

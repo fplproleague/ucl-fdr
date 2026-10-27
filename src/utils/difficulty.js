@@ -16,9 +16,10 @@ export function clamp(n, min = 1, max = 5) {
 // stacks with (rather than replaces) the existing home/away adjustment above.
 // Everything is summed first and clamped once at the end, which is what keeps
 // "4.5 + 1" pinned at 5 instead of overshooting.
+// A neutral venue ('N', the final) gets neither adjustment.
 export function effectiveDifficulty(oppRating, venue, venueAdjust = true, awayDifficulty = 0) {
   let value = oppRating
-  if (venueAdjust) value += venue === 'A' ? VENUE_DELTA : -VENUE_DELTA
+  if (venueAdjust && venue !== 'N') value += venue === 'A' ? VENUE_DELTA : -VENUE_DELTA
   if (venue === 'A') value += awayDifficulty
   return clamp(value)
 }
@@ -71,5 +72,6 @@ export function compareRuns(a, b) {
 
 export function describeFixture(oppName, venue, band) {
   const label = RATING_COLORS[band]?.label ?? 'Average'
-  return `${oppName} ${venue === 'H' ? 'at home' : 'away'} — ${label}, difficulty ${band} of 5`
+  const where = venue === 'H' ? 'at home' : venue === 'N' ? 'at a neutral venue' : 'away'
+  return `${oppName} ${where} — ${label}, difficulty ${band} of 5`
 }

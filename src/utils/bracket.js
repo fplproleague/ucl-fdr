@@ -114,7 +114,9 @@ export function validateKnockout(ko, knownIds) {
     const pair = PLAYOFF_PAIRS.find((p) => p.seeded.includes(s))
     if (!pair) errors.push(`playoffDraw[${i}]: "${seeded}" finished ${s ?? '?'}th, not 9th–16th`)
     else if (!pair.unseeded.includes(u))
-      errors.push(`playoffDraw[${i}]: ${s}th can only meet ${pair.unseeded.join('th/')}th, not "${unseeded}" (${u ?? '?'}th)`)
+      errors.push(
+        `playoffDraw[${i}]: ${s}th can only meet ${pair.unseeded.join('th/')}th, not "${unseeded}" (${u ?? '?'}th)`,
+      )
   })
 
   if (!ko.r16Draw) return errors
@@ -125,7 +127,9 @@ export function validateKnockout(ko, knownIds) {
     const slot = R16_SLOTS[i % 4]
     const rank = ranks[seed]
     if (!slot.seeds.includes(rank))
-      errors.push(`r16Draw[${i}]: this bracket slot is for the ${slot.seeds.join('/')} seeds, not "${seed}" (${rank ?? '?'}th)`)
+      errors.push(
+        `r16Draw[${i}]: this bracket slot is for the ${slot.seeds.join('/')} seeds, not "${seed}" (${rank ?? '?'}th)`,
+      )
     const tie = findPlayoffTie(ties, playoff)
     if (!tie) {
       errors.push(`r16Draw[${i}]: "${playoff}" isn't in any play-off tie`)
@@ -134,7 +138,9 @@ export function validateKnockout(ko, knownIds) {
     if (usedTies.has(tie.id)) errors.push(`r16Draw[${i}]: play-off tie ${tie.id} used twice`)
     usedTies.add(tie.id)
     if (!PLAYOFF_PAIRS[slot.playoffPair].seeded.includes(tie.seededRank))
-      errors.push(`r16Draw[${i}]: the ${slot.seeds.join('/')} seeds meet a ${PLAYOFF_PAIRS[slot.playoffPair].seeded.join('/')} play-off tie, not ${tie.id}`)
+      errors.push(
+        `r16Draw[${i}]: the ${slot.seeds.join('/')} seeds meet a ${PLAYOFF_PAIRS[slot.playoffPair].seeded.join('/')} play-off tie, not ${tie.id}`,
+      )
   })
 
   for (const [id, winner] of Object.entries(ko.results ?? {})) {
@@ -216,7 +222,15 @@ export function buildBracket(ko, picks = {}) {
       const id = round === 'F' ? 'F' : `${prefix}${i / 2 + 1}`
       const home2 = round === 'F' ? null : a.slotRank <= b.slotRank ? 0 : 1
       rounds[round].push(
-        makeTie(id, round, [sideFrom(a, ranks), sideFrom(b, ranks)], home2, Math.min(a.slotRank, b.slotRank), ko, picks),
+        makeTie(
+          id,
+          round,
+          [sideFrom(a, ranks), sideFrom(b, ranks)],
+          home2,
+          Math.min(a.slotRank, b.slotRank),
+          ko,
+          picks,
+        ),
       )
     }
   }

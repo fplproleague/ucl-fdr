@@ -10,7 +10,12 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
-- **Knockout Bracket** — predict the knockout phase round by round up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link, so a bracket can be shared; opening someone else's link shows their bracket read-only without touching your own. Also lists the UCL Fantasy rules per round (club limit, free transfers).
+- **Knockouts** — three views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
+  - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
+  - *Outlook*: each club's chance to reach every round and its expected number of knockout matches left, with a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
+  - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
+
+  Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
 
 ## How difficulty is calculated
 
@@ -76,6 +81,13 @@ Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishe
 `npm test` checks this file against the format rules (seeding pairs, bracket slots, known club ids), so run it after
 every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
 `#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
+
+### Knockout odds
+
+`src/utils/koOdds.js` turns the strength ratings into tie odds with a logistic curve (`MODEL`: one rating step ≈ 68% over
+two legs, a bit flatter for the one-off final, a tenth of a step for hosting the second leg) and propagates them through
+the bracket exactly — no simulation. Before a draw, every way it can come out is averaged in (up to 16 play-off × 128
+R16 outcomes). Expected matches only count legs still to be played.
 
 ## Assets
 

@@ -3,17 +3,13 @@ import { Check, Home, Lock, RotateCcw, Share2, Sparkles, Trophy, X } from 'lucid
 import { useTeams } from '../context/TeamsContext.jsx'
 import { KNOCKOUT, KO_ROUNDS, PLAYOFF_DRAW_DATE, R16_DRAW_DATE } from '../data/knockout.js'
 import { demoKnockout } from '../data/knockoutDemo.js'
-import {
-  ROUND_ORDER,
-  allTies,
-  buildBracket,
-  favouritePicks,
-  playoffPairTeams,
-  prunePicks,
-} from '../utils/bracket.js'
+import { ROUND_ORDER, allTies, buildBracket, favouritePicks, playoffPairTeams, prunePicks } from '../utils/bracket.js'
+import { ordinal } from '../utils/ordinal.js'
 import TeamBadge from './TeamBadge.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import KnockoutRules from './KnockoutRules.jsx'
+import KnockoutOutlook from './KnockoutOutlook.jsx'
+import KnockoutLegs from './KnockoutLegs.jsx'
 
 const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
 
@@ -22,10 +18,25 @@ const drawDate = (d) => `${d.label}${d.confirmed ? '' : ' (expected)'}`
 const legsLabel = (round) => ROUND[round].legs.map((l) => l.label).join(' & ')
 
 export default function KnockoutBracket() {
-  const { teamsByAbbr, demo, picks, setPicks, viewingShared, adoptSharedPicks, discardSharedPicks } = useTeams()
+  const { teamsByAbbr, demo, picks, setPicks, viewingShared, adoptSharedPicks, discardSharedPicks, koView, setKoView } =
+    useTeams()
   const ko = useMemo(() => (demo ? demoKnockout(demo) : KNOCKOUT), [demo])
   const bracket = useMemo(() => buildBracket(ko, picks), [ko, picks])
   const { stage } = bracket
+  // Model = the odds from ratings alone; My bracket = the same, but with the
+  // user's picks treated as certain. Shared by Outlook and Legs.
+  const [mode, setMode] = useState('model')
+  const hasPicks = Object.keys(picks).length > 0
+  const effectiveMode = mode === 'mine' && hasPicks ? 'mine' : 'model'
+
+  // Which sub-views exist so far: Outlook needs the league table, Legs needs
+  // at least the play-off draw.
+  const views = [
+    { id: 'bracket', label: 'Bracket' },
+    ...(stage !== 'pre' ? [{ id: 'odds', label: 'Outlook' }] : []),
+    ...(stage === 'playoffs' || stage === 'bracket' ? [{ id: 'legs', label: 'Legs' }] : []),
+  ]
+  const view = views.some((v) => v.id === koView) ? koView : 'bracket'
 
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
 
@@ -38,16 +49,43 @@ export default function KnockoutBracket() {
     setPicks(prunePicks(ko, next))
   }
 
-  const subtitle = {
-    pre: 'Predict the knockouts, round by round, all the way to the final in Madrid.',
-    standings: `The league phase is done. Play-off picks open after the draw on ${drawDate(PLAYOFF_DRAW_DATE)}.`,
-    playoffs: `Pick your play-off winners. The full bracket follows the R16 draw on ${drawDate(R16_DRAW_DATE)}.`,
-    bracket: 'Tap a club to send it through. Your bracket is saved on this device and in the link.',
-  }[stage]
+  const subtitle =
+    view === 'odds'
+      ? 'Who is likely to go how far, and how many matches each club has left.'
+      : view === 'legs'
+        ? 'Every club’s opponent and venue per leg, easiest first.'
+        : {
+            pre: 'Predict the knockouts, round by round, all the way to the final in Madrid.',
+            standings: `The league phase is done. Play-off picks open after the draw on ${drawDate(PLAYOFF_DRAW_DATE)}.`,
+            playoffs: `Pick your play-off winners. The full bracket follows the R16 draw on ${drawDate(R16_DRAW_DATE)}.`,
+            bracket: 'Tap a club to send it through. Your bracket is saved on this device and in the link.',
+          }[stage]
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
-      <ViewHeading title="Knockout Bracket" subtitle={subtitle} />
+      <ViewHeading title="Knockouts" subtitle={subtitle} />
+
+      {views.length > 1 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Segmented label="View" options={views} value={view} onChange={setKoView} />
+          {view !== 'bracket' && (stage === 'playoffs' || stage === 'bracket') && (
+            <Segmented
+              label="Odds based on"
+              options={[
+                { id: 'model', label: 'Model' },
+                {
+                  id: 'mine',
+                  label: 'My bracket',
+                  disabled: !hasPicks,
+                  title: hasPicks ? undefined : 'Pick some winners first',
+                },
+              ]}
+              value={effectiveMode}
+              onChange={setMode}
+            />
+          )}
+        </div>
+      )}
 
       {demo && (
         <p className="mb-3 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
@@ -77,10 +115,13 @@ export default function KnockoutBracket() {
         </div>
       )}
 
-      {stage === 'pre' && <BeforeKnockouts />}
-      {stage === 'standings' && <Qualified standings={ko.standings} nameOf={nameOf} />}
+      {view === 'odds' && <KnockoutOutlook ko={ko} picks={picks} mode={effectiveMode} stage={stage} />}
+      {view === 'legs' && <KnockoutLegs ko={ko} picks={picks} mode={effectiveMode} standings={ko.standings} />}
 
-      {(stage === 'playoffs' || stage === 'bracket') && (
+      {view === 'bracket' && stage === 'pre' && <BeforeKnockouts />}
+      {view === 'bracket' && stage === 'standings' && <Qualified standings={ko.standings} nameOf={nameOf} />}
+
+      {view === 'bracket' && (stage === 'playoffs' || stage === 'bracket') && (
         <>
           <PickBar
             bracket={bracket}
@@ -103,6 +144,28 @@ export default function KnockoutBracket() {
       )}
 
       <KnockoutRules />
+    </div>
+  )
+}
+
+function Segmented({ label, options, value, onChange }) {
+  return (
+    <div role="group" aria-label={label} className="flex rounded-lg bg-white/5 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          aria-pressed={value === o.id}
+          disabled={o.disabled}
+          title={o.title}
+          onClick={() => onChange(o.id)}
+          className={`min-h-[36px] rounded-[6px] px-3 text-xs font-semibold transition disabled:opacity-40 ${
+            value === o.id ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -140,8 +203,14 @@ function BeforeKnockouts() {
 function FormatNotes() {
   return (
     <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-ucl-muted">
-      <li>Play-offs pair 9th/10th with 23rd/24th, 11th/12th with 21st/22nd, and so on. The draw only picks which of the two.</li>
-      <li>1st/2nd meet the 15th–18th play-off winners in the R16, 7th/8th the 9th/10th–23rd/24th winners. 1st and 2nd can only meet in the final.</li>
+      <li>
+        Play-offs pair 9th/10th with 23rd/24th, 11th/12th with 21st/22nd, and so on. The draw only picks which of the
+        two.
+      </li>
+      <li>
+        1st/2nd meet the 15th–18th play-off winners in the R16, 7th/8th the 9th/10th–23rd/24th winners. 1st and 2nd can
+        only meet in the final.
+      </li>
       <li>There&rsquo;s no QF or SF draw. Once the R16 is drawn, every path to the final is fixed.</li>
       <li>The higher seed hosts the second leg. A club that knocks out a seed takes over its slot.</li>
     </ul>
@@ -188,7 +257,9 @@ function PickBar({ bracket, nameOf, disabled, onFavourites, onReset }) {
 
   async function share() {
     const url = window.location.href
-    const text = champion ? `My Champions League bracket: ${nameOf(champion)} win it all.` : 'My Champions League bracket'
+    const text = champion
+      ? `My Champions League bracket: ${nameOf(champion)} win it all.`
+      : 'My Champions League bracket'
     try {
       if (navigator.share) {
         await navigator.share({ title: 'UCL Knockout Bracket', text, url })
@@ -219,7 +290,12 @@ function PickBar({ bracket, nameOf, disabled, onFavourites, onReset }) {
           </span>
         )}
       </div>
-      <button type="button" onClick={onFavourites} disabled={disabled} className={`${btn} bg-white/5 hover:bg-white/10`}>
+      <button
+        type="button"
+        onClick={onFavourites}
+        disabled={disabled}
+        className={`${btn} bg-white/5 hover:bg-white/10`}
+      >
         <Sparkles size={14} aria-hidden="true" />
         Fill with favourites
       </button>
@@ -338,16 +414,10 @@ function SideRow({ tie, side, hostsSecondLeg, nameOf, onPick }) {
   )
 }
 
-function ordinal(n) {
-  const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')
-  return `${n}${s}`
-}
-
 // Between the play-off draw and the R16 draw: who each top-8 club could get,
 // with the user's own play-off picks already filled in.
 function R16Preview({ pools, nameOf }) {
-  const label = (tie) =>
-    tie.winner ? nameOf(tie.winner) : `${tie.sides[0].abbr} / ${tie.sides[1].abbr}`
+  const label = (tie) => (tie.winner ? nameOf(tie.winner) : `${tie.sides[0].abbr} / ${tie.sides[1].abbr}`)
   return (
     <Card title={`Round of 16, drawn on ${drawDate(R16_DRAW_DATE)}`}>
       <p className="mb-2 text-xs text-ucl-muted">
@@ -371,7 +441,9 @@ function R16Preview({ pools, nameOf }) {
               {pool.ties.map((t) => (
                 <span key={t.id} className="flex min-w-0 items-center gap-1.5">
                   {t.winner && <TeamBadge abbr={t.winner} size={18} />}
-                  <span className={`truncate ${t.winner ? 'font-semibold' : 'text-xs text-ucl-muted'}`}>{label(t)}</span>
+                  <span className={`truncate ${t.winner ? 'font-semibold' : 'text-xs text-ucl-muted'}`}>
+                    {label(t)}
+                  </span>
                 </span>
               ))}
             </div>
