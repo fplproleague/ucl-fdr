@@ -9,6 +9,8 @@ import TeamBadge from './TeamBadge.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import KnockoutRules from './KnockoutRules.jsx'
 import KnockoutOutlook from './KnockoutOutlook.jsx'
+import KnockoutPlayers from './KnockoutPlayers.jsx'
+import { useKnockoutPlan } from '../utils/useKnockoutPlan.js'
 import KnockoutLegs from './KnockoutLegs.jsx'
 
 const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
@@ -33,10 +35,22 @@ export default function KnockoutBracket() {
   // at least the play-off draw.
   const views = [
     { id: 'bracket', label: 'Bracket' },
-    ...(stage !== 'pre' ? [{ id: 'odds', label: 'Outlook' }] : []),
+    ...(stage !== 'pre'
+      ? [
+          { id: 'odds', label: 'Outlook' },
+          { id: 'players', label: 'Players' },
+        ]
+      : []),
     ...(stage === 'playoffs' || stage === 'bracket' ? [{ id: 'legs', label: 'Legs' }] : []),
   ]
   const view = views.some((v) => v.id === koView) ? koView : 'bracket'
+  const plan = useKnockoutPlan({
+    ko,
+    picks,
+    mode: effectiveMode,
+    teamsByAbbr,
+    enabled: view === 'odds' || view === 'players',
+  })
 
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
 
@@ -52,14 +66,16 @@ export default function KnockoutBracket() {
   const subtitle =
     view === 'odds'
       ? 'Who is likely to go how far, and how many matches each club has left.'
-      : view === 'legs'
-        ? 'Every club’s opponent and venue per leg, easiest first.'
-        : {
-            pre: 'Predict the knockouts, round by round, all the way to the final in Madrid.',
-            standings: `The league phase is done. Play-off picks open after the draw on ${drawDate(PLAYOFF_DRAW_DATE)}.`,
-            playoffs: `Pick your play-off winners. The full bracket follows the R16 draw on ${drawDate(R16_DRAW_DATE)}.`,
-            bracket: 'Tap a club to send it through. Your bracket is saved on this device and in the link.',
-          }[stage]
+      : view === 'players'
+        ? 'Expected points per player for the rounds you plan for.'
+        : view === 'legs'
+          ? 'Every club’s opponent and venue per leg, easiest first.'
+          : {
+              pre: 'Predict the knockouts, round by round, all the way to the final in Madrid.',
+              standings: `The league phase is done. Play-off picks open after the draw on ${drawDate(PLAYOFF_DRAW_DATE)}.`,
+              playoffs: `Pick your play-off winners. The full bracket follows the R16 draw on ${drawDate(R16_DRAW_DATE)}.`,
+              bracket: 'Tap a club to send it through. Your bracket is saved on this device and in the link.',
+            }[stage]
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -115,7 +131,27 @@ export default function KnockoutBracket() {
         </div>
       )}
 
-      {view === 'odds' && <KnockoutOutlook ko={ko} picks={picks} mode={effectiveMode} stage={stage} />}
+      {view === 'odds' && (
+        <KnockoutOutlook
+          allOdds={plan.odds}
+          plan={plan.plan}
+          presets={plan.presets}
+          setPlan={plan.setPlan}
+          clubStats={plan.clubStats}
+          mode={effectiveMode}
+          stage={stage}
+        />
+      )}
+      {view === 'players' && (
+        <KnockoutPlayers
+          ko={ko}
+          demo={demo}
+          plan={plan.plan}
+          presets={plan.presets}
+          setPlan={plan.setPlan}
+          clubStats={plan.clubStats}
+        />
+      )}
       {view === 'legs' && <KnockoutLegs ko={ko} picks={picks} mode={effectiveMode} standings={ko.standings} />}
 
       {view === 'bracket' && stage === 'pre' && <BeforeKnockouts />}

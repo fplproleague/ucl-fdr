@@ -13,6 +13,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **Knockouts** — three views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
   - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
   - *Outlook*: each club's chance to reach every round, and its expected matches and average opponent strength over the rounds you plan for (by default, until the next round with unlimited transfers: a squad picked then has to last that long), with a stacking note per window and a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
+  - *Players*: expected fantasy points per player over the same window (points per club match so far × the club's expected matches, nudged by opponent strength), filterable by position and price, sortable by points or points per €m.
   - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
 
   Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
@@ -82,6 +83,23 @@ Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishe
 `npm test` checks this file against the format rules (seeding pairs, bracket slots, known club ids), so run it after
 every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
 `#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
+
+### Player sheet
+
+The Players view reads a published Google Sheet, the same way GK Rotation reads the goalkeeper one.
+
+1. Make a sheet (or a new tab) with this header row — any order, see `scripts/players-template.csv`:
+   `Player, Club, Position, Price, Points, Minutes`
+   - **Club**: the club's name as the site knows it (full name, short name or 3-letter code all work).
+   - **Position**: `GK`, `DEF`, `MID` or `FWD`.
+   - **Points** / **Minutes**: season totals so far; leave empty for someone who hasn't played.
+2. File → Share → Publish to web → pick that tab → *Comma-separated values (.csv)* → Publish, and copy the link.
+3. Paste the link into `PLAYERS_SHEET_URL` in `src/utils/useLivePlayers.js`.
+
+From then on edits to the sheet show up live; every deploy also saves a fallback copy to `src/data/players.js`
+(`scripts/build-players.mjs`, run by `npm run build`). Rows the site can't read (unknown club, bad position or price)
+are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
+match divide by the matches each club has played *by today*, so a sheet that lags behind under-rates everyone (evenly).
 
 ### Knockout odds
 

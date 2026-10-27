@@ -6,6 +6,8 @@
 import { KO_ROUNDS } from '../data/knockout.js'
 import { ROUND_ORDER } from './bracket.js'
 
+const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
+
 const RESETS = new Set(KO_ROUNDS.filter((r) => r.transfers[0] === 'Unlimited').map((r) => r.id))
 
 // The first round in which anyone still has a match to play.
@@ -19,6 +21,21 @@ export function squadWindow(from) {
   const reset = ROUND_ORDER.findIndex((r, j) => j > i && RESETS.has(r))
   return { from, to: reset === -1 ? 'F' : ROUND_ORDER[reset - 1] }
 }
+
+// The "Plan for" choices from the next round: just that round, until the
+// next unlimited-transfer round, and to the final — deduplicated so two
+// buttons never select the same window (the "Next 6" = "All 5" mistake).
+export function windowPresets(next) {
+  if (!next) return []
+  return [{ from: next, to: next }, squadWindow(next), { from: next, to: 'F' }].filter(
+    (w, i, all) => all.findIndex((x) => x.from === w.from && x.to === w.to) === i,
+  )
+}
+
+export const sameWindow = (a, b) => a != null && b != null && a.from === b.from && a.to === b.to
+
+export const windowLabel = ({ from, to }) =>
+  from === to ? `${ROUND[from].short} only` : `${ROUND[from].short} → ${ROUND[to].short}`
 
 export function roundsIn({ from, to }) {
   return ROUND_ORDER.slice(ROUND_ORDER.indexOf(from), ROUND_ORDER.indexOf(to) + 1)

@@ -6,7 +6,7 @@
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/bracket?p=ARS---BAY       (bracket picks, see serializePicks)
 //   #/bracket?demo=playoffs     (preview with made-up draws)
-//   #/bracket?v=odds            (Bracket tab sub-view: odds or legs)
+//   #/bracket?v=odds            (Bracket tab sub-view: odds, players or legs)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
@@ -16,7 +16,7 @@ import { parsePicks, serializePicks } from './bracket.js'
 import { DEMO_STAGES } from '../data/knockoutDemo.js'
 
 export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'bracket']
-export const KO_VIEWS = ['bracket', 'odds', 'legs']
+export const KO_VIEWS = ['bracket', 'odds', 'players', 'legs']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')

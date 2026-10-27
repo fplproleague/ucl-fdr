@@ -2,11 +2,11 @@ import { Fragment, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { KO_ROUNDS } from '../data/knockout.js'
-import { knockoutOdds } from '../utils/koOdds.js'
-import { nextRound, roundsIn, squadWindow, windowStats } from '../utils/koWindow.js'
+import { roundsIn, windowLabel } from '../utils/koWindow.js'
 import { difficultyBand, ratingColor } from '../utils/difficulty.js'
 import { ordinal } from '../utils/ordinal.js'
 import TeamBadge from './TeamBadge.jsx'
+import KnockoutPlanPicker from './KnockoutPlanPicker.jsx'
 
 const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
 const COLUMNS = ['R16', 'QF', 'SF', 'F']
@@ -18,47 +18,28 @@ function pct(p) {
   return String(Math.round(p * 100))
 }
 
-const windowLabel = ({ from, to }) =>
-  from === to ? `${ROUND[from].short} only` : `${ROUND[from].short} → ${ROUND[to].short}`
-
 // Odds per round and expected matches, for every club still in it, over a
 // window of rounds: the expected-matches column leads because it's the
 // fantasy question — how long will a player from this club keep scoring
-// before you can next rebuild your squad for free?
-export default function KnockoutOutlook({ ko, picks, mode, stage }) {
+// before you can next rebuild your squad for free? The odds and the window
+// come from useKnockoutPlan in the parent, shared with the Players view.
+export default function KnockoutOutlook({ allOdds, plan, presets, setPlan, clubStats, mode, stage }) {
   const { teamsByAbbr } = useTeams()
   const [openAbbr, setOpenAbbr] = useState(null)
-  const [chosenWindow, setChosenWindow] = useState(null)
   const ratingOf = (abbr) => teamsByAbbr[abbr]?.rating ?? 3
-
-  const allOdds = useMemo(
-    () => knockoutOdds(ko, (abbr) => teamsByAbbr[abbr]?.rating ?? 3, { picks: mode === 'mine' ? picks : {} }),
-    [ko, picks, mode, teamsByAbbr],
-  )
-  const next = nextRound(allOdds)
-  // Presets, deduplicated so two buttons never select the same window (the
-  // same mistake as "Next 6" = "All 5" in the matchday picker).
-  const presets = next
-    ? [{ from: next, to: next }, squadWindow(next), { from: next, to: 'F' }].filter(
-        (w, i, all) => all.findIndex((x) => x.from === w.from && x.to === w.to) === i,
-      )
-    : []
-  const plan =
-    presets.find((w) => chosenWindow && w.from === chosenWindow.from && w.to === chosenWindow.to) ??
-    (next ? squadWindow(next) : null)
 
   const odds = useMemo(
     () =>
       allOdds
         .filter((t) => t.expMatches > 0 || t.win > 0)
-        .map((t) => ({ ...t, ...(plan ? windowStats(t, plan, (a) => teamsByAbbr[a]?.rating ?? 3) : {}) }))
+        .map((t) => ({ ...t, ...clubStats[t.abbr] }))
         .sort(
           (a, b) =>
             (b.matches ?? b.expMatches) - (a.matches ?? a.expMatches) ||
             (a.oppAvg ?? 0) - (b.oppAvg ?? 0) ||
             a.rank - b.rank,
         ),
-    [allOdds, plan, teamsByAbbr],
+    [allOdds, clubStats],
   )
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
   const cap = plan ? ROUND[plan.from].clubCap : null
@@ -77,29 +58,7 @@ export default function KnockoutOutlook({ ko, picks, mode, stage }) {
         {mode === 'mine' ? ', with your bracket picks treated as certain' : ''}.{drawNote} Tap a club for its path.
       </p>
 
-      {presets.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">Plan for</span>
-          <div role="group" aria-label="Rounds to plan for" className="flex rounded-lg bg-white/5 p-0.5">
-            {presets.map((w) => {
-              const active = w.from === plan.from && w.to === plan.to
-              return (
-                <button
-                  key={`${w.from}-${w.to}`}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setChosenWindow(w)}
-                  className={`min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
-                    active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
-                  }`}
-                >
-                  {windowLabel(w)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      <KnockoutPlanPicker presets={presets} plan={plan} onChange={setPlan} />
 
       {plan && <StackNote plan={plan} cap={cap} top={odds.slice(0, 3)} nameOf={nameOf} />}
 
