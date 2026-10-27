@@ -171,3 +171,17 @@ test('knockout projection: points per match × expected matches, with the same r
   assert.ok(Math.abs(pulled.ppm - 4.8) < 1e-9)
   assert.ok(projectPlayer(player, { matches: 2, oppAvg: 1.5 }, 8).xPts > 10)
 })
+
+test('scores are relative: 100 for the best, and per €m judged separately', async () => {
+  const { relativeScores } = await import('../src/utils/playerProjection.js')
+  const scores = relativeScores([
+    { id: 'a', xPts: 40, value: 4 },
+    { id: 'b', xPts: 20, value: 5 },
+    { id: 'c', xPts: 0, value: 0 },
+  ])
+  assert.deepEqual(scores.get('a'), { score: 100, valueScore: 80 })
+  assert.deepEqual(scores.get('b'), { score: 50, valueScore: 100 })
+  assert.deepEqual(scores.get('c'), { score: 0, valueScore: 0 })
+  // Nobody with any points (before MD1): everyone 0, no division by zero.
+  assert.deepEqual(relativeScores([{ id: 'x', xPts: 0, value: 0 }]).get('x'), { score: 0, valueScore: 0 })
+})

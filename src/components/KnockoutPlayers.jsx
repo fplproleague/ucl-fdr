@@ -5,25 +5,20 @@ import { KO_ROUNDS } from '../data/knockout.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
-import {
-  FIXTURE_WEIGHT,
-  PRIOR_MINUTES,
-  clubMatchesPlayed,
-  positionRates,
-  projectPlayer,
-} from '../utils/playerProjection.js'
+import { clubMatchesPlayed, positionRates, projectPlayer, relativeScores } from '../utils/playerProjection.js'
 import { windowLabel } from '../utils/koWindow.js'
 import TeamBadge from './TeamBadge.jsx'
 import KnockoutPlanPicker from './KnockoutPlanPicker.jsx'
+import { PRICE_STEP, PriceSlider, ScoreBar } from './PlayerProjections.jsx'
 
 const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
-const PRICE_CAPS = [null, 5, 6, 7, 8, 10]
 const PREVIEW = 40
 // The demo pretends the league phase has just finished, so its made-up
 // season totals line up with the eight matches every club has played.
 const DEMO_TODAY = new Date('2027-01-28')
 
-// Expected points per player over the "Plan for" window — the player-level
+// Form and fixtures per player over the "Plan for" window, as the same
+// relative 0–100 score as the league-phase Players tab — the player-level
 // answer to "who do I want for this stretch of the knockouts?"
 export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, clubStats }) {
   const { teamsByAbbr } = useTeams()
@@ -31,7 +26,7 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
   const [position, setPosition] = useState('ALL')
   const [maxPrice, setMaxPrice] = useState(null)
   const [query, setQuery] = useState('')
-  const [sortBy, setSortBy] = useState('xPts')
+  const [sortBy, setSortBy] = useState('score')
   const [showAll, setShowAll] = useState(false)
 
   const players = useMemo(() => (demo ? demoPlayers() : live.players), [demo, live.players])
@@ -39,10 +34,29 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
   // Over the whole sheet, before any filter (same as the league-phase tab).
   const rates = useMemo(() => positionRates(players), [players])
 
+  // Every player still in it, projected and scored before any filter, so a
+  // filter only hides rows and never changes anyone's score.
+  const scored = useMemo(() => {
+    const projected = players
+      .filter((p) => clubStats[p.team]?.matches > 0)
+      .map((p) => ({ ...p, ...projectPlayer(p, clubStats[p.team], byClub[p.team] ?? league, rates[p.position]) }))
+    const scores = relativeScores(projected)
+    return projected.map((p) => ({ ...p, ...scores.get(p.id) }))
+  }, [players, clubStats, byClub, league, rates])
+
+  const priceBounds = useMemo(() => {
+    const prices = players.map((p) => p.price)
+    if (!prices.length) return { min: 4, max: 12 }
+    return {
+      min: Math.floor(Math.min(...prices) / PRICE_STEP) * PRICE_STEP,
+      max: Math.ceil(Math.max(...prices) / PRICE_STEP) * PRICE_STEP,
+    }
+  }, [players])
+
+  const sortKey = { score: 'score', value: 'valueScore', matches: 'matches' }[sortBy]
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return players
-      .filter((p) => clubStats[p.team]?.matches > 0)
+    return scored
       .filter((p) => position === 'ALL' || p.position === position)
       .filter((p) => maxPrice == null || p.price <= maxPrice)
       .filter((p) => {
@@ -50,9 +64,8 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
         const team = teamsByAbbr[p.team]
         return [p.name, team?.name, team?.shortName, p.team].some((s) => s?.toLowerCase().includes(q))
       })
-      .map((p) => ({ ...p, ...projectPlayer(p, clubStats[p.team], byClub[p.team] ?? league, rates[p.position]) }))
-      .sort((a, b) => b[sortBy] - a[sortBy] || b.xPts - a.xPts || a.price - b.price)
-  }, [players, clubStats, position, maxPrice, query, teamsByAbbr, byClub, league, rates, sortBy])
+      .sort((a, b) => b[sortKey] - a[sortKey] || b.score - a.score || a.price - b.price)
+  }, [scored, position, maxPrice, query, teamsByAbbr, sortKey])
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
@@ -62,7 +75,7 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
       <p className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
         {live.loading
           ? 'Loading players…'
-          : 'Player projections appear here once the player database is connected for the knockouts.'}
+          : 'Players appear here once the player database is connected for the knockouts.'}
       </p>
     )
   }
@@ -81,10 +94,10 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
   return (
     <section className="mb-4">
       <p className="mb-3 text-xs text-ucl-muted">
-        Expected points = points per match × the club&rsquo;s expected matches in the chosen rounds, nudged{' '}
-        {Math.round(FIXTURE_WEIGHT * 100)}% per step of opponent strength. Points per match is his points per 90 × his
-        share of the club&rsquo;s minutes, so rotation counts, with points per 90 pulled towards his position&rsquo;s
-        average as if he&rsquo;d played {PRIOR_MINUTES} extra average minutes. {source}
+        <span className="font-semibold text-ucl-star/80">Score</span> combines form (points per match so far, taking
+        minutes played into account) with how many matches his club can expect in the chosen rounds and how strong those
+        opponents are; 100 is the best player for this stretch. It&rsquo;s a form-and-fixtures guide, not a points
+        prediction: it doesn&rsquo;t know about injuries, team news or expected goals. {source}
       </p>
 
       <KnockoutPlanPicker presets={presets} plan={plan} onChange={setPlan} />
@@ -103,39 +116,26 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">
-          Max
-          <select
-            value={maxPrice ?? ''}
-            onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : null)}
-            className="min-h-[36px] rounded-lg border border-white/10 bg-ucl-deep px-2 text-xs font-semibold normal-case tracking-normal text-ucl-star"
-          >
-            {PRICE_CAPS.map((c) => (
-              <option key={c ?? 'any'} value={c ?? ''}>
-                {c == null ? 'Any price' : `€${c.toFixed(1)}m`}
-              </option>
-            ))}
-          </select>
-        </label>
         <div role="group" aria-label="Sort by" className="flex rounded-lg bg-white/5 p-0.5">
-          <button
-            type="button"
-            aria-pressed={sortBy === 'xPts'}
-            onClick={() => setSortBy('xPts')}
-            className={chip(sortBy === 'xPts')}
-          >
-            Points
-          </button>
-          <button
-            type="button"
-            aria-pressed={sortBy === 'value'}
-            onClick={() => setSortBy('value')}
-            className={chip(sortBy === 'value')}
-          >
-            Per €m
-          </button>
+          {[
+            ['score', 'Score'],
+            ['value', 'Per €m'],
+            ['matches', 'Matches'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={sortBy === id}
+              onClick={() => setSortBy(id)}
+              className={chip(sortBy === id)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
+
+      <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
       <div className="relative mb-3">
         <Search
@@ -170,32 +170,33 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
               <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
                 Player
               </th>
-              <th scope="col" className="px-1 py-2 text-right font-semibold">
+              <th scope="col" className="px-1.5 py-2 text-right font-semibold">
                 €m
               </th>
               <th
                 scope="col"
-                className="hidden px-1 py-2 text-right font-semibold sm:table-cell"
-                title="Points per club match so far"
+                className="hidden px-1.5 py-2 text-right font-semibold sm:table-cell"
+                title="Points per match so far"
               >
-                Pts/m
+                Form
               </th>
               <th
                 scope="col"
-                className="px-1 py-2 text-right font-semibold"
+                className="px-1.5 py-2 text-right font-semibold"
                 title="Club's expected matches in the chosen rounds"
               >
                 Mat.
               </th>
               <th
                 scope="col"
-                className="px-1 py-2 text-right font-semibold"
-                title="Expected points in the chosen rounds"
+                className="px-2 py-2 text-left font-semibold"
+                title={
+                  sortBy === 'value'
+                    ? 'Score per €1m, 100 = best value for this stretch'
+                    : 'Form and fixtures, 100 = best player for this stretch'
+                }
               >
-                xPts
-              </th>
-              <th scope="col" className="px-2 py-2 text-right font-semibold" title="Expected points per €1m">
-                /€m
+                {sortBy === 'value' ? 'Score / €m' : 'Score'}
               </th>
             </tr>
           </thead>
@@ -213,18 +214,19 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
                     </div>
                   </div>
                 </th>
-                <td className="px-1 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
-                <td className="hidden px-1 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
-                  {p.ppm.toFixed(1)}
+                <td className="px-1.5 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
+                <td className="hidden px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
+                  {p.rawPpm.toFixed(1)}
                 </td>
-                <td className="px-1 py-1.5 text-right tabular-nums text-ucl-star/75">{p.matches.toFixed(1)}</td>
-                <td className="px-1 py-1.5 text-right font-display font-extrabold tabular-nums">{p.xPts.toFixed(1)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums text-ucl-star/75">{p.value.toFixed(2)}</td>
+                <td className="px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75">{p.matches.toFixed(1)}</td>
+                <td className="px-2 py-1.5">
+                  <ScoreBar value={sortBy === 'value' ? p.valueScore : p.score} />
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-ucl-muted">
+                <td colSpan={5} className="px-3 py-6 text-center text-sm text-ucl-muted">
                   No players match these filters.
                 </td>
               </tr>
