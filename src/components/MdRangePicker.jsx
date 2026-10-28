@@ -34,11 +34,16 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
     onChange(next, Math.max(next, to))
   }
 
+  // One line from a tablet up. On a phone that line doesn't fit (the presets
+  // alone run to three buttons early in the season), and letting it wrap left
+  // "Ignore MD" dangling on a row of its own — so there the range and the
+  // ignore pick share the first row and the presets get a full-width second
+  // row of their own, the same shape every time.
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-white/10 bg-white/[0.03] px-2.5 py-2 ${className}`}
+      className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-2xl border border-white/10 bg-white/[0.03] px-2.5 py-2 sm:w-fit ${className}`}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none">
         <label className="sr-only" htmlFor="md-from">
           From matchday
         </label>
@@ -46,7 +51,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-from"
           value={from}
           onChange={(e) => handleFrom(Number(e.target.value))}
-          className="min-h-[40px] rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+          className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
         >
           {all.map((md) => (
             <option key={md} value={md}>
@@ -64,7 +69,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-to"
           value={to}
           onChange={(e) => onChange(from, Number(e.target.value))}
-          className="min-h-[40px] rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+          className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
         >
           {all
             .filter((md) => md >= from)
@@ -77,7 +82,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
       </div>
 
       {remaining > 1 && (
-        <div className="flex rounded-lg bg-white/5 p-0.5">
+        <div className="order-last flex w-full rounded-lg bg-white/5 p-0.5 sm:order-none sm:w-auto">
           {presets.map((p) => {
             const active = from === p.from && to === p.to
             return (
@@ -86,7 +91,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
                 type="button"
                 onClick={() => onChange(p.from, p.to)}
                 aria-pressed={active}
-                className={`min-h-[36px] rounded-[6px] px-2 text-[11px] font-semibold transition ${
+                className={`min-h-[36px] flex-1 rounded-[6px] px-2 text-[11px] font-semibold transition sm:flex-none ${
                   active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
                 }`}
               >
@@ -98,7 +103,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
       )}
 
       {skippable.length > 0 && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <label className="text-[11px] font-medium text-ucl-muted" htmlFor="md-skip">
             Ignore MD
           </label>
@@ -107,7 +112,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
             value={skipMd ?? ''}
             onChange={(e) => onSkipChange(e.target.value ? Number(e.target.value) : null)}
             title="Leave one matchday out of the table and every average — handy for a Limitless/wildcard matchday you're building a separate team for"
-            className={`min-h-[36px] rounded-lg border px-2 text-xs font-semibold ${
+            className={`min-h-[40px] rounded-lg border px-2 text-xs font-semibold sm:min-h-[36px] ${
               skipMd
                 ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
                 : 'border-white/10 bg-ucl-deep text-ucl-star/80'
