@@ -9,8 +9,15 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
-- **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. Appears in the menu once a player sheet is connected (see below) and makes way for the Knockouts tab once the league phase is over; `#/players?demo=1` previews it with made-up players.
+- **Team Strength** — override any team's 1–5 rating, in half steps (+½) for sides between two levels. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Knockouts** — four views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
+  - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
+  - *Outlook*: each club's chance to reach every round, and its expected matches and average opponent strength over the rounds you plan for (by default, until the next round with unlimited transfers: a squad picked then has to last that long), with a stacking note per window and a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
+  - *Players*: the same 0–100 form-and-fixtures score as the Players tab, over the same window: form × the club's expected matches, nudged by opponent strength.
+  - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
+
+  Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
 
 ## How difficulty is calculated
 
@@ -30,6 +37,7 @@ The whole view lives in the hash, so any state is linkable:
 #/runs?from=2&to=5
 #/compare?from=1&to=8&teams=ARS,INT,BAY
 #/table?r=ARS4BVB2          # custom ratings, packed 4 chars per team
+#/table?r=ARSdBVB2          # half steps as a–d (1½–4½), so older links read the same
 ```
 
 Changing tab pushes a history entry (so mobile back walks through views); every other change replaces, so the back button doesn't fill up with rating taps.
@@ -58,6 +66,25 @@ Bump `DATA_UPDATED` in the same file when the data changes — the footer reads 
 
 Matchday dates live in `src/data/matchdays.js`.
 
+## Knockout data
+
+`src/data/knockout.js` drives the Bracket tab. It starts empty and is filled in by hand as the season goes; each block
+unlocks the next step:
+
+| When | Fill in | Unlocks |
+|---|---|---|
+| After MD8 (27 Jan) | `LEAGUE_STANDINGS` — club ids 1st to 36th | Tab appears in the menu; qualified clubs and play-off pairings |
+| After the play-off draw | `PLAYOFF_DRAW` — `[seeded, unseeded]` per tie | Play-off picks |
+| After the R16 draw | `R16_DRAW` — `{ seed, playoff }` per tie, in bracket order | The full bracket to the final |
+| After each tie | `RESULTS` — `{ tieId: winner }` | Locks that tie |
+
+Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishes the 2026/27 ones
+(then set `FANTASY_RULES_CONFIRMED = true`).
+
+`npm test` checks this file against the format rules (seeding pairs, bracket slots, known club ids), so run it after
+every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
+`#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
+
 ## Player sheet
 
 The Players tab and GK Rotation both read this one published Google Sheet (GK Rotation uses its goalkeepers, with their minutes, points, price and ownership).
@@ -78,6 +105,13 @@ From then on edits to the sheet show up live; every deploy also saves a fallback
 are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
 match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
 
+## Knockout odds
+
+`src/utils/koOdds.js` turns the strength ratings into tie odds with a logistic curve (`MODEL`: one rating step ≈ 68% over
+two legs, a bit flatter for the one-off final, a tenth of a step for hosting the second leg) and propagates them through
+the bracket exactly — no simulation. Before a draw, every way it can come out is averaged in (up to 16 play-off × 128
+R16 outcomes). Expected matches only count legs still to be played.
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -94,7 +128,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # player sheet parsing + projection checks
+npm test          # bracket logic, knockout data and player sheet checks
 ```
 
 ## Deploy

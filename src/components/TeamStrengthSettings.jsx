@@ -4,6 +4,7 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
+import { formatRating } from '../utils/difficulty.js'
 import ViewHeading from './ViewHeading.jsx'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
@@ -92,13 +93,18 @@ export default function TeamStrengthSettings() {
             {filtered.map((team) => (
               <li
                 key={team.id}
-                className={`flex items-center gap-3 rounded-2xl border bg-white/[0.03] p-2.5 shadow-card transition-opacity sm:p-3 ${
+                className={`flex items-center gap-2 rounded-2xl border bg-white/[0.03] p-2.5 shadow-card transition-opacity sm:gap-3 sm:p-3 ${
                   team.modified ? 'border-ucl-accent/50' : 'border-white/10'
                 } ${team.hidden ? 'opacity-50' : ''}`}
               >
                 <TeamBadge abbr={team.abbr} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold sm:text-base">{team.name}</p>
+                  {/* Short name on phones: the picker's +½ button left too little
+                      room for "Manchester City" to show more than "Manc…". */}
+                  <p className="truncate text-sm font-semibold sm:text-base">
+                    <span className="sm:hidden">{team.shortName ?? team.name}</span>
+                    <span className="hidden sm:inline">{team.name}</span>
+                  </p>
                   <p className="flex flex-wrap items-center gap-x-1.5 text-[11px]">
                     {team.modified ? (
                       <button
@@ -106,7 +112,7 @@ export default function TeamStrengthSettings() {
                         onClick={() => resetTeam(team.id)}
                         className="font-semibold text-ucl-accent transition hover:underline"
                       >
-                        was {team.baseRating} · reset
+                        was {formatRating(team.baseRating)} · reset
                       </button>
                     ) : (
                       <span className="uppercase tracking-wide text-ucl-muted">{team.abbr}</span>

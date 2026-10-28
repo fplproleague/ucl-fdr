@@ -343,7 +343,7 @@ export function ScoreBar({ value }) {
 }
 
 // Max price in €0.5m steps. The top of the slider means no cap. Shared with
-// GK Rotation.
+// GK Rotation and the knockout Players view.
 export function PriceSlider({ bounds, value, onChange }) {
   const current = value ?? bounds.max
   return (
