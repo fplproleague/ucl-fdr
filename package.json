@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/build-goalkeepers.mjs --soft && node scripts/build-players.mjs --soft",
+    "prebuild": "node scripts/build-players.mjs --soft",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

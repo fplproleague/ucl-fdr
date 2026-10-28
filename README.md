@@ -87,7 +87,7 @@ every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but 
 
 ## Player sheet
 
-The Players tab reads a published Google Sheet, the same way GK Rotation reads the goalkeeper one.
+The Players tab and GK Rotation both read this one published Google Sheet (GK Rotation uses its goalkeepers, with their minutes, points, price and ownership).
 
 1. A sheet with this header row (any order, see `scripts/players-template.csv`):
    `Player, Club, Position, Price, Points, Minutes`
