@@ -10,15 +10,6 @@ export function rankGoalkeepers(players) {
     .sort((a, b) => b.minutes - a.minutes || b.points - a.points || a.name.localeCompare(b.name))
 }
 
-// One goalkeeper per club — the first-choice one, i.e. the first in
-// rankGoalkeepers order. Rotation partners come from different clubs, so a
-// back-up at the same club as the starter adds nothing, and a back-up
-// elsewhere is rarely worth recommending.
-export function firstChoices(ranked) {
-  const seen = new Set()
-  return ranked.filter((gk) => !seen.has(gk.team) && seen.add(gk.team))
-}
-
 // Finds a saved pick in today's list. Picks saved before GK Rotation moved
 // to the player sheet are name slugs ("raya"), where the sheet now has ids
 // ("p250…") and fuller names ("D. Raya"): those are matched on the end of

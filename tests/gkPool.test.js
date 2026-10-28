@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { findStoredGoalkeeper, firstChoices, rankGoalkeepers } from '../src/utils/gkPool.js'
+import { findStoredGoalkeeper, rankGoalkeepers } from '../src/utils/gkPool.js'
 
 const players = [
   { id: 'p1', name: 'D. Raya', team: 'ARS', position: 'GK', minutes: 270, points: 15 },
@@ -14,13 +14,6 @@ test('goalkeepers only, most minutes first, then points', () => {
   assert.deepEqual(
     rankGoalkeepers(players).map((g) => g.id),
     ['p1', 'p3', 'p4', 'p2'],
-  )
-})
-
-test('first choices: one per club, the one with the most minutes', () => {
-  assert.deepEqual(
-    firstChoices(rankGoalkeepers(players)).map((g) => g.id),
-    ['p1', 'p3'],
   )
 })
 
