@@ -5,7 +5,7 @@ import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
-import { findStoredGoalkeeper, firstChoices, rankGoalkeepers } from '../utils/gkPool.js'
+import { findStoredGoalkeeper, rankGoalkeepers } from '../utils/gkPool.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
@@ -75,9 +75,6 @@ export default function GkRotation() {
   // null = no cap. A budget filter on the complement list only — it never
   // affects who you can pick as "your goalkeeper".
   const [maxPrice, setMaxPrice] = useState(null)
-  // Complements are first-choice keepers only, unless asked otherwise: a
-  // back-up's fixtures are no use if he doesn't play.
-  const [includeBackups, setIncludeBackups] = useState(false)
 
   useEffect(() => {
     try {
@@ -131,8 +128,9 @@ export default function GkRotation() {
   // priority order from the spec — never a combined score.
   const complements = useMemo(() => {
     if (!selectedGk) return []
-    // Never the selected keeper's own club: same fixtures, nothing to rotate.
-    return (includeBackups ? GOALKEEPERS : firstChoices(GOALKEEPERS))
+    // Every keeper who has played, back-ups at rotating clubs included —
+    // except the selected keeper's own club: same fixtures, nothing to rotate.
+    return GOALKEEPERS.filter((gk) => gk.minutes > 0)
       .filter((gk) => gk.team !== selectedGk.team)
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
@@ -140,7 +138,7 @@ export default function GkRotation() {
         return { candidate: gk, rows, summary: summarizeComparison(rows) }
       })
       .sort(compareComplementSummaries)
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, includeBackups, GOALKEEPERS])
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -230,16 +228,6 @@ export default function GkRotation() {
           </p>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
-
-          <label className="mb-3 flex items-center gap-2 text-xs text-ucl-star/80">
-            <input
-              type="checkbox"
-              checked={includeBackups}
-              onChange={(e) => setIncludeBackups(e.target.checked)}
-              className="h-4 w-4 accent-ucl-accent"
-            />
-            Include back-up keepers (by default only each club&rsquo;s keeper with the most minutes)
-          </label>
 
           {complements.length === 0 && (
             <p className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
