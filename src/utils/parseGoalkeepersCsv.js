@@ -1,9 +1,10 @@
-// Shared CSV parsing/validation for the GK database — used by both
-// scripts/build-goalkeepers.mjs (the offline fallback snapshot committed to
-// the repo) and useLiveGoalkeepers.js (the live fetch at runtime), so the
-// two paths can never disagree about what a row means. Pure JS, no
-// Node-only APIs (no node:fs, no Buffer) — this file also runs in the
-// browser.
+// CSV parsing and club-name matching for the published sheets — used by
+// parsePlayersCsv.js, which both scripts/build-players.mjs (the saved copy
+// committed to the repo) and useLivePlayers.js (the live fetch at runtime)
+// go through, so the two paths can never disagree about what a row means.
+// Pure JS, no Node-only APIs (no node:fs, no Buffer) — this file also runs
+// in the browser. (The name is from when it only served the old goalkeeper
+// sheet, which GK Rotation no longer needs: it reads the player sheet.)
 
 // Turkish/Nordic letters aren't reachable by NFD-stripping combining marks
 // (they're distinct code points, not base+accent), so map them explicitly
@@ -64,7 +65,7 @@ export function parseCsv(text) {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ''))
 }
 
-// Club -> abbreviation lookup for parseGoalkeeperRows. Keys are slugified,
+// Club -> abbreviation lookup for the sheet parsers. Keys are slugified,
 // so case, accents and punctuation don't matter ("Bodo Glimt" finds
 // "Bodø/Glimt"), and a team can be named by its full name, short name,
 // abbreviation or an explicit alias ("PSV Eindhoven" for "PSV").
@@ -76,57 +77,4 @@ export function buildClubLookup(teams) {
     }
   }
   return lookup
-}
-
-// Parses the GK database CSV (Player / Club / Price columns, any order,
-// case-insensitive header) into goalkeeper records, given a lookup from
-// buildClubLookup. "Club" is the only link back to the app's existing
-// fixture/FDR data, so a club the lookup doesn't know is reported as an
-// error rather than guessed at.
-export function parseGoalkeeperRows(csvText, clubLookup) {
-  const rows = parseCsv(csvText)
-  if (rows.length < 2) return { goalkeepers: [], errors: ['CSV has no data rows'] }
-
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const playerCol = header.indexOf('player')
-  const clubCol = header.indexOf('club')
-  const priceCol = header.indexOf('price')
-  if (playerCol === -1 || clubCol === -1 || priceCol === -1) {
-    return { goalkeepers: [], errors: [`Missing Player/Club/Price column in header: ${rows[0].join(', ')}`] }
-  }
-
-  const errors = []
-  const goalkeepers = []
-  const idCounts = new Map()
-
-  for (const cells of rows.slice(1)) {
-    const player = (cells[playerCol] ?? '').trim()
-    const club = (cells[clubCol] ?? '').trim()
-    const priceRaw = (cells[priceCol] ?? '').trim()
-    if (!player && !club && !priceRaw) continue
-
-    if (!player) {
-      errors.push(`Empty player name in row: ${cells.join(', ')}`)
-      continue
-    }
-    const abbr = clubLookup[slugifyName(club)]
-    if (!abbr) {
-      errors.push(`Unknown club "${club}" for ${player} — must match a team name, short name or abbreviation`)
-      continue
-    }
-    const price = Number(priceRaw.replace(',', '.').replace(/[^0-9.]/g, ''))
-    if (!Number.isFinite(price) || price <= 0) {
-      errors.push(`Bad price "${priceRaw}" for ${player}`)
-      continue
-    }
-
-    const baseId = slugifyName(player)
-    const seen = idCounts.get(baseId) ?? 0
-    idCounts.set(baseId, seen + 1)
-    const id = seen === 0 ? baseId : `${baseId}-${seen + 1}`
-
-    goalkeepers.push({ id, name: player, team: abbr, price })
-  }
-
-  return { goalkeepers, errors }
 }
