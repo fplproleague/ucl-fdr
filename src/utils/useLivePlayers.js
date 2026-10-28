@@ -11,7 +11,7 @@ export const PLAYERS_SHEET_URL =
 
 const CLUB_LOOKUP = buildClubLookup(INITIAL_TEAMS)
 
-// Same pattern as useLiveGoalkeepers: fetch the sheet in the browser so an
+// Fetches the sheet in the browser so an
 // edit shows up without a redeploy, and keep a saved copy (src/data/
 // players.js, refreshed on every build) for anyone who can't reach Google —
 // ad-blockers, privacy extensions, offline. That copy holds 500+ players, so

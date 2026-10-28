@@ -14,7 +14,7 @@ import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const PREVIEW = 40
-const PRICE_STEP = 0.5
+export const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
 
@@ -332,7 +332,7 @@ export default function PlayerProjections() {
 
 // The score as a bar with the number on it, so the column reads at a glance
 // instead of as one more figure next to price and form.
-function ScoreBar({ value }) {
+export function ScoreBar({ value }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
     <div className="relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28">
@@ -342,8 +342,9 @@ function ScoreBar({ value }) {
   )
 }
 
-// Max price in €0.5m steps. The top of the slider means no cap.
-function PriceSlider({ bounds, value, onChange }) {
+// Max price in €0.5m steps. The top of the slider means no cap. Shared with
+// GK Rotation.
+export function PriceSlider({ bounds, value, onChange }) {
   const current = value ?? bounds.max
   return (
     <label className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">

@@ -1,7 +1,6 @@
 // Regenerates src/data/players.js — the FALLBACK snapshot of the player
 // sheet, for anyone whose browser can't reach it (see
-// src/utils/useLivePlayers.js for the live path). Mirrors
-// build-goalkeepers.mjs.
+// src/utils/useLivePlayers.js for the live path).
 //
 // Usage:
 //   node scripts/build-players.mjs                  the sheet in PLAYERS_SHEET_URL

@@ -4,15 +4,16 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
-import { useLiveGoalkeepers } from '../utils/useLiveGoalkeepers.js'
+import { useLivePlayers } from '../utils/useLivePlayers.js'
+import { findStoredGoalkeeper, firstChoices, rankGoalkeepers } from '../utils/gkPool.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'
-const PRICE_CEILINGS = [5.5, 5.0, 4.5, 4.0]
 
 function readStoredGkId() {
   try {
@@ -26,11 +27,24 @@ function formatPrice(price) {
   return `€${price.toFixed(1)}m`
 }
 
+// What the player sheet knows about a goalkeeper, in one line: minutes first,
+// since that's what tells a starter from a back-up.
+function sheetFacts(gk) {
+  return [
+    `${gk.minutes} mins`,
+    `${gk.points} pts`,
+    gk.ownership != null ? `${gk.ownership}% owned` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 export default function GkRotation() {
   const { teamsByAbbr, venueAdjust } = useTeams()
-  // Live from the published sheet, falling back to the bundled snapshot if
-  // it can't be reached right now — see useLiveGoalkeepers.js.
-  const { goalkeepers: GOALKEEPERS, loading: gkLoading, live: gkLive } = useLiveGoalkeepers()
+  // Every goalkeeper in the player sheet (live, or its saved copy if Google
+  // can't be reached — see useLivePlayers.js), most minutes first.
+  const { players, loading: gkLoading, live: gkLive } = useLivePlayers()
+  const GOALKEEPERS = useMemo(() => rankGoalkeepers(players), [players])
 
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
@@ -52,16 +66,18 @@ export default function GkRotation() {
     if (!stillInside) setSkipMd(null)
   }
 
-  const [selectedId, setSelectedId] = useState(() => {
-    const stored = readStoredGkId()
-    return GOALKEEPERS.some((gk) => gk.id === stored) ? stored : null
-  })
+  // Kept as stored, not checked against the list: the sheet loads after the
+  // first render, so the pick is only resolved (below) once it's there.
+  const [selectedId, setSelectedId] = useState(readStoredGkId)
   const [query, setQuery] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   // null = no cap. A budget filter on the complement list only — it never
   // affects who you can pick as "your goalkeeper".
   const [maxPrice, setMaxPrice] = useState(null)
+  // Complements are first-choice keepers only, unless asked otherwise: a
+  // back-up's fixtures are no use if he doesn't play.
+  const [includeBackups, setIncludeBackups] = useState(false)
 
   useEffect(() => {
     try {
@@ -72,7 +88,20 @@ export default function GkRotation() {
     }
   }, [selectedId])
 
-  const selectedGk = GOALKEEPERS.find((gk) => gk.id === selectedId) ?? null
+  const selectedGk = findStoredGoalkeeper(selectedId, GOALKEEPERS)
+  // A pick saved under the old GK sheet's ids is re-saved under the new one.
+  useEffect(() => {
+    if (selectedGk && selectedGk.id !== selectedId) setSelectedId(selectedGk.id)
+  }, [selectedGk, selectedId])
+
+  const priceBounds = useMemo(() => {
+    const prices = GOALKEEPERS.map((gk) => gk.price)
+    if (!prices.length) return { min: 4, max: 6 }
+    return {
+      min: Math.floor(Math.min(...prices) / PRICE_STEP) * PRICE_STEP,
+      max: Math.ceil(Math.max(...prices) / PRICE_STEP) * PRICE_STEP,
+    }
+  }, [GOALKEEPERS])
 
   function clubName(gk) {
     const team = teamsByAbbr[gk.team]
@@ -102,14 +131,16 @@ export default function GkRotation() {
   // priority order from the spec — never a combined score.
   const complements = useMemo(() => {
     if (!selectedGk) return []
-    return GOALKEEPERS.filter((gk) => gk.id !== selectedGk.id)
+    // Never the selected keeper's own club: same fixtures, nothing to rotate.
+    return (includeBackups ? GOALKEEPERS : firstChoices(GOALKEEPERS))
+      .filter((gk) => gk.team !== selectedGk.team)
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
         const rows = compareTeamFixtures(selectedGk.team, gk.team, mds, teamsByAbbr, venueAdjust)
         return { candidate: gk, rows, summary: summarizeComparison(rows) }
       })
       .sort(compareComplementSummaries)
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS])
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, includeBackups, GOALKEEPERS])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -122,9 +153,9 @@ export default function GkRotation() {
 
       <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
 
-      {!gkLoading && !gkLive && (
+      {!gkLoading && !gkLive && GOALKEEPERS.length > 0 && (
         <p className="mb-3 text-[11px] text-ucl-muted">
-          Couldn't reach the live goalkeeper sheet — showing the last saved list.
+          Couldn't reach the live player sheet — showing the last saved data.
         </p>
       )}
 
@@ -141,7 +172,7 @@ export default function GkRotation() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold sm:text-base">{selectedGk.name}</p>
               <p className="text-[11px] text-ucl-muted">
-                {clubName(selectedGk)} · {formatPrice(selectedGk.price)}
+                {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
               </p>
             </div>
             <span className="shrink-0 text-xs font-semibold text-ucl-accent">Change</span>
@@ -167,18 +198,23 @@ export default function GkRotation() {
                       className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition hover:bg-white/5"
                     >
                       <TeamBadge abbr={gk.team} size={22} />
-                      <span className="min-w-0 flex-1 truncate">
-                        <span className="font-semibold">{gk.name}</span>
-                        <span className="text-ucl-muted">
-                          {' '}
-                          — {clubName(gk)} — {formatPrice(gk.price)}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">
+                          <span className="font-semibold">{gk.name}</span>
+                          <span className="text-ucl-muted">
+                            {' '}
+                            · {clubName(gk)} · {formatPrice(gk.price)}
+                          </span>
                         </span>
+                        <span className="block truncate text-[11px] text-ucl-muted">{sheetFacts(gk)}</span>
                       </span>
                     </button>
                   </li>
                 ))}
                 {filteredGks.length === 0 && (
-                  <li className="px-2 py-3 text-center text-xs text-ucl-muted">No goalkeeper matches “{query}”.</li>
+                  <li className="px-2 py-3 text-center text-xs text-ucl-muted">
+                    {GOALKEEPERS.length === 0 && gkLoading ? 'Loading goalkeepers…' : `No goalkeeper matches “${query}”.`}
+                  </li>
                 )}
               </ul>
             </div>
@@ -193,24 +229,17 @@ export default function GkRotation() {
             A favourable fixture is band 1–2 (green), under your current FDR settings.
           </p>
 
-          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter complements by max price">
-            <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Max price</span>
-            {[null, ...PRICE_CEILINGS].map((cap) => (
-              <button
-                key={cap ?? 'all'}
-                type="button"
-                aria-pressed={maxPrice === cap}
-                onClick={() => setMaxPrice(cap)}
-                className={`min-h-[28px] rounded-full border px-2.5 text-[11px] font-semibold transition ${
-                  maxPrice === cap
-                    ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
-                    : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
-                }`}
-              >
-                {cap == null ? 'All' : `≤${formatPrice(cap)}`}
-              </button>
-            ))}
-          </div>
+          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
+
+          <label className="mb-3 flex items-center gap-2 text-xs text-ucl-star/80">
+            <input
+              type="checkbox"
+              checked={includeBackups}
+              onChange={(e) => setIncludeBackups(e.target.checked)}
+              className="h-4 w-4 accent-ucl-accent"
+            />
+            Include back-up keepers (by default only each club&rsquo;s keeper with the most minutes)
+          </label>
 
           {complements.length === 0 && (
             <p className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
@@ -233,7 +262,7 @@ export default function GkRotation() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold sm:text-base">{gk.name}</p>
                       <p className="text-[11px] text-ucl-muted">
-                        {clubName(gk)} · {formatPrice(gk.price)}
+                        {clubName(gk)} · {formatPrice(gk.price)} · {sheetFacts(gk)}
                       </p>
                     </div>
                     {isOpen ? (
