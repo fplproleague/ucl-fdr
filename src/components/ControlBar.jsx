@@ -7,8 +7,10 @@ import MdRangePicker from './MdRangePicker.jsx'
 import RatingLegend from './RatingLegend.jsx'
 
 // Every view shares one control bar, so the matchday range you pick on the table
-// is still the range you're looking at on Best Runs and Compare. Two rows on a
-// phone instead of the two full-height cards this replaces.
+// is still the range you're looking at on Best Runs and Compare. Three groups,
+// each on its own line on a phone: what you're looking at (range, plus the
+// view toggles beside it on a wide screen), the day filter when the split is
+// on, and the reference bits (legend, how it works, share).
 export default function ControlBar({ showRange = true, showMyTeamsFilter = false, className = '' }) {
   const {
     from,
@@ -44,133 +46,82 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      {showRange && (
-        <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
-      )}
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <RatingLegend />
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={venueAdjust}
-          onClick={() => setVenueAdjust(!venueAdjust)}
-          className={`flex min-h-[32px] items-center gap-2 rounded-full border px-2.5 text-xs font-semibold transition ${
-            venueAdjust
-              ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
-              : 'border-white/10 bg-white/5 text-ucl-star/60'
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-              venueAdjust ? 'bg-ucl-accent' : 'bg-white/20'
-            }`}
-          >
-            <span
-              className={`h-3 w-3 rounded-full bg-white transition-transform ${venueAdjust ? 'translate-x-3' : ''}`}
-            />
-          </span>
-          Home/away
-        </button>
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showMatchday}
-          onClick={() => setShowMatchday(!showMatchday)}
-          className={`flex min-h-[32px] items-center gap-2 rounded-full border px-2.5 text-xs font-semibold transition ${
-            showMatchday
-              ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
-              : 'border-white/10 bg-white/5 text-ucl-star/60'
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-              showMatchday ? 'bg-ucl-accent' : 'bg-white/20'
-            }`}
-          >
-            <span
-              className={`h-3 w-3 rounded-full bg-white transition-transform ${showMatchday ? 'translate-x-3' : ''}`}
-            />
-          </span>
-          Matchday Split
-        </button>
-
-        {showMyTeamsFilter && (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={myTeamsOnly}
-            onClick={() => setMyTeamsOnly(!myTeamsOnly)}
-            className={`flex min-h-[32px] items-center gap-2 rounded-full border px-2.5 text-xs font-semibold transition ${
-              myTeamsOnly
-                ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
-                : 'border-white/10 bg-white/5 text-ucl-star/60'
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-                myTeamsOnly ? 'bg-ucl-accent' : 'bg-white/20'
-              }`}
-            >
-              <span
-                className={`h-3 w-3 rounded-full bg-white transition-transform ${myTeamsOnly ? 'translate-x-3' : ''}`}
-              />
-            </span>
-            My teams{pinnedCount > 0 ? ` (${pinnedCount})` : ''}
-          </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {showRange && (
+          <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
         )}
 
-        <button
-          type="button"
-          onClick={() => setOpenMethod((v) => !v)}
-          aria-expanded={openMethod}
-          className="flex min-h-[32px] items-center gap-1.5 rounded-full px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
-        >
-          <Info size={14} />
-          <span className="sm:hidden">How it works</span>
-          <span className="hidden sm:inline">How difficulty works</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
-        >
-          {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
-
-        {modifiedCount > 0 && (
-          <span className="rounded-full bg-ucl-accent/20 px-2.5 py-1 text-[11px] font-semibold text-ucl-star">
-            {modifiedCount} custom rating{modifiedCount === 1 ? '' : 's'}
-          </span>
-        )}
+        {/* Chips with a tick rather than full switches: three switches with
+            their labels don't fit across a 390px phone, three chips do. */}
+        <div role="group" aria-label="Table options" className="flex flex-wrap items-center gap-1.5">
+          <OptionToggle on={venueAdjust} onChange={setVenueAdjust}>
+            Home/away
+          </OptionToggle>
+          <OptionToggle on={showMatchday} onChange={setShowMatchday}>
+            Matchday Split
+          </OptionToggle>
+          {showMyTeamsFilter && (
+            <OptionToggle on={myTeamsOnly} onChange={setMyTeamsOnly}>
+              My teams{pinnedCount > 0 ? ` (${pinnedCount})` : ''}
+            </OptionToggle>
+          )}
+        </div>
       </div>
 
       {showMatchday && (
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter fixtures by day">
+        <div className="flex w-fit rounded-lg bg-white/5 p-0.5" role="group" aria-label="Filter fixtures by day">
           {['ALL', ...availableDayOptions].map((d) => (
             <button
               key={d}
               type="button"
               aria-pressed={dayFilter === d}
               onClick={() => setDayFilter(d)}
-              className={`min-h-[28px] rounded-full border px-2.5 text-[11px] font-semibold transition ${
-                dayFilter === d
-                  ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
-                  : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
+              className={`min-h-[32px] rounded-[6px] px-3 text-[11px] font-semibold transition ${
+                dayFilter === d ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
               }`}
             >
-              {d === 'ALL' ? 'All' : DAY_LABEL[d]}
+              {d === 'ALL' ? 'All days' : DAY_LABEL[d]}
             </button>
           ))}
         </div>
       )}
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <RatingLegend />
+
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+          {modifiedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setTab('strength')}
+              title="Ratings you changed on the Strength tab"
+              className="min-h-[32px] rounded-full bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
+            >
+              {modifiedCount} custom rating{modifiedCount === 1 ? '' : 's'}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setOpenMethod((v) => !v)}
+            aria-expanded={openMethod}
+            className="flex min-h-[32px] items-center gap-1.5 rounded-full px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
+          >
+            <Info size={14} aria-hidden="true" />
+            <span className="sm:hidden">How it works</span>
+            <span className="hidden sm:inline">How difficulty works</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
+          >
+            {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
+            {copied ? 'Copied!' : 'Copy link'}
+          </button>
+        </div>
+      </div>
 
       {openMethod && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
@@ -201,5 +152,31 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
         </div>
       )}
     </div>
+  )
+}
+
+function OptionToggle({ on, onChange, children }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className={`flex min-h-[32px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition ${
+        on
+          ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+          : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full transition ${
+          on ? 'bg-ucl-accent text-white' : 'border border-white/30'
+        }`}
+      >
+        {on && <Check size={10} strokeWidth={3.5} />}
+      </span>
+      {children}
+    </button>
   )
 }

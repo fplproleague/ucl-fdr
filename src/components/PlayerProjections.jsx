@@ -147,8 +147,11 @@ export default function PlayerProjections() {
           <p className="mb-3 text-xs text-ucl-muted">
             <span className="font-semibold text-ucl-star/80">Score</span> combines form (points per match so far, taking
             minutes played into account) with the fixtures in the range; 100 is the best player for these matchdays.
-            It&rsquo;s a form-and-fixtures guide, not a points prediction: it doesn&rsquo;t know about injuries, team
-            news or expected goals. {source}
+            It&rsquo;s a form-and-fixtures guide,{' '}
+            <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
+              not a points prediction
+            </mark>
+            : it doesn&rsquo;t know about injuries, team news or expected goals. {source}
           </p>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">

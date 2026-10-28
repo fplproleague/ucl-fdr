@@ -26,6 +26,12 @@ export default function FixtureGrid({
   const scrollerRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
   const [scrollable, setScrollable] = useState(false)
+  // Once you swipe into the fixtures the full names have done their job: the
+  // team column shrinks to badge + code so a phone shows another matchday.
+  // Back at the start the names return. Collapse and expand sit at different
+  // offsets (16px / 2px) so the shrink itself, which moves scrollLeft, can't
+  // bounce it back open.
+  const [compact, setCompact] = useState(false)
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -34,15 +40,47 @@ export default function FixtureGrid({
       const overflow = el.scrollWidth - el.clientWidth
       setScrollable(overflow > 8)
       setAtEnd(el.scrollLeft >= overflow - 8)
+      if (el.scrollLeft > 16) setCompact(true)
+      // When the compact table fits outright there is nothing left to scroll,
+      // so scrollLeft sits at 0 — that mustn't count as "back at the start".
+      else if (el.scrollLeft <= 2 && overflow > 8) setCompact(false)
+    }
+    // ...which leaves a swipe back from the start as the way to get the names
+    // back in that case.
+    let startX = null
+    const onTouchStart = (e) => {
+      startX = e.touches[0].clientX
+    }
+    const onTouchMove = (e) => {
+      if (startX != null && el.scrollLeft <= 2 && e.touches[0].clientX - startX > 24) setCompact(false)
+    }
+    const onWheel = (e) => {
+      if (el.scrollLeft <= 2 && e.deltaX < -4) setCompact(false)
     }
     update()
     el.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: true })
+    // Watches the table as well as the viewport: the column animating narrower
+    // or wider changes the overflow without any scroll or resize event.
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    if (el.firstElementChild) observer.observe(el.firstElementChild)
     return () => {
       el.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('wheel', onWheel)
+      observer.disconnect()
     }
   }, [mds.length, rows.length])
+
+  // The column is sized by its content (TEAM_COL is only a floor), so the
+  // shrink is driven from inside the cell: the name's max-width and the
+  // star/× group's both animate down, and the column follows them frame by
+  // frame. Compact, the floor drops away and the column is badge + code.
+  const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
 
   return (
     <>
@@ -54,8 +92,8 @@ export default function FixtureGrid({
               <tr>
                 <th
                   scope="col"
-                  className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted"
-                  style={{ minWidth: TEAM_COL, width: TEAM_COL }}
+                  className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted transition-[min-width,width] duration-300 ease-out"
+                  style={teamColStyle}
                 >
                   Team
                 </th>
@@ -78,8 +116,20 @@ export default function FixtureGrid({
                 const band = ratingColor(difficultyBand(avg))
                 const identity = (
                   <>
-                    <span className="block truncate text-xs font-semibold sm:text-sm">
-                      {fullNames ? team.name : (team.shortName ?? team.name)}
+                    <span className="relative block text-xs font-semibold sm:text-sm">
+                      <span
+                        className={`block truncate transition-[max-width,opacity] duration-300 ease-out ${
+                          compact ? 'max-w-[30px] opacity-0 sm:max-w-[36px]' : 'max-w-[150px]'
+                        }`}
+                      >
+                        {fullNames ? team.name : (team.shortName ?? team.name)}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-0 truncate transition-opacity duration-200 ${compact ? '' : 'opacity-0'}`}
+                      >
+                        {team.abbr}
+                      </span>
                     </span>
                     {showAvg && (
                       <span
@@ -102,8 +152,8 @@ export default function FixtureGrid({
                   >
                     <th
                       scope="row"
-                      className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal"
-                      style={{ minWidth: TEAM_COL, width: TEAM_COL }}
+                      className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal transition-[min-width,width] duration-300 ease-out"
+                      style={teamColStyle}
                     >
                       <div className="flex items-center gap-1.5">
                         <TeamBadge abbr={team.abbr} size={20} />
@@ -122,34 +172,42 @@ export default function FixtureGrid({
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
                         )}
-                        {onTogglePin && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onTogglePin(team.id)
-                            }}
-                            aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
-                            aria-pressed={team.pinned}
-                            className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
-                              team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                        {(onTogglePin || onRemove) && (
+                          <span
+                            className={`flex shrink-0 items-center gap-1.5 overflow-hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
+                              compact ? 'invisible -ml-1.5 max-w-0 opacity-0' : 'max-w-[48px]'
                             }`}
                           >
-                            <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
-                          </button>
-                        )}
-                        {onRemove && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRemove(team.id)
-                            }}
-                            aria-label={`Remove ${team.name} from the table`}
-                            className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
-                          >
-                            <X size={12} aria-hidden="true" />
-                          </button>
+                            {onTogglePin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onTogglePin(team.id)
+                                }}
+                                aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
+                                aria-pressed={team.pinned}
+                                className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
+                                  team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                                }`}
+                              >
+                                <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
+                              </button>
+                            )}
+                            {onRemove && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onRemove(team.id)
+                                }}
+                                aria-label={`Remove ${team.name} from the table`}
+                                className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
+                              >
+                                <X size={12} aria-hidden="true" />
+                              </button>
+                            )}
+                          </span>
                         )}
                       </div>
                     </th>
