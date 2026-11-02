@@ -92,8 +92,10 @@ match divide by the matchdays played *by today*, so a sheet that lags behind und
 - **Cost**: about 290 requests a run (36 clubs × league, fixtures and squad, plus one per match), so a paid plan; the
   free 100 a day isn't enough.
 - **Matching**: clubs are matched to the API by name (`TEAM_ID_OVERRIDES` in the script for any it misses), players by
-  name within their club. The run's log lists everyone it couldn't match; an optional `API ID` column in the player
-  sheet (his API-Football player id) fixes one.
+  name within their club, also with names in another order, a surname inside a longer name or one letter off. The
+  run's log lists everyone it couldn't match and every such loose match, to check by hand. A wrong or missing player
+  is fixed with an optional `API ID` column in the player sheet (his API-Football player id; no redeploy needed) or
+  `PLAYER_ID_OVERRIDES` in the script, which can also mark a player as missing from the API (`null`).
 - **Scoring**: in the score a domestic match counts with UCL Fantasy's main rules (appearance, goals, assists, clean
   sheets, goals conceded, saves, cards, penalties) — an estimate, without balls recovered or POTM, which the API
   doesn't have.

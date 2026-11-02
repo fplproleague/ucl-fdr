@@ -170,6 +170,7 @@ async function run() {
   const statsByFixture = new Map()
   const unmatched = []
   const notInApi = []
+  const loose = []
 
   for (const team of INITIAL_TEAMS) {
     const teamId = apiIds[team.id]
@@ -220,8 +221,10 @@ async function run() {
     for (const player of players.filter((p) => p.team === team.id)) {
       const override = PLAYER_ID_OVERRIDES[player.id]
       const lookup = player.apiId == null && override != null ? { ...player, apiId: override } : player
-      const match = matchSquadPlayer(lookup, [...pool.values()])
+      const info = {}
+      const match = matchSquadPlayer(lookup, [...pool.values()], info)
       if (match) out[player.id] = gamesFor(games, match.id)
+      if (match && info.loose) loose.push(`${player.name} = ${match.name} (${team.id})`)
       else if (player.apiId == null && override === null) {
         out[player.id] = gamesFor(games, null)
         notInApi.push(`${player.name} (${team.id})`)
@@ -238,6 +241,9 @@ async function run() {
     console.log(
       `Domestic form: ${notInApi.length} not in API-Football, given their club's matches with 0 minutes: ${notInApi.join(', ')}`,
     )
+  // Name order, a surname inside a longer name, one letter off: probably
+  // right, but listed so a wrong pairing can be fixed with an override.
+  if (loose.length) console.log(`Domestic form: ${loose.length} loose name matches, check: ${loose.join(', ')}`)
   if (unmatched.length)
     console.warn(
       `Domestic form: ${unmatched.length} not matched by name (add an "API ID" column to fix one): ${unmatched.join(', ')}`,

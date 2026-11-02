@@ -84,6 +84,12 @@ test('names in another order, double surnames, apostrophes and near-spellings st
   assert.equal(id('Dro Fernández'), 17)
   assert.equal(id('Álex Baena'), 18)
   assert.equal(id('Pedrinho'), null) // two of them: needs an API ID
+  // Loose steps are flagged for a check by hand; exact ones aren't.
+  const info = {}
+  matchSquadPlayer({ name: 'M. Matviyenko' }, squad, info)
+  assert.equal(info.loose, true)
+  matchSquadPlayer({ name: 'Pablo Barrios Rivas' }, squad, info)
+  assert.equal(info.loose, false)
   assert.equal(id('X. Barrios'), null) // initial doesn't fit
   assert.equal(id('M. Matviyenkooo'), null) // more than one letter off
 })
@@ -94,9 +100,18 @@ test('the domestic league wins over a summer tournament and foreign leagues', ()
     country: { name: country },
     seasons: [{ year, coverage: { fixtures: { statistics_players: stats } } }],
   })
-  const liverpool = [entry(1022, 'Premier League - Summer Series', 'England', 2025, false), entry(39, 'Premier League', 'England', 2026)]
+  const liverpool = [
+    entry(1022, 'Premier League - Summer Series', 'England', 2025, false),
+    entry(39, 'Premier League', 'England', 2026),
+  ]
   assert.equal(pickDomesticLeague(liverpool, 'England').league.id, 39)
-  assert.equal(pickDomesticLeague([entry(333, 'Premier League', 'Ukraine', 2026), entry(39, 'Premier League', 'England', 2026)], 'Ukraine').league.id, 333)
+  assert.equal(
+    pickDomesticLeague(
+      [entry(333, 'Premier League', 'Ukraine', 2026), entry(39, 'Premier League', 'England', 2026)],
+      'Ukraine',
+    ).league.id,
+    333,
+  )
   assert.equal(pickDomesticLeague([entry(419, 'Premyer Liqa', 'Azerbaijan', 2026, false)], 'Azerbaijan').league.id, 419)
   assert.equal(pickDomesticLeague([], 'England'), null)
 })

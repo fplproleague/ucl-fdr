@@ -109,9 +109,7 @@ function repairMojibake(name) {
 
 const nameParts = (name) => {
   // "N'Dicka" and "Ndicka" are one name: apostrophes go before splitting.
-  const tokens = slugifyName(repairMojibake(name).replace(/['’`]/g, ''))
-    .split('-')
-    .filter(Boolean)
+  const tokens = slugifyName(repairMojibake(name).replace(/['’`]/g, '')).split('-').filter(Boolean)
   const initial = tokens.length > 1 ? tokens[0][0] : null
   return { slug: tokens.join('-'), tokens, initial, last: tokens[tokens.length - 1], compact: tokens.join('') }
 }
@@ -142,8 +140,12 @@ function oneEditApart(a, b) {
 // Joane Gadou"); and a surname one letter off ("Matviyenko" / "Matvienko").
 // Every step needs a single candidate: two "Silva"s at one club stay
 // unmatched rather than guessed, and a later step only runs when the
-// earlier ones found nobody at all.
-export function matchSquadPlayer(sheetPlayer, pool) {
+// earlier ones found nobody at all. Pass `info` to learn which step matched:
+// `info.loose` is true for the last three, worth a look by hand.
+export const LOOSE_MATCH_STEP = 3
+export function matchSquadPlayer(sheetPlayer, pool, info = {}) {
+  info.step = null
+  info.loose = false
   if (sheetPlayer.apiId != null) return pool.find((p) => String(p.id) === String(sheetPlayer.apiId)) ?? null
   const me = nameParts(sheetPlayer.name)
   const parts = pool.flatMap((p) =>
@@ -173,9 +175,12 @@ export function matchSquadPlayer(sheetPlayer, pool) {
       initialsFit(c) &&
       oneEditApart(c.last, me.last),
   ]
-  for (const fits of steps) {
+  for (const [step, fits] of steps.entries()) {
     const found = parts.filter(fits)
-    if (found.length) return one(found)
+    if (!found.length) continue
+    const match = one(found)
+    if (match) Object.assign(info, { step, loose: step >= LOOSE_MATCH_STEP })
+    return match
   }
   return null
 }
