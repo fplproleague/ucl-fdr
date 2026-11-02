@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, ChevronDown, ChevronUp, Info, Plus, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -22,6 +22,8 @@ import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import ComparePlayers from './ComparePlayers.jsx'
+import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
 
 const PREVIEW = 40
 export const PRICE_STEP = 0.5
@@ -64,7 +66,9 @@ const STAT_LABELS = [
 // answers "whose fixtures are good"; this answers "who do I want for them".
 // Same matchday range as every other view.
 export default function PlayerProjections() {
-  const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo } = useTeams()
+  const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo, comparePlayers, setComparePlayers } =
+    useTeams()
+  const compareRef = useRef(null)
   const live = useLivePlayers()
   const domesticForm = useDomesticForm()
   // Both by default: UCL form alone is three or four matches deep.
@@ -86,6 +90,12 @@ export default function PlayerProjections() {
       // storage blocked: the stars just don't outlive the tab
     }
   }, [starred])
+  const compareSet = new Set(comparePlayers)
+  const compareFull = comparePlayers.length >= MAX_COMPARE_PLAYERS
+  const toggleCompare = (id) => {
+    if (compareSet.has(id)) setComparePlayers(comparePlayers.filter((x) => x !== id))
+    else if (!compareFull) setComparePlayers([...comparePlayers, id])
+  }
   const toggleStar = (id) =>
     setStarred((prev) => {
       const next = new Set(prev)
@@ -149,6 +159,7 @@ export default function PlayerProjections() {
       return {
         ...p,
         fixtures,
+        fixtureAvg: difficulties.length ? difficulties.reduce((s, d) => s + d, 0) / difficulties.length : null,
         ...ucl,
         ...projectPpm(ppm, difficulties, p.price),
         dom,
@@ -201,6 +212,13 @@ export default function PlayerProjections() {
       ? `Live from the player sheet · ${players.length} players.`
       : `Saved copy of the player sheet · ${players.length} players.`
   const domesticMatches = domesticForm?.matches ?? 5
+  // In the order they were picked; an id the current sheet doesn't have
+  // (an old link) is skipped.
+  const compared = useMemo(() => {
+    const byId = new Map(scored.map((p) => [p.id, p]))
+    return comparePlayers.map((id) => byId.get(id)).filter(Boolean)
+  }, [scored, comparePlayers])
+  const scoreLabel = { ucl: 'Score (UCL form)', domestic: 'Score (league form)', both: 'Score' }[source]
   const withoutDomestic = players.length - domestic.size
 
   return (
@@ -273,11 +291,25 @@ export default function PlayerProjections() {
                 )}
                 <p>
                   Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
-                  (saved in this browser). {dataSource}
+                  (saved in this browser), or tick + to compare up to {MAX_COMPARE_PLAYERS} side by side (the comparison
+                  is in the link, so you can share it). {dataSource}
                 </p>
               </div>
             )}
           </div>
+
+          {compared.length > 0 && (
+            <ComparePlayers
+              ref={compareRef}
+              players={compared}
+              teamsByAbbr={teamsByAbbr}
+              venueAdjust={venueAdjust}
+              domesticMatches={domesticMatches}
+              scoreLabel={scoreLabel}
+              onRemove={toggleCompare}
+              onClear={() => setComparePlayers([])}
+            />
+          )}
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
@@ -419,6 +451,7 @@ export default function PlayerProjections() {
                   // The player on 100: a faint tint and a ring on his bar.
                   const top = shown >= 99.95
                   const isStarred = starred.has(p.id)
+                  const inCompare = compareSet.has(p.id)
                   return (
                     <Fragment key={p.id}>
                       <tr
@@ -437,11 +470,43 @@ export default function PlayerProjections() {
                                 e.stopPropagation()
                                 toggleStar(p.id)
                               }}
-                              className={`flex h-9 w-8 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
+                              className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
                                 isStarred ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
                               }`}
                             >
                               <Star size={15} aria-hidden="true" fill={isStarred ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={inCompare}
+                              disabled={!inCompare && compareFull}
+                              aria-label={inCompare ? `Remove ${p.name} from compare` : `Compare ${p.name}`}
+                              title={
+                                inCompare
+                                  ? 'Remove from compare'
+                                  : compareFull
+                                    ? `Compare holds ${MAX_COMPARE_PLAYERS} players`
+                                    : 'Add to compare'
+                              }
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleCompare(p.id)
+                              }}
+                              className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                            >
+                              <span
+                                className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border ${
+                                  inCompare
+                                    ? 'border-ucl-accent bg-ucl-accent text-white'
+                                    : 'border-ucl-star/30 text-ucl-star/50'
+                                }`}
+                              >
+                                {inCompare ? (
+                                  <Check size={12} strokeWidth={3} aria-hidden="true" />
+                                ) : (
+                                  <Plus size={12} strokeWidth={2.5} aria-hidden="true" />
+                                )}
+                              </span>
                             </button>
                             <button
                               type="button"
@@ -458,9 +523,17 @@ export default function PlayerProjections() {
                                 </span>
                               </span>
                               {open ? (
-                                <ChevronUp size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                                <ChevronUp
+                                  size={14}
+                                  className="hidden shrink-0 text-ucl-muted sm:block"
+                                  aria-hidden="true"
+                                />
                               ) : (
-                                <ChevronDown size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                                <ChevronDown
+                                  size={14}
+                                  className="hidden shrink-0 text-ucl-muted sm:block"
+                                  aria-hidden="true"
+                                />
                               )}
                             </button>
                           </div>
@@ -518,6 +591,32 @@ export default function PlayerProjections() {
             >
               {showAll ? 'Show fewer' : `Show all ${rows.length}`}
             </button>
+          )}
+          {compared.length > 0 && (
+            // Follows the list while scrolling, so picks made far down the
+            // table are one tap from the comparison at the top.
+            <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
+              <div className="flex items-center gap-1 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-3 shadow-card backdrop-blur-md">
+                <span className="text-xs font-semibold">
+                  Compare {compared.length}/{MAX_COMPARE_PLAYERS}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="min-h-[36px] rounded-full bg-ucl-accent px-3 text-xs font-semibold text-white"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setComparePlayers([])}
+                  aria-label="Clear the comparison"
+                  className="min-h-[36px] rounded-full px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}

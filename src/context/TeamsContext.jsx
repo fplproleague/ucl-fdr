@@ -121,6 +121,9 @@ function initialState() {
     dayFilter: url.dayFilter ?? 'ALL',
     // Preview with made-up data (#/players?demo=1). Link-only, never stored.
     demo: url.demo,
+    // Players picked for the side-by-side comparison: in the link, so a
+    // comparison can be shared like a team comparison.
+    comparePlayers: url.players,
   }
 }
 
@@ -141,6 +144,7 @@ export function TeamsProvider({ children }) {
     showMatchday,
     dayFilter,
     demo,
+    comparePlayers,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
@@ -167,6 +171,7 @@ export function TeamsProvider({ children }) {
         dayFilter,
         ratings: overrides,
         demo,
+        players: comparePlayers,
       },
       { push: pushNext.current },
     )
@@ -175,7 +180,7 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, demo])
+  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, demo, comparePlayers])
 
   useEffect(() => {
     function onNav() {
@@ -197,6 +202,7 @@ export function TeamsProvider({ children }) {
           dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
           demo: url.demo,
+          comparePlayers: url.players,
         }
       })
     }
@@ -297,6 +303,8 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       demo,
+      comparePlayers,
+      setComparePlayers: (ids) => patch({ comparePlayers: ids }),
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
@@ -325,8 +333,7 @@ export function TeamsProvider({ children }) {
       setSkipMd: (md) => patch({ skipMd: md }),
       setCompare: (ids) => patch({ compare: ids }),
       setVenueAdjust: (on) => patch({ venueAdjust: on }),
-      setRating: (id, rating) =>
-        setState((prev) => ({ ...prev, overrides: { ...prev.overrides, [id]: rating } })),
+      setRating: (id, rating) => setState((prev) => ({ ...prev, overrides: { ...prev.overrides, [id]: rating } })),
       resetTeam: (id) =>
         setState((prev) => {
           const next = { ...prev.overrides }
@@ -361,6 +368,7 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       demo,
+      comparePlayers,
       patch,
     ],
   )

@@ -5,12 +5,15 @@
 //   #/compare?from=3&to=6&teams=ARS,INT,BAY
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/players?demo=1            (Players with made-up players, for previews)
+//   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
 export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players']
+// How many players the Players tab compares side by side.
+export const MAX_COMPARE_PLAYERS = 5
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
@@ -34,6 +37,12 @@ export function parseHash(hash = window.location.hash) {
     dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
     ratings: parseRatings(params.get('r')),
     demo: demo || null,
+    // Player ids are the sheet's ("p250016833", or a name slug): anything
+    // else is dropped rather than trusted.
+    players: [...new Set((params.get('cmp') || '').split(',').filter((id) => /^[\w-]{1,64}$/.test(id)))].slice(
+      0,
+      MAX_COMPARE_PLAYERS,
+    ),
   }
 }
 
@@ -58,7 +67,19 @@ export function serializeRatings(overrides) {
     .join('')
 }
 
-export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchday, dayFilter, ratings, demo }) {
+export function buildHash({
+  tab,
+  from,
+  to,
+  skip,
+  teams,
+  venueAdjust,
+  showMatchday,
+  dayFilter,
+  ratings,
+  demo,
+  players,
+}) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
   if (to) params.set('to', String(to))
@@ -70,6 +91,7 @@ export function buildHash({ tab, from, to, skip, teams, venueAdjust, showMatchda
   const packed = ratings ? serializeRatings(ratings) : ''
   if (packed) params.set('r', packed)
   if (tab === 'players' && demo) params.set('demo', demo)
+  if (tab === 'players' && players?.length) params.set('cmp', players.join(','))
   const query = params.toString()
   return `#/${tab}${query ? `?${query}` : ''}`
 }
