@@ -75,12 +75,71 @@ test('comparison rows: who is best where, per 90 rates, and rows nobody has are 
   assert.ok(wins[0] > 0 && wins[1] > 0)
 })
 
-test('league rows come from the domestic summary', () => {
-  const dom = { matches: 5, apps: 5, minutes: 450, goals: 3, assists: 2, ga90: 1, points: 40 }
-  const rows = compareRows([player({ id: 'a', dom }), player({ id: 'b' })], { domesticMatches: 5 })
-  const ppm = rows.find((r) => r.group === 'League · last 5' && r.label === 'Points per match')
-  assert.deepEqual(ppm.values, [8, null])
-  assert.equal(rows.find((r) => r.group === 'League · last 5' && r.label === 'Minutes').subs[0], '450/450')
+test('league rows come from the domestic summary, and every one can be opened match by match', () => {
+  const domestic = [
+    { d: '2026-10-25', opp: 'Union Berlin', v: 'H', gc: 0, min: 90, g: 1, a: 1 },
+    { d: '2026-11-01', opp: 'Mainz', v: 'A', gc: 2, min: 0, g: 0, a: 0 },
+  ]
+  const dom = { matches: 2, apps: 1, minutes: 90, goals: 1, assists: 1, ga90: 2, points: 13 }
+  const rows = compareRows([player({ id: 'a', position: 'DEF', dom, domestic }), player({ id: 'b' })], {
+    domesticMatches: 2,
+  })
+  const row = (label) => rows.find((r) => r.group === 'League · last 2' && r.label === label)
+  assert.deepEqual(row('Points per match').values, [6.5, null])
+  assert.equal(row('Minutes').subs[0], '90/180')
+  // Clean sheets: counted from the matches (60+ minutes, nothing conceded).
+  assert.deepEqual(row('Clean sheets').values, [1, null])
+  const cs = row('Clean sheets').breakdown[0]
+  assert.deepEqual(
+    cs.map((m) => [m.label, m.sub, m.value, m.hit]),
+    [
+      ['v Union Berlin', '90′', 'Clean sheet', true],
+      ['@ Mainz', 'didn’t play', '–', false],
+    ],
+  )
+  assert.equal(row('Clean sheets').breakdown[1], null)
+  assert.deepEqual(
+    row('G+A per 90').breakdown[0].map((m) => m.value),
+    ['1G 1A', '–'],
+  )
+  // A file from before shots were fetched: no shots row at all, not zeros.
+  assert.equal(row('Shots per 90'), undefined)
+})
+
+test('UCL rows open by matchday when the UCL matches are saved; season totals alone stay closed', () => {
+  const uclGames = [
+    { md: 1, d: '2026-09-09', opp: 'Arsenal', v: 'A', gc: 0, min: 90, g: 0, a: 1, sh: 3, kp: 2 },
+    { md: 2, d: '2026-10-14', opp: 'PSV', v: 'H', gc: 1, min: 75, g: 2, a: 0, sh: 5, kp: 1 },
+  ]
+  const form = [
+    { md: 1, points: 9 },
+    { md: 2, points: 13 },
+  ]
+  const a = player({ id: 'a', minutes: 165, stats: { goals: 2, assists: 1, cleanSheets: 1 }, uclGames, form })
+  const b = player({ id: 'b', form: [{ md: 1, points: 2 }] })
+  const rows = compareRows([a, b])
+  const row = (label) => rows.find((r) => r.group === 'UCL' && r.label === label)
+  assert.deepEqual(
+    row('Goals per 90').breakdown[0].map((m) => [m.label, m.value, m.hit]),
+    [
+      ['MD1 @ Arsenal', '–', false],
+      ['MD2 v PSV', '2 goals', true],
+    ],
+  )
+  assert.equal(row('Goals per 90').breakdown[1], null) // b: totals only
+  assert.deepEqual(
+    row('Points per match').breakdown[0].map((m) => m.label),
+    ['MD1 @ Arsenal', 'MD2 v PSV'],
+  )
+  assert.deepEqual(
+    row('Points per match').breakdown[1].map((m) => m.label),
+    ['MD1'],
+  )
+  // Shots per 90 from the saved matches: 8 in 165'.
+  assert.equal(row('Shots per 90').text[0], ((8 / 165) * 90).toFixed(1))
+  assert.equal(row('Shots per 90').text[1], '–')
+  // Balls recovered has no per-match data anywhere: never opens.
+  assert.equal(row('Balls recovered per 90').breakdown, null)
 })
 
 test('the comparison rides along in the Players link, capped at 5 and cleaned', () => {

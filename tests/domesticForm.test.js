@@ -7,6 +7,7 @@ import {
   domesticPoints,
   domesticSummary,
   gamesFor,
+  uclMatchday,
   matchApiTeam,
   matchSquadPlayer,
   pickDomesticLeague,
@@ -165,8 +166,8 @@ test('a club’s last matches become per-player games, with 0 minutes when he di
     ],
   )
   assert.deepEqual(gamesFor(team, 1), [
-    { d: '2026-09-27', opp: 'Team 98', v: 'A', gc: 1, min: 90, g: 0, a: 1, yc: 1 },
-    { d: '2026-10-18', opp: 'Team 96', v: 'H', gc: 1, min: 70, g: 1, a: 1 },
+    { d: '2026-09-27', opp: 'Team 98', v: 'A', gc: 1, min: 90, g: 0, a: 1, sh: 0, kp: 0, yc: 1 },
+    { d: '2026-10-18', opp: 'Team 96', v: 'H', gc: 1, min: 70, g: 1, a: 1, sh: 0, kp: 0 },
   ])
   // On the bench (null minutes) and not in the last match's sheet at all.
   assert.deepEqual(
@@ -234,4 +235,50 @@ test('the saved domestic form is valid', async () => {
       id,
     )
   }
+})
+
+test('UCL fixtures get their matchday from the round, else from the date; qualifiers none', () => {
+  const f = (round, date) => ({ league: { round }, fixture: { date: `${date}T19:00:00+00:00` } })
+  assert.equal(uclMatchday(f('League Stage - 3', '2026-10-21')), 3)
+  assert.equal(uclMatchday(f('', '2026-11-04')), 4)
+  assert.equal(uclMatchday(f('', '2026-09-10')), 1) // a Thursday game, the day after the window
+  assert.equal(uclMatchday(f('3rd Qualifying Round', '2026-08-12')), null)
+  assert.equal(uclMatchday(f('', '2026-08-12')), null)
+})
+
+test('UCL games carry their matchday, shots and key passes', () => {
+  const fixtures = [
+    {
+      league: { round: 'League Stage - 1' },
+      fixture: { id: 1, date: '2026-09-09T19:00:00+00:00', status: { short: 'FT' } },
+      teams: { home: { id: 50, name: 'Us' }, away: { id: 60, name: 'Them' } },
+      goals: { home: 1, away: 0 },
+    },
+    {
+      league: { round: 'Play-offs' },
+      fixture: { id: 2, date: '2026-08-20T19:00:00+00:00', status: { short: 'FT' } },
+      teams: { home: { id: 50, name: 'Us' }, away: { id: 70, name: 'Early' } },
+      goals: { home: 2, away: 0 },
+    },
+  ]
+  const stats = new Map([
+    [
+      1,
+      [
+        {
+          team: { id: 50 },
+          players: [
+            {
+              player: { id: 7, name: 'Kane' },
+              statistics: [{ games: { minutes: 90 }, goals: { total: 1 }, shots: { total: 4 }, passes: { key: 2 } }],
+            },
+          ],
+        },
+      ],
+    ],
+  ])
+  const team = buildTeamGames(50, fixtures, stats, Infinity, { matchday: uclMatchday })
+  assert.deepEqual(gamesFor(team, 7), [
+    { d: '2026-09-09', opp: 'Them', v: 'H', gc: 0, md: 1, min: 90, g: 1, a: 0, sh: 4, kp: 2 },
+  ])
 })

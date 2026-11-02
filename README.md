@@ -9,7 +9,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below; *Both* by default) adds each club's last 5 league matches: form as points per match (missed matches count as zeros, so cameos don't top the Form sort), goals + assists per 90, and minutes plus per-match lines in a player's details; under *Both* UCL and domestic form count equally in the score. Players can be starred into a shortlist (kept in the browser) and filtered on. Tick **+** on up to 5 players to compare them side by side: stats as rows (overview, UCL, last 5 league matches, rates per 90), the best value in each row highlighted, bars where more is better, and a "best in N" count per player. The comparison is in the link (`#/players?cmp=…`), so it can be shared. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
+- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below; *Both* by default) adds each club's last 5 league matches: form as points per match (missed matches count as zeros, so cameos don't top the Form sort), goals + assists per 90, and minutes plus per-match lines in a player's details; under *Both* UCL and domestic form count equally in the score. Players can be starred into a shortlist (kept in the browser) and filtered on. Tap **VS** on up to 5 players (3 on a phone, so the table never scrolls sideways) to compare them side by side: stats as rows (overview, fixtures per matchday, UCL, last 5 league matches, rates per 90), the best value in each row highlighted, bars where more is better, and a "best in N" count per player. A stat with match-by-match data opens to show where it comes from (which matches the clean sheets, goals or minutes came in). The comparison is in the link (`#/players?cmp=…`), so it can be shared. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 
 ## How difficulty is calculated
@@ -83,15 +83,15 @@ match divide by the matchdays played *by today*, so a sheet that lags behind und
 
 `scripts/build-domestic-form.mjs` fetches every club's last 5 domestic league matches from
 [API-Football](https://www.api-football.com/) and saves each sheet player's minutes, goals and assists in them to
-`src/data/domesticForm.js`. The browser never calls the API, so the key stays private.
+`src/data/domesticForm.js`, plus every player's UCL league-phase matches (minutes, goals, assists, clean sheets, saves, shots and key passes per matchday) for the comparison's match-by-match view. The browser never calls the API, so the key stays private.
 
 - **Key**: a text file holding only the key, `api-football-key.local` in the repo root (git ignores `*.local`) or
   `~/.ucl-fdr/api-football-key` (or `API_FOOTBALL_KEY` / `API_FOOTBALL_KEY_FILE`), so it never ends up in a commit, a
   command or a chat.
 - **Run**: `node scripts/build-domestic-form.mjs` on a laptop with the repo checked out, then commit and push
   `src/data/domesticForm.js` (that push redeploys the site). Claude Cowork can do this as a scheduled task.
-- **Cost**: about 290 requests a run (36 clubs × league, fixtures and squad, plus one per match), so a paid plan; the
-  free 100 a day isn't enough.
+- **Cost**: about 290 requests a run for the league (36 clubs × league, fixtures and squad, plus one per match) and
+  one per UCL match played so far (up to 144 by MD8), so a paid plan; the free 100 a day isn't enough.
 - **Matching**: clubs are matched to the API by name (`TEAM_ID_OVERRIDES` in the script for any it misses), players by
   name within their club, also with names in another order, a surname inside a longer name or one letter off. The
   run's log lists everyone it couldn't match and every such loose match, to check by hand. A wrong or missing player

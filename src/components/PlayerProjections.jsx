@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronUp, Info, Plus, Search, Star } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -24,6 +24,10 @@ import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import ComparePlayers from './ComparePlayers.jsx'
 import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
+
+// How many players a phone compares: three fit side by side without
+// scrolling sideways.
+const PHONE_COMPARE_PLAYERS = 3
 
 const PREVIEW = 40
 export const PRICE_STEP = 0.5
@@ -91,7 +95,10 @@ export default function PlayerProjections() {
     }
   }, [starred])
   const compareSet = new Set(comparePlayers)
-  const compareFull = comparePlayers.length >= MAX_COMPARE_PLAYERS
+  // A phone fits three players side by side without scrolling sideways.
+  const isPhone = useIsPhone()
+  const maxCompare = isPhone ? PHONE_COMPARE_PLAYERS : MAX_COMPARE_PLAYERS
+  const compareFull = comparePlayers.length >= maxCompare
   const toggleCompare = (id) => {
     if (compareSet.has(id)) setComparePlayers(comparePlayers.filter((x) => x !== id))
     else if (!compareFull) setComparePlayers([...comparePlayers, id])
@@ -110,7 +117,10 @@ export default function PlayerProjections() {
   const players = useMemo(() => {
     if (demo) return demoPlayers(Math.max(1, clubMatches))
     const saved = domesticForm?.players ?? {}
-    return live.players.map((p) => (saved[p.id] ? { ...p, domestic: saved[p.id] } : p))
+    const savedUcl = domesticForm?.uclPlayers ?? {}
+    return live.players.map((p) =>
+      saved[p.id] || savedUcl[p.id] ? { ...p, domestic: saved[p.id], uclGames: savedUcl[p.id] } : p,
+    )
   }, [demo, live.players, clubMatches, domesticForm])
   // The switch only appears once there is domestic data to switch to.
   const hasDomestic = players.some((p) => p.domestic?.length)
@@ -214,10 +224,12 @@ export default function PlayerProjections() {
   const domesticMatches = domesticForm?.matches ?? 5
   // In the order they were picked; an id the current sheet doesn't have
   // (an old link) is skipped.
-  const compared = useMemo(() => {
+  const allCompared = useMemo(() => {
     const byId = new Map(scored.map((p) => [p.id, p]))
     return comparePlayers.map((id) => byId.get(id)).filter(Boolean)
   }, [scored, comparePlayers])
+  // A shared link can hold five; a phone shows the first three.
+  const compared = allCompared.slice(0, maxCompare)
   const scoreLabel = { ucl: 'Score (UCL form)', domestic: 'Score (league form)', both: 'Score' }[source]
   const withoutDomestic = players.length - domestic.size
 
@@ -291,8 +303,8 @@ export default function PlayerProjections() {
                 )}
                 <p>
                   Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
-                  (saved in this browser), or tick + to compare up to {MAX_COMPARE_PLAYERS} side by side (the comparison
-                  is in the link, so you can share it). {dataSource}
+                  (saved in this browser), or tap VS to compare up to {maxCompare} side by side (the comparison is in
+                  the link, so you can share it). {dataSource}
                 </p>
               </div>
             )}
@@ -302,6 +314,9 @@ export default function PlayerProjections() {
             <ComparePlayers
               ref={compareRef}
               players={compared}
+              hiddenCount={allCompared.length - compared.length}
+              max={maxCompare}
+              mds={mds}
               teamsByAbbr={teamsByAbbr}
               venueAdjust={venueAdjust}
               domesticMatches={domesticMatches}
@@ -413,7 +428,7 @@ export default function PlayerProjections() {
                     Player
                   </th>
                   <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
-                    Fixtures
+                    Fixtures{mds.length > 0 && ` · MD${mds[0]} → MD${mds[mds.length - 1]}`}
                   </th>
                   <th scope="col" className="px-1.5 py-2 text-right font-semibold">
                     €m
@@ -485,7 +500,7 @@ export default function PlayerProjections() {
                                 inCompare
                                   ? 'Remove from compare'
                                   : compareFull
-                                    ? `Compare holds ${MAX_COMPARE_PLAYERS} players`
+                                    ? `Compare holds ${maxCompare} players`
                                     : 'Add to compare'
                               }
                               onClick={(e) => {
@@ -495,17 +510,14 @@ export default function PlayerProjections() {
                               className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <span
-                                className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border ${
+                                aria-hidden="true"
+                                className={`rounded-[5px] border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
                                   inCompare
                                     ? 'border-ucl-accent bg-ucl-accent text-white'
-                                    : 'border-ucl-star/30 text-ucl-star/50'
+                                    : 'border-ucl-star/30 text-ucl-star/55'
                                 }`}
                               >
-                                {inCompare ? (
-                                  <Check size={12} strokeWidth={3} aria-hidden="true" />
-                                ) : (
-                                  <Plus size={12} strokeWidth={2.5} aria-hidden="true" />
-                                )}
+                                VS
                               </span>
                             </button>
                             <button
@@ -598,7 +610,7 @@ export default function PlayerProjections() {
             <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
               <div className="flex items-center gap-1 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-3 shadow-card backdrop-blur-md">
                 <span className="text-xs font-semibold">
-                  Compare {compared.length}/{MAX_COMPARE_PLAYERS}
+                  Compare {compared.length}/{maxCompare}
                 </span>
                 <button
                   type="button"
@@ -678,22 +690,58 @@ export function PriceSlider({ bounds, value, onChange }) {
 
 // One line in the table (the name column would otherwise squeeze the chips
 // into a stack), wrapping in a row's details on a phone.
-function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
+// `showMd` puts the matchday over each chip, where the column header
+// isn't there to say which is which.
+function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true, showMd = false }) {
   return (
     <div className={`flex gap-1 ${wrap ? 'flex-wrap' : ''}`}>
-      {fixtures.map((f) => (
-        <FixtureChip
-          key={f.gw}
-          opp={f.opp}
-          oppName={teamsByAbbr[f.opp]?.name}
-          venue={f.venue}
-          rating={teamsByAbbr[f.opp]?.rating ?? 3}
-          venueAdjust={venueAdjust}
-          awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
-        />
-      ))}
+      {fixtures.map((f) => {
+        const chip = (
+          <FixtureChip
+            key={f.gw}
+            opp={f.opp}
+            oppName={teamsByAbbr[f.opp]?.name}
+            venue={f.venue}
+            rating={teamsByAbbr[f.opp]?.rating ?? 3}
+            venueAdjust={venueAdjust}
+            awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+          />
+        )
+        return showMd ? (
+          <span key={f.gw} className="flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-semibold text-ucl-muted">MD{f.gw}</span>
+            {chip}
+          </span>
+        ) : (
+          chip
+        )
+      })}
     </div>
   )
+}
+
+// Under Tailwind's sm breakpoint (640px): the phone layout.
+function useIsPhone() {
+  const query = '(max-width: 639px)'
+  const [phone, setPhone] = useState(() => {
+    try {
+      return window.matchMedia(query).matches
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    let mq
+    try {
+      mq = window.matchMedia(query)
+    } catch {
+      return undefined
+    }
+    const onChange = () => setPhone(mq.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+  return phone
 }
 
 // What's behind the numbers: points per matchday (is that average one big
@@ -769,7 +817,7 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust, league, clubMatches }
       {player.fixtures.length > 0 && (
         <div className="lg:hidden">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>
-          <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} />
+          <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} showMd />
         </div>
       )}
     </div>
