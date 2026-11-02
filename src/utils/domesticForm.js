@@ -1,5 +1,5 @@
 // Domestic league form: each club's last few league matches, from
-// API-Football (scripts/build-domestic-form.mjs fetches them at build time
+// API-Football (scripts/build-domestic-form.mjs fetches them on a laptop
 // and saves src/data/domesticForm.js). Pure JS, no network and no Node-only
 // APIs: the script, the browser and the tests all go through this file.
 //
