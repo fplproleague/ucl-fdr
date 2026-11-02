@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -28,6 +28,18 @@ export const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
 
+// Starred players, per browser. A convenience, so a blocked or cleared
+// storage just means no stars.
+const STARRED_KEY = 'ucl-fdr:starred-players:v1'
+function readStarred() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(STARRED_KEY) ?? '[]')
+    return new Set(Array.isArray(ids) ? ids : [])
+  } catch {
+    return new Set()
+  }
+}
+
 // The form switch. "Domestic" is each club's last few league matches.
 const FORM_LABELS = [
   ['ucl', 'UCL'],
@@ -55,7 +67,8 @@ export default function PlayerProjections() {
   const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo } = useTeams()
   const live = useLivePlayers()
   const domesticForm = useDomesticForm()
-  const [formSource, setFormSource] = useState('ucl')
+  // Both by default: UCL form alone is three or four matches deep.
+  const [formSource, setFormSource] = useState('both')
   const [position, setPosition] = useState('ALL')
   const [maxPrice, setMaxPrice] = useState(null)
   const [query, setQuery] = useState('')
@@ -63,6 +76,23 @@ export default function PlayerProjections() {
   const [showAll, setShowAll] = useState(false)
   const [differentialsOnly, setDifferentialsOnly] = useState(false)
   const [openId, setOpenId] = useState(null)
+  const [showInfo, setShowInfo] = useState(false)
+  const [starred, setStarred] = useState(readStarred)
+  const [starredOnly, setStarredOnly] = useState(false)
+  useEffect(() => {
+    try {
+      localStorage.setItem(STARRED_KEY, JSON.stringify([...starred]))
+    } catch {
+      // storage blocked: the stars just don't outlive the tab
+    }
+  }, [starred])
+  const toggleStar = (id) =>
+    setStarred((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   const clubMatches = leagueMatchesPlayed()
   // The demo's made-up totals are sized to the matchdays played so far, so
@@ -109,14 +139,22 @@ export default function PlayerProjections() {
       const dom = domestic.get(p.id) ?? null
       const domPpm = dom && formPpm(dom.points, dom.minutes, dom.matches, domesticRates[p.position])
       const ppm = blendForm(source, ucl.ppm, domPpm)
-      // What the Form sort orders by: the figure the Form column shows.
-      const formSort =
-        source === 'ucl'
-          ? ucl.rawPpm
-          : source === 'domestic'
-            ? (dom?.ga90 ?? -1)
-            : blendForm('both', ucl.rawPpm, dom && dom.points / dom.matches)
-      return { ...p, fixtures, ...ucl, ...projectPpm(ppm, difficulties, p.price), dom, formSort }
+      // The Form column, and what the Form sort orders by: points per match
+      // over all his club's matches, so the minutes he didn't play count
+      // as zeros. Goals per 90 would put a striker with a 4-goal game and
+      // three cameos on top; points per match puts the regulars there.
+      const domRaw = dom ? dom.points / dom.matches : null
+      const formValue =
+        source === 'ucl' ? ucl.rawPpm : source === 'domestic' ? domRaw : blendForm('both', ucl.rawPpm, domRaw)
+      return {
+        ...p,
+        fixtures,
+        ...ucl,
+        ...projectPpm(ppm, difficulties, p.price),
+        dom,
+        formValue,
+        formSort: formValue ?? -1,
+      }
     })
     const scores = relativeScores(projected)
     return projected.map((p) => ({ ...p, ...scores.get(p.id) }))
@@ -140,13 +178,14 @@ export default function PlayerProjections() {
       .filter((p) => position === 'ALL' || p.position === position)
       .filter((p) => maxPrice == null || p.price <= maxPrice)
       .filter((p) => !differentialsOnly || (p.ownership != null && p.ownership <= DIFFERENTIAL_MAX))
+      .filter((p) => !starredOnly || starred.has(p.id))
       .filter((p) => {
         if (!q) return true
         const team = teamsByAbbr[p.team]
         return [p.name, team?.name, team?.shortName, p.team].some((s) => s?.toLowerCase().includes(q))
       })
       .sort((a, b) => b[sortKey] - a[sortKey] || b.score - a.score || a.price - b.price)
-  }, [scored, position, maxPrice, differentialsOnly, query, teamsByAbbr, sortKey])
+  }, [scored, position, maxPrice, differentialsOnly, starredOnly, starred, query, teamsByAbbr, sortKey])
   const hasOwnership = players.some((p) => p.ownership != null)
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
@@ -192,29 +231,53 @@ export default function PlayerProjections() {
             className="mb-3"
           />
 
-          <p className="mb-3 text-xs text-ucl-muted">
-            <span className="font-semibold text-ucl-star/80">Score</span> combines form (points per match so far, taking
-            minutes played into account) with the fixtures in the range; 100 is the best player for these matchdays.
-            It&rsquo;s a form-and-fixtures guide,{' '}
-            <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
-              not a points prediction
-            </mark>
-            : it doesn&rsquo;t know about injuries, team news or expected goals. {dataSource}
-          </p>
-          {source !== 'ucl' && (
-            <p className="mb-3 text-xs text-ucl-muted">
-              <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
-              {domesticMatches} league matches
-              {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}: the table shows goals +
-              assists per 90 and minutes; the score counts those matches with UCL Fantasy&rsquo;s main rules
-              (appearance, goals, assists, clean sheets, cards), without balls recovered or POTM.{' '}
-              {source === 'both'
-                ? 'Both counts UCL and domestic form equally.'
-                : 'UCL matches don’t count in this score.'}
-              {withoutDomestic > 0 &&
-                ` ${withoutDomestic} players have no domestic data${source === 'both' ? ' and keep their UCL form' : ''}.`}
+          <div className="mb-3 text-xs text-ucl-muted">
+            <p className="flex items-start gap-1.5">
+              <span>
+                <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
+                matchdays.{' '}
+                <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
+                  Not a points prediction
+                </mark>
+              </span>
+              <button
+                type="button"
+                aria-expanded={showInfo}
+                aria-controls="players-info"
+                onClick={() => setShowInfo(!showInfo)}
+                className="-my-1.5 inline-flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded-full text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
+              >
+                <Info size={15} aria-hidden="true" />
+                <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
+              </button>
             </p>
-          )}
+            {showInfo && (
+              <div id="players-info" className="mt-2 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p>
+                  <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
+                  matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
+                  samples towards the average for his position. It doesn&rsquo;t know about injuries, team news or
+                  expected goals.
+                </p>
+                {hasDomestic && (
+                  <p>
+                    <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
+                    {domesticMatches} league matches
+                    {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}, scored with UCL
+                    Fantasy&rsquo;s main rules (appearance, goals, assists, clean sheets, cards), without balls
+                    recovered or POTM. <span className="font-semibold text-ucl-star/80">Both</span> counts UCL and
+                    domestic form equally.
+                    {withoutDomestic > 0 &&
+                      ` ${withoutDomestic} players have no domestic data and keep their UCL form.`}
+                  </p>
+                )}
+                <p>
+                  Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
+                  (saved in this browser). {dataSource}
+                </p>
+              </div>
+            )}
+          </div>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
@@ -276,6 +339,18 @@ export default function PlayerProjections() {
                 Differentials ≤{DIFFERENTIAL_MAX}%
               </button>
             )}
+            <button
+              type="button"
+              aria-pressed={starredOnly}
+              onClick={() => setStarredOnly(!starredOnly)}
+              title="Only your starred players"
+              className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
+                starredOnly ? 'bg-ucl-accent text-white' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
+              }`}
+            >
+              <Star size={13} aria-hidden="true" fill={starredOnly ? 'currentColor' : 'none'} />
+              Starred{starred.size > 0 && ` (${starred.size})`}
+            </button>
           </div>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
@@ -316,13 +391,13 @@ export default function PlayerProjections() {
                     className="px-1.5 py-2 text-right font-semibold"
                     title={
                       source === 'domestic'
-                        ? `Goals + assists per 90 in the last ${domesticMatches} league matches`
+                        ? `Points per match in the last ${domesticMatches} league matches (UCL Fantasy rules), goals + assists per 90 below`
                         : source === 'both'
-                          ? `UCL points per match, with domestic goals + assists per 90 below`
-                          : 'Points per match so far'
+                          ? 'Average of UCL and domestic points per match, domestic goals + assists per 90 below'
+                          : 'UCL points per match so far'
                     }
                   >
-                    {source === 'domestic' ? 'G+A/90' : 'Form'}
+                    Form
                   </th>
                   <th
                     scope="col"
@@ -340,39 +415,55 @@ export default function PlayerProjections() {
               <tbody>
                 {visible.map((p) => {
                   const open = openId === p.id
+                  const shown = sortBy === 'value' ? p.valueScore : p.score
+                  // The player on 100: a faint tint and a ring on his bar.
+                  const top = shown >= 99.95
+                  const isStarred = starred.has(p.id)
                   return (
                     <Fragment key={p.id}>
                       <tr
-                        className={`cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04] ${open ? 'bg-white/[0.04]' : ''}`}
+                        className={`cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04] ${
+                          open ? 'bg-white/[0.04]' : top ? 'bg-ucl-accent/[0.07]' : ''
+                        }`}
                         onClick={() => setOpenId(open ? null : p.id)}
                       >
-                        <th scope="row" className="w-full max-w-0 px-2 py-1.5 text-left font-normal">
-                          <button
-                            type="button"
-                            aria-expanded={open}
-                            className="flex w-full min-w-0 items-center gap-2 text-left"
-                          >
-                            <TeamBadge abbr={p.team} size={22} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold">{p.name}</span>
-                              <span className="block truncate text-[11px] text-ucl-muted">
-                                {/* Ownership before minutes: on a phone the line gets
-                                    cut short, and ownership is the one people scan for. */}
-                                {p.position} · {nameOf(p.team)}
-                                {/* Under Domestic his league minutes are the point,
-                                    so they go first, before the cut. */}
-                                {source === 'domestic' && ` · ${domesticMinutes(p.dom)}`}
-                                {p.ownership != null && ` · ${p.ownership}% owned`}
-                                {source !== 'domestic' && ` · ${Math.round(p.minutesShare * 100)}% mins`}
-                                {source === 'both' && ` · ${domesticMinutes(p.dom)}`}
+                        <th scope="row" className="w-full max-w-0 py-1.5 pl-0.5 pr-2 text-left font-normal">
+                          <div className="flex min-w-0 items-center">
+                            <button
+                              type="button"
+                              aria-pressed={isStarred}
+                              aria-label={isStarred ? `Unstar ${p.name}` : `Star ${p.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleStar(p.id)
+                              }}
+                              className={`flex h-9 w-8 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
+                                isStarred ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
+                              }`}
+                            >
+                              <Star size={15} aria-hidden="true" fill={isStarred ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                              type="button"
+                              aria-expanded={open}
+                              className="flex w-full min-w-0 items-center gap-2 text-left"
+                            >
+                              <TeamBadge abbr={p.team} size={22} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold">{p.name}</span>
+                                <span className="block truncate text-[11px] text-ucl-muted">
+                                  {/* Minutes live in the details: this line stays short. */}
+                                  {p.position} · {nameOf(p.team)}
+                                  {p.ownership != null && ` · ${p.ownership}% owned`}
+                                </span>
                               </span>
-                            </span>
-                            {open ? (
-                              <ChevronUp size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
-                            ) : (
-                              <ChevronDown size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
-                            )}
-                          </button>
+                              {open ? (
+                                <ChevronUp size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                              ) : (
+                                <ChevronDown size={14} className="shrink-0 text-ucl-muted" aria-hidden="true" />
+                              )}
+                            </button>
+                          </div>
                         </th>
                         <td className="hidden px-1 py-1.5 lg:table-cell">
                           <Fixtures
@@ -384,14 +475,13 @@ export default function PlayerProjections() {
                         </td>
                         <td className="px-1.5 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
                         <td className="px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75">
-                          {source !== 'domestic' && p.rawPpm.toFixed(1)}
-                          {source === 'domestic' && formatGa90(p.dom)}
-                          {source === 'both' && (
+                          {p.formValue == null ? '–' : p.formValue.toFixed(1)}
+                          {source !== 'ucl' && (
                             <span className="block text-[10px] text-ucl-muted">{formatGa90(p.dom)} G+A</span>
                           )}
                         </td>
                         <td className="px-2 py-1.5">
-                          <ScoreBar value={sortBy === 'value' ? p.valueScore : p.score} />
+                          <ScoreBar value={shown} highlight={top} />
                         </td>
                       </tr>
                       {open && (
@@ -402,6 +492,7 @@ export default function PlayerProjections() {
                               teamsByAbbr={teamsByAbbr}
                               venueAdjust={venueAdjust}
                               league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
+                              clubMatches={clubMatches}
                             />
                           </td>
                         </tr>
@@ -436,19 +527,24 @@ export default function PlayerProjections() {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-// His league minutes out of the most he could have played.
-const domesticMinutes = (dom) => (dom ? `${dom.minutes}/${dom.matches * 90} dom. mins` : 'no domestic data')
-
-// G+A per 90, or a dash: no domestic data, or under 90 minutes of it.
-const formatGa90 = (dom) => (dom?.ga90 == null ? '–' : dom.ga90.toFixed(2))
+// G+A per 90 in the table, or a dash: no domestic data, or under half the
+// minutes he could have played (a cameo goal isn't a rate worth showing).
+const formatGa90 = (dom) => (dom?.ga90 == null || dom.minutes < dom.matches * 45 ? '–' : dom.ga90.toFixed(2))
 
 // The score as a bar with the number on it, so the column reads at a glance
 // instead of as one more figure next to price and form.
-export function ScoreBar({ value }) {
+export function ScoreBar({ value, highlight = false }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
-    <div className="relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28">
-      <div className="absolute inset-y-0 left-0 rounded-md bg-ucl-accent/60" style={{ width: `${pct}%` }} />
+    <div
+      className={`relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28 ${
+        highlight ? 'shadow-[0_0_10px_-2px_rgba(67,97,255,0.7)] ring-1 ring-ucl-accent/70' : ''
+      }`}
+    >
+      <div
+        className={`absolute inset-y-0 left-0 rounded-md ${highlight ? 'bg-ucl-accent/80' : 'bg-ucl-accent/60'}`}
+        style={{ width: `${pct}%` }}
+      />
       <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
     </div>
   )
@@ -504,7 +600,7 @@ function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
 // What's behind the numbers: points per matchday (is that average one big
 // haul or steady returns?), the season stats, and — for phones, where the
 // fixtures column is hidden — the fixtures in the range.
-function PlayerDetails({ player, teamsByAbbr, venueAdjust, league }) {
+function PlayerDetails({ player, teamsByAbbr, venueAdjust, league, clubMatches }) {
   const stats = STAT_LABELS.filter(
     ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
   )
@@ -529,9 +625,20 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust, league }) {
       {stats.length > 0 && (
         <p className="text-xs text-ucl-star/80">
           {stats.map(([field, label]) => `${player.stats[field]} ${label}`).join(' · ')}
-          {player.apps != null && ` · ${player.apps} apps, ${player.minutes} mins`}
         </p>
       )}
+      <div>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Minutes</p>
+        <p className="text-xs text-ucl-star/80">
+          UCL {player.minutes}/{clubMatches * 90}
+          {clubMatches > 0 && ` (${Math.round(player.minutesShare * 100)}%)`}
+          {player.apps != null && `, ${plural(player.apps, 'app')}`}
+          {player.dom &&
+            ` · ${league ?? 'League'} ${player.dom.minutes}/${player.dom.matches * 90} (${Math.round(
+              (player.dom.minutes / (player.dom.matches * 90)) * 100,
+            )}%), ${player.dom.apps}/${player.dom.matches} apps`}
+        </p>
+      </div>
       {player.dom && (
         <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
@@ -555,8 +662,7 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust, league }) {
             ))}
           </div>
           <p className="mt-1 text-xs text-ucl-star/80">
-            {player.dom.apps}/{player.dom.matches} apps · {player.dom.minutes} mins · {plural(player.dom.goals, 'goal')}{' '}
-            · {plural(player.dom.assists, 'assist')}
+            {plural(player.dom.goals, 'goal')} · {plural(player.dom.assists, 'assist')}
             {player.dom.ga90 != null && ` · ${player.dom.ga90.toFixed(2)} G+A per 90`}
           </p>
         </div>
