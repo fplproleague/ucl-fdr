@@ -84,10 +84,10 @@ match divide by the matchdays played *by today*, so a sheet that lags behind und
 [API-Football](https://www.api-football.com/) and saves each sheet player's minutes, goals and assists in them to
 `src/data/domesticForm.js`. The browser never calls the API, so the key stays private.
 
-- **Automatic**: `.github/workflows/domestic-form.yml` runs it every morning and commits the file when there are new
-  matches (which redeploys the site). Add the key as the repository secret `API_FOOTBALL_KEY`
-  (Settings → Secrets and variables → Actions); *Actions → Domestic form → Run workflow* runs it straight away.
-- **By hand**: `API_FOOTBALL_KEY=… node scripts/build-domestic-form.mjs`.
+- **Key**: a text file holding only the key at `~/.ucl-fdr/api-football-key` (or `API_FOOTBALL_KEY` /
+  `API_FOOTBALL_KEY_FILE`), outside the repo, so it never ends up in a commit, a command or a chat.
+- **Run**: `node scripts/build-domestic-form.mjs` on a laptop with the repo checked out, then commit and push
+  `src/data/domesticForm.js` (that push redeploys the site). Claude Cowork can do this as a scheduled task.
 - **Cost**: about 290 requests a run (36 clubs × league, fixtures and squad, plus one per match), so a paid plan; the
   free 100 a day isn't enough.
 - **Matching**: clubs are matched to the API by name (`TEAM_ID_OVERRIDES` in the script for any it misses), players by

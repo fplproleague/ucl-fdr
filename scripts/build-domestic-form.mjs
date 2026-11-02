@@ -1,21 +1,26 @@
 // Regenerates src/data/domesticForm.js: every sheet player's minutes, goals
 // and assists in his club's last DOMESTIC_MATCHES league matches, from
 // API-Football (api-sports.io). The site never calls the API itself, so the
-// key stays out of the browser; this runs on a schedule instead (see
-// .github/workflows/domestic-form.yml) and commits the result.
+// key stays out of the browser: this runs on a laptop (by hand, or as a
+// Claude Cowork scheduled task), and the result is committed and pushed.
 //
 // Usage:
+//   node scripts/build-domestic-form.mjs        key from ~/.ucl-fdr/api-football-key
 //   API_FOOTBALL_KEY=… node scripts/build-domestic-form.mjs
 //   … --soft     never fails (no key, API down, over quota): keeps the saved file
 //
 // Optional environment:
+//   API_FOOTBALL_KEY_FILE  where the key file is (default ~/.ucl-fdr/api-football-key):
+//                          a text file holding only the key, outside the repo, so the
+//                          key never has to be typed into a command or a chat
 //   API_FOOTBALL_SEASON    the UCL season year (default: 2026 for 2026/27)
 //   API_FOOTBALL_DELAY_MS  pause between requests (default 250, ≈240 a minute)
 //   API_FOOTBALL_BASE      another API address (a local mock, for testing)
 //
 // Cost: about 3 requests per club plus one per league match fetched, so
 // roughly 36 × 3 + 36 × 5 ≈ 290 per run (fewer when two clubs met).
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildClubLookup } from '../src/utils/parseGoalkeepersCsv.js'
@@ -39,7 +44,8 @@ const UCL_LEAGUE_ID = 2
 const TEAM_ID_OVERRIDES = {}
 
 const soft = process.argv.includes('--soft')
-const key = process.env.API_FOOTBALL_KEY
+const keyFile = process.env.API_FOOTBALL_KEY_FILE ?? path.join(os.homedir(), '.ucl-fdr', 'api-football-key')
+const key = process.env.API_FOOTBALL_KEY || (existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : '')
 const delayMs = Number(process.env.API_FOOTBALL_DELAY_MS ?? 250)
 const today = new Date()
 const season = Number(
@@ -55,7 +61,7 @@ function bail(message) {
   process.exit(1)
 }
 
-if (!key) bail('no API_FOOTBALL_KEY set')
+if (!key) bail(`no API_FOOTBALL_KEY set and no key file at ${keyFile}`)
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let requests = 0
