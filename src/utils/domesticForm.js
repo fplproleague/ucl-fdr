@@ -8,9 +8,13 @@
 //   d date · opp opponent · v his club at home (H) or away (A) · gc goals his
 //   club conceded · min/g/a his minutes, goals and assists. Optional, left
 //   out when zero: sv saves, yc/rc yellow/red cards, ps/pm penalties saved/missed.
+//   sh shots, kp key passes: on every game he played in files written since
+//   they were added (an older file has neither).
+// The same shape holds his UCL matches (uclPlayers), with md, the matchday.
 // A game he didn't play in has min 0: the club's match still counts, so a
 // benched regular shows up as not playing rather than as missing data.
 import { slugifyName } from './parseGoalkeepersCsv.js'
+import { MATCHDAYS } from '../data/matchdays.js'
 
 // How many of each club's latest league matches count as "form".
 export const DOMESTIC_MATCHES = 5
@@ -208,9 +212,12 @@ export function pickDomesticLeague(entries, country) {
 // One club's league matches (API /fixtures rows) and the player stats for
 // each (API /fixtures/players responses, by fixture id) → the club's last
 // `count` games as a template, plus every player who appears in them.
-export function buildTeamGames(apiTeamId, fixtures, statsByFixture, count = DOMESTIC_MATCHES) {
+// `matchday` (for the UCL): fixture → its league-phase matchday, or null to
+// leave it out (a qualifier).
+export function buildTeamGames(apiTeamId, fixtures, statsByFixture, count = DOMESTIC_MATCHES, { matchday } = {}) {
   const finished = fixtures
     .filter((f) => ['FT', 'AET', 'PEN'].includes(f.fixture?.status?.short))
+    .filter((f) => !matchday || matchday(f) != null)
     .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))
     .slice(-count)
 
@@ -224,11 +231,20 @@ export function buildTeamGames(apiTeamId, fixtures, statsByFixture, count = DOME
       opp: home ? f.teams.away.name : f.teams.home.name,
       v: home ? 'H' : 'A',
       gc: (home ? f.goals.away : f.goals.home) ?? 0,
+      ...(matchday ? { md: matchday(f) } : {}),
     })
     const side = (statsByFixture.get(f.fixture.id) ?? []).find((t) => t.team?.id === apiTeamId)
     for (const entry of side?.players ?? []) {
       const s = entry.statistics?.[0] ?? {}
-      const line = { min: s.games?.minutes ?? 0, g: s.goals?.total ?? 0, a: s.goals?.assists ?? 0 }
+      // Shots and key passes always written (0 included), so a file from
+      // before they were fetched reads as "no data", not as zeros.
+      const line = {
+        min: s.games?.minutes ?? 0,
+        g: s.goals?.total ?? 0,
+        a: s.goals?.assists ?? 0,
+        sh: s.shots?.total ?? 0,
+        kp: s.passes?.key ?? 0,
+      }
       const optional = {
         sv: s.goals?.saves,
         yc: s.cards?.yellow,
@@ -250,4 +266,18 @@ export function buildTeamGames(apiTeamId, fixtures, statsByFixture, count = DOME
 export function gamesFor(team, apiPlayerId) {
   const lines = team.players.get(apiPlayerId)?.lines
   return team.template.map(({ fid, ...game }) => ({ ...game, ...(lines?.get(fid) ?? { min: 0, g: 0, a: 0 }) }))
+}
+
+// A UCL fixture's league-phase matchday: from the API's round name
+// ("League Stage - 3"), or else from the matchday window its date falls in
+// (a day either side, for Thursday games). Qualifiers and play-offs, in
+// July and August, fall in neither: null.
+export function uclMatchday(fixture) {
+  const round = fixture.league?.round ?? ''
+  const fromRound = round.match(/league\s*(?:stage|phase)\D*(\d+)/i)
+  if (fromRound) return Number(fromRound[1])
+  if (/qualif|play-?off|knockout|final/i.test(round)) return null
+  const day = (fixture.fixture?.date ?? '').slice(0, 10)
+  const shift = (iso, days) => new Date(Date.parse(iso) + days * 86400000).toISOString().slice(0, 10)
+  return MATCHDAYS.find((m) => day >= shift(m.start, -1) && day <= shift(m.end, 1))?.md ?? null
 }

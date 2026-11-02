@@ -510,4 +510,6 @@ export const DOMESTIC_FORM = {
     p250058244: [{ d: '2026-09-13', opp: 'Asteras Tripolis', v: 'A', gc: 1, min: 90, g: 0, a: 0 }, { d: '2026-09-20', opp: 'Volos NFC', v: 'A', gc: 1, min: 89, g: 2, a: 0, yc: 1 }, { d: '2026-10-10', opp: 'OFI', v: 'H', gc: 0, min: 88, g: 0, a: 0 }, { d: '2026-10-24', opp: 'Panetolikos', v: 'H', gc: 0, min: 27, g: 0, a: 0 }, { d: '2026-11-01', opp: 'Panathinaikos', v: 'A', gc: 2, min: 90, g: 0, a: 0 }],
     p250183450: [{ d: '2026-09-13', opp: 'Asteras Tripolis', v: 'A', gc: 1, min: 38, g: 0, a: 0 }, { d: '2026-09-20', opp: 'Volos NFC', v: 'A', gc: 1, min: 0, g: 0, a: 0 }, { d: '2026-10-10', opp: 'OFI', v: 'H', gc: 0, min: 0, g: 0, a: 0 }, { d: '2026-10-24', opp: 'Panetolikos', v: 'H', gc: 0, min: 63, g: 1, a: 0 }, { d: '2026-11-01', opp: 'Panathinaikos', v: 'A', gc: 2, min: 90, g: 0, a: 0 }],
   },
+  // His UCL league-phase matches, with md (the matchday). Filled by the next run.
+  uclPlayers: {},
 }

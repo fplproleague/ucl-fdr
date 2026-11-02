@@ -18,8 +18,13 @@
 //   API_FOOTBALL_DELAY_MS  pause between requests (default 250, ≈240 a minute)
 //   API_FOOTBALL_BASE      another API address (a local mock, for testing)
 //
-// Cost: about 3 requests per club plus one per league match fetched, so
-// roughly 36 × 3 + 36 × 5 ≈ 290 per run (fewer when two clubs met).
+// It also saves each player's UCL league-phase matches (uclPlayers), for the
+// per-match breakdowns in the Players tab's comparison.
+//
+// Cost: about 3 requests per club plus one per league match fetched
+// (36 × 3 + 36 × 5 ≈ 290, fewer when two clubs met), plus one for the UCL
+// fixture list and one per UCL match played so far (18 per matchday, so
+// up to 144 by MD8).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -33,6 +38,7 @@ import {
   matchApiTeam,
   matchSquadPlayer,
   pickDomesticLeague,
+  uclMatchday,
 } from '../src/utils/domesticForm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -166,56 +172,68 @@ async function run() {
     )
 
   const out = {}
+  const uclOut = {}
   const leagues = {}
   const statsByFixture = new Map()
+  const statsFor = async (fixtures) => {
+    for (const f of fixtures)
+      if (!statsByFixture.has(f.fixture.id))
+        statsByFixture.set(f.fixture.id, await api('fixtures/players', { fixture: f.fixture.id }))
+  }
   const unmatched = []
   const notInApi = []
   const loose = []
+  let matched = 0
+
+  // Every finished UCL match this season, in one request; qualifiers are
+  // dropped per club below (uclMatchday).
+  const uclFixtures = await api('fixtures', { league: UCL_LEAGUE_ID, season, status: 'FT-AET-PEN' })
 
   for (const team of INITIAL_TEAMS) {
     const teamId = apiIds[team.id]
     if (teamId == null) continue
+
     // His club's league (type "league": the UCL itself is a cup), and the
     // season that league is in now (Norway runs on the calendar year).
+    // Without it (no league, or one without player stats) the club still
+    // gets its UCL matches.
+    let games = null
     const entry = pickDomesticLeague(
       await api('leagues', { team: teamId, type: 'league', current: 'true' }),
       countries[team.id],
     )
-    if (!entry) {
-      console.warn(`Domestic form: no current league for ${team.id}`)
-      continue
+    const leagueSeason = entry?.seasons?.[0]
+    if (!entry) console.warn(`Domestic form: no current league for ${team.id}`)
+    else if (leagueSeason?.coverage?.fixtures?.statistics_players === false)
+      console.warn(`Domestic form: ${entry.league.name} has no player stats in the API — ${team.id} has no league form`)
+    else {
+      leagues[team.id] = entry.league.name
+      const fixtures = await api('fixtures', {
+        team: teamId,
+        league: entry.league.id,
+        season: leagueSeason?.year ?? season,
+        status: 'FT-AET-PEN',
+      })
+      const latest = [...fixtures]
+        .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+        .slice(0, DOMESTIC_MATCHES)
+      await statsFor(latest)
+      games = buildTeamGames(teamId, latest, statsByFixture)
     }
-    const leagueSeason = entry.seasons?.[0]
-    if (leagueSeason?.coverage?.fixtures?.statistics_players === false) {
-      console.warn(`Domestic form: ${entry.league.name} has no player stats in the API — ${team.id} skipped`)
-      continue
-    }
-    leagues[team.id] = entry.league.name
 
-    const fixtures = await api('fixtures', {
-      team: teamId,
-      league: entry.league.id,
-      season: leagueSeason?.year ?? season,
-      status: 'FT-AET-PEN',
-    })
-    const latest = [...fixtures]
-      .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-      .slice(0, DOMESTIC_MATCHES)
-    for (const f of latest) {
-      if (!statsByFixture.has(f.fixture.id))
-        statsByFixture.set(f.fixture.id, await api('fixtures/players', { fixture: f.fixture.id }))
-    }
-    const games = buildTeamGames(teamId, latest, statsByFixture)
+    const uclMine = uclFixtures.filter((f) => f.teams.home.id === teamId || f.teams.away.id === teamId)
+    await statsFor(uclMine.filter((f) => uclMatchday(f) != null))
+    const ucl = buildTeamGames(teamId, uclMine, statsByFixture, Infinity, { matchday: uclMatchday })
 
     // Everyone the club has registered, plus anyone who played in these
     // games but isn't in the squad list (a youngster, a late signing). The
     // match sheets' spelling of a name is kept next to the squad list's.
     const [squad] = await api('players/squads', { team: teamId })
     const pool = new Map((squad?.players ?? []).map((p) => [p.id, { id: p.id, name: p.name, names: [] }]))
-    for (const p of games.players.values()) {
+    for (const p of [...(games?.players.values() ?? []), ...ucl.players.values()]) {
       const known = pool.get(p.id)
       if (!known) pool.set(p.id, { id: p.id, name: p.name, names: [] })
-      else if (p.name && p.name !== known.name) known.names.push(p.name)
+      else if (p.name && p.name !== known.name && !known.names.includes(p.name)) known.names.push(p.name)
     }
 
     for (const player of players.filter((p) => p.team === team.id)) {
@@ -223,16 +241,24 @@ async function run() {
       const lookup = player.apiId == null && override != null ? { ...player, apiId: override } : player
       const info = {}
       const match = matchSquadPlayer(lookup, [...pool.values()], info)
-      if (match) out[player.id] = gamesFor(games, match.id)
-      if (match && info.loose) loose.push(`${player.name} = ${match.name} (${team.id})`)
-      else if (player.apiId == null && override === null) {
-        out[player.id] = gamesFor(games, null)
+      let apiId
+      if (match) {
+        apiId = match.id
+        matched++
+        if (info.loose) loose.push(`${player.name} = ${match.name} (${team.id})`)
+      } else if (player.apiId == null && override === null) {
+        // Not in API-Football at all: his club's matches, 0 minutes in each.
+        apiId = null
         notInApi.push(`${player.name} (${team.id})`)
-      } else unmatched.push(`${player.name} (${team.id})`)
+      } else {
+        unmatched.push(`${player.name} (${team.id})`)
+        continue
+      }
+      if (games) out[player.id] = gamesFor(games, apiId)
+      if (ucl.template.length) uclOut[player.id] = gamesFor(ucl, apiId)
     }
   }
 
-  const matched = Object.keys(out).length - notInApi.length
   console.log(
     `Domestic form: ${matched} players matched, ${requests} requests` +
       (remainingToday != null ? `, ${remainingToday} left today` : ''),
@@ -249,7 +275,7 @@ async function run() {
       `Domestic form: ${unmatched.length} not matched by name (add an "API ID" column to fix one): ${unmatched.join(', ')}`,
     )
   if (matched === 0) bail('nobody matched')
-  return { out, leagues }
+  return { out, uclOut, leagues }
 }
 
 let result
@@ -276,6 +302,11 @@ function toJs(value) {
   return String(value)
 }
 
+const lines = (byId) =>
+  Object.entries(byId)
+    .map(([id, games]) => `    ${toJs({ [id]: games }).slice(2, -2)},`)
+    .join('\n')
+
 writeFileSync(
   OUT,
   `// Domestic league form per player — each club's last league matches, from
@@ -287,9 +318,11 @@ export const DOMESTIC_FORM = {
   matches: ${DOMESTIC_MATCHES},
   leagues: ${toJs(result.leagues)},
   players: {
-${Object.entries(result.out)
-  .map(([id, games]) => `    ${toJs({ [id]: games }).slice(2, -2)},`)
-  .join('\n')}
+${lines(result.out)}
+  },
+  // His UCL league-phase matches, with md (the matchday).
+  uclPlayers: {
+${lines(result.uclOut)}
   },
 }
 `,
