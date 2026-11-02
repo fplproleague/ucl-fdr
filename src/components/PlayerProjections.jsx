@@ -5,7 +5,17 @@ import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
-import { leagueMatchesPlayed, positionRates, projectLeaguePlayer, relativeScores } from '../utils/playerProjection.js'
+import {
+  blendForm,
+  formPpm,
+  leagueMatchesPlayed,
+  positionRates,
+  projectLeaguePlayer,
+  projectPpm,
+  relativeScores,
+} from '../utils/playerProjection.js'
+import { domesticSummary } from '../utils/domesticForm.js'
+import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { effectiveDifficulty } from '../utils/difficulty.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
@@ -17,6 +27,13 @@ const PREVIEW = 40
 export const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
+
+// The form switch. "Domestic" is each club's last few league matches.
+const FORM_LABELS = [
+  ['ucl', 'UCL'],
+  ['domestic', 'Domestic'],
+  ['both', 'Both'],
+]
 
 // The per-player stats shown in a row's details, in this order, when the
 // sheet has them. Saves only mean something for a goalkeeper, clean sheets
@@ -37,6 +54,8 @@ const STAT_LABELS = [
 export default function PlayerProjections() {
   const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo } = useTeams()
   const live = useLivePlayers()
+  const domesticForm = useDomesticForm()
+  const [formSource, setFormSource] = useState('ucl')
   const [position, setPosition] = useState('ALL')
   const [maxPrice, setMaxPrice] = useState(null)
   const [query, setQuery] = useState('')
@@ -48,14 +67,30 @@ export default function PlayerProjections() {
   const clubMatches = leagueMatchesPlayed()
   // The demo's made-up totals are sized to the matchdays played so far, so
   // their points per match look like real ones.
-  const players = useMemo(
-    () => (demo ? demoPlayers(Math.max(1, clubMatches)) : live.players),
-    [demo, live.players, clubMatches],
-  )
+  const players = useMemo(() => {
+    if (demo) return demoPlayers(Math.max(1, clubMatches))
+    const saved = domesticForm?.players ?? {}
+    return live.players.map((p) => (saved[p.id] ? { ...p, domestic: saved[p.id] } : p))
+  }, [demo, live.players, clubMatches, domesticForm])
+  // The switch only appears once there is domestic data to switch to.
+  const hasDomestic = players.some((p) => p.domestic?.length)
+  const source = hasDomestic ? formSource : 'ucl'
   const mds = useVisibleMds(from, to, skipMd)
   // Computed over the whole sheet, before any filter: the average a player
   // is pulled towards mustn't change because someone set a price cap.
   const rates = useMemo(() => positionRates(players), [players])
+  // Domestic form per player, and its own position averages to pull towards.
+  const domestic = useMemo(
+    () => new Map(players.map((p) => [p.id, domesticSummary(p.domestic, p.position)]).filter(([, d]) => d)),
+    [players],
+  )
+  const domesticRates = useMemo(
+    () =>
+      positionRates(
+        players.filter((p) => domestic.has(p.id)).map((p) => ({ ...domestic.get(p.id), position: p.position })),
+      ),
+    [players, domestic],
+  )
 
   // Every player's projection and score first, over the whole sheet: the
   // filters below only hide rows, they never change anyone's score.
@@ -70,11 +105,22 @@ export default function PlayerProjections() {
           teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
         ),
       )
-      return { ...p, fixtures, ...projectLeaguePlayer(p, difficulties, clubMatches, rates[p.position]) }
+      const ucl = projectLeaguePlayer(p, difficulties, clubMatches, rates[p.position])
+      const dom = domestic.get(p.id) ?? null
+      const domPpm = dom && formPpm(dom.points, dom.minutes, dom.matches, domesticRates[p.position])
+      const ppm = blendForm(source, ucl.ppm, domPpm)
+      // What the Form sort orders by: the figure the Form column shows.
+      const formSort =
+        source === 'ucl'
+          ? ucl.rawPpm
+          : source === 'domestic'
+            ? (dom?.ga90 ?? -1)
+            : blendForm('both', ucl.rawPpm, dom && dom.points / dom.matches)
+      return { ...p, fixtures, ...ucl, ...projectPpm(ppm, difficulties, p.price), dom, formSort }
     })
     const scores = relativeScores(projected)
     return projected.map((p) => ({ ...p, ...scores.get(p.id) }))
-  }, [players, mds, teamsByAbbr, venueAdjust, clubMatches, rates])
+  }, [players, mds, teamsByAbbr, venueAdjust, clubMatches, rates, domestic, domesticRates, source])
 
   // The price slider runs in €0.5m steps from just under the cheapest player
   // to just over the dearest; its top end means "any price".
@@ -87,7 +133,7 @@ export default function PlayerProjections() {
     }
   }, [players])
 
-  const sortKey = { score: 'score', value: 'valueScore', form: 'rawPpm' }[sortBy]
+  const sortKey = { score: 'score', value: 'valueScore', form: 'formSort' }[sortBy]
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return scored
@@ -110,11 +156,13 @@ export default function PlayerProjections() {
       active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
     }`
 
-  const source = demo
+  const dataSource = demo
     ? 'Demo players: made up, named by club and role.'
     : live.live
       ? `Live from the player sheet · ${players.length} players.`
       : `Saved copy of the player sheet · ${players.length} players.`
+  const domesticMatches = domesticForm?.matches ?? 5
+  const withoutDomestic = players.length - domestic.size
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -151,8 +199,22 @@ export default function PlayerProjections() {
             <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
               not a points prediction
             </mark>
-            : it doesn&rsquo;t know about injuries, team news or expected goals. {source}
+            : it doesn&rsquo;t know about injuries, team news or expected goals. {dataSource}
           </p>
+          {source !== 'ucl' && (
+            <p className="mb-3 text-xs text-ucl-muted">
+              <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
+              {domesticMatches} league matches
+              {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}: the table shows goals +
+              assists per 90 and minutes; the score counts those matches with UCL Fantasy&rsquo;s main rules
+              (appearance, goals, assists, clean sheets, cards), without balls recovered or POTM.{' '}
+              {source === 'both'
+                ? 'Both counts UCL and domestic form equally.'
+                : 'UCL matches don’t count in this score.'}
+              {withoutDomestic > 0 &&
+                ` ${withoutDomestic} players have no domestic data${source === 'both' ? ' and keep their UCL form' : ''}.`}
+            </p>
+          )}
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
@@ -168,6 +230,22 @@ export default function PlayerProjections() {
                 </button>
               ))}
             </div>
+            {hasDomestic && (
+              <div role="group" aria-label="Form" className="flex items-center rounded-lg bg-white/5 p-0.5">
+                <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Form</span>
+                {FORM_LABELS.map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={source === id}
+                    onClick={() => setFormSource(id)}
+                    className={chip(source === id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div role="group" aria-label="Sort by" className="flex rounded-lg bg-white/5 p-0.5">
               {[
                 ['score', 'Score'],
@@ -233,8 +311,18 @@ export default function PlayerProjections() {
                   <th scope="col" className="px-1.5 py-2 text-right font-semibold">
                     €m
                   </th>
-                  <th scope="col" className="px-1.5 py-2 text-right font-semibold" title="Points per match so far">
-                    Form
+                  <th
+                    scope="col"
+                    className="px-1.5 py-2 text-right font-semibold"
+                    title={
+                      source === 'domestic'
+                        ? `Goals + assists per 90 in the last ${domesticMatches} league matches`
+                        : source === 'both'
+                          ? `UCL points per match, with domestic goals + assists per 90 below`
+                          : 'Points per match so far'
+                    }
+                  >
+                    {source === 'domestic' ? 'G+A/90' : 'Form'}
                   </th>
                   <th
                     scope="col"
@@ -271,8 +359,12 @@ export default function PlayerProjections() {
                                 {/* Ownership before minutes: on a phone the line gets
                                     cut short, and ownership is the one people scan for. */}
                                 {p.position} · {nameOf(p.team)}
-                                {p.ownership != null && ` · ${p.ownership}% owned`} · {Math.round(p.minutesShare * 100)}
-                                % mins
+                                {/* Under Domestic his league minutes are the point,
+                                    so they go first, before the cut. */}
+                                {source === 'domestic' && ` · ${domesticMinutes(p.dom)}`}
+                                {p.ownership != null && ` · ${p.ownership}% owned`}
+                                {source !== 'domestic' && ` · ${Math.round(p.minutesShare * 100)}% mins`}
+                                {source === 'both' && ` · ${domesticMinutes(p.dom)}`}
                               </span>
                             </span>
                             {open ? (
@@ -292,7 +384,11 @@ export default function PlayerProjections() {
                         </td>
                         <td className="px-1.5 py-1.5 text-right tabular-nums">{p.price.toFixed(1)}</td>
                         <td className="px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75">
-                          {p.rawPpm.toFixed(1)}
+                          {source !== 'domestic' && p.rawPpm.toFixed(1)}
+                          {source === 'domestic' && formatGa90(p.dom)}
+                          {source === 'both' && (
+                            <span className="block text-[10px] text-ucl-muted">{formatGa90(p.dom)} G+A</span>
+                          )}
                         </td>
                         <td className="px-2 py-1.5">
                           <ScoreBar value={sortBy === 'value' ? p.valueScore : p.score} />
@@ -301,7 +397,12 @@ export default function PlayerProjections() {
                       {open && (
                         <tr className="bg-white/[0.04]">
                           <td colSpan={5} className="whitespace-normal px-2 pb-3 pt-1">
-                            <PlayerDetails player={p} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} />
+                            <PlayerDetails
+                              player={p}
+                              teamsByAbbr={teamsByAbbr}
+                              venueAdjust={venueAdjust}
+                              league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
+                            />
                           </td>
                         </tr>
                       )}
@@ -332,6 +433,14 @@ export default function PlayerProjections() {
     </div>
   )
 }
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+// His league minutes out of the most he could have played.
+const domesticMinutes = (dom) => (dom ? `${dom.minutes}/${dom.matches * 90} dom. mins` : 'no domestic data')
+
+// G+A per 90, or a dash: no domestic data, or under 90 minutes of it.
+const formatGa90 = (dom) => (dom?.ga90 == null ? '–' : dom.ga90.toFixed(2))
 
 // The score as a bar with the number on it, so the column reads at a glance
 // instead of as one more figure next to price and form.
@@ -395,7 +504,7 @@ function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
 // What's behind the numbers: points per matchday (is that average one big
 // haul or steady returns?), the season stats, and — for phones, where the
 // fixtures column is hidden — the fixtures in the range.
-function PlayerDetails({ player, teamsByAbbr, venueAdjust }) {
+function PlayerDetails({ player, teamsByAbbr, venueAdjust, league }) {
   const stats = STAT_LABELS.filter(
     ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
   )
@@ -422,6 +531,35 @@ function PlayerDetails({ player, teamsByAbbr, venueAdjust }) {
           {stats.map(([field, label]) => `${player.stats[field]} ${label}`).join(' · ')}
           {player.apps != null && ` · ${player.apps} apps, ${player.minutes} mins`}
         </p>
+      )}
+      {player.dom && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
+            Last {player.dom.matches} in {league ?? 'the league'}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {player.domestic.map((g) => (
+              <span
+                key={`${g.d}-${g.opp}`}
+                title={`${g.d} · ${g.opp} (${g.v === 'H' ? 'home' : 'away'})`}
+                className={`inline-flex w-[72px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs ${g.min ? '' : 'opacity-50'}`}
+              >
+                <span className="w-full truncate text-center text-[10px] text-ucl-muted">
+                  {g.v === 'H' ? 'v' : '@'} {g.opp}
+                </span>
+                <span className="font-bold tabular-nums">{g.min}&prime;</span>
+                <span className="text-[10px] tabular-nums text-ucl-star/70">
+                  {g.g || g.a ? [g.g && `${g.g}G`, g.a && `${g.a}A`].filter(Boolean).join(' ') : '–'}
+                </span>
+              </span>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-ucl-star/80">
+            {player.dom.apps}/{player.dom.matches} apps · {player.dom.minutes} mins · {plural(player.dom.goals, 'goal')}{' '}
+            · {plural(player.dom.assists, 'assist')}
+            {player.dom.ga90 != null && ` · ${player.dom.ga90.toFixed(2)} G+A per 90`}
+          </p>
+        </div>
       )}
       {player.fixtures.length > 0 && (
         <div className="lg:hidden">

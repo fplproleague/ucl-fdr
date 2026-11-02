@@ -34,7 +34,28 @@ export function demoPlayers(matchesPlayed = 8) {
           md: i + 1,
           points: Math.floor(points / matchesPlayed) + (i < points % matchesPlayed ? 1 : 0),
         })),
+        domestic: demoDomestic(t, r, position, team.rating),
       }
     }),
   )
+}
+
+// Five made-up league matches, so the Domestic / Both form switch has
+// something to show in the demo. Some players sit out a game or two.
+function demoDomestic(t, r, position, rating) {
+  const attack = { GK: 0, DEF: 0.1, MID: 0.3, FWD: 0.5 }[position]
+  return Array.from({ length: 5 }, (_, i) => {
+    const seed = (t * 31 + r * 17 + i * 7) % 20
+    const min = seed < 2 ? 0 : seed < 5 ? 25 : 90
+    const involvement = min ? Math.round(attack * (rating / 3) * (seed % 4) * 0.6) : 0
+    return {
+      d: `2026-10-${String(4 + i * 6).padStart(2, '0')}`,
+      opp: `League side ${i + 1}`,
+      v: i % 2 ? 'A' : 'H',
+      gc: seed % 3,
+      min,
+      g: Math.ceil(involvement / 2),
+      a: Math.floor(involvement / 2),
+    }
+  })
 }
