@@ -50,6 +50,23 @@ export function fixtureFactor(difficulty) {
   return 1 + Math.max(-FIXTURE_CAP, Math.min(FIXTURE_CAP, f))
 }
 
+// Points per match from a points/minutes total over `matches` club matches,
+// pulled towards `positionRate` (his position's average points per 90) the
+// way PRIOR_MINUTES describes, and scaled by the share of those matches'
+// minutes he played. Without a rate there's no regression: points ÷ matches.
+export function formPpm(points, minutes, matches, positionRate) {
+  if (!(matches > 0)) return 0
+  if (positionRate == null) return points / matches
+  const minutesShare = Math.min(1, minutes / (matches * 90))
+  return ((points + (PRIOR_MINUTES / 90) * positionRate) / (minutes + PRIOR_MINUTES)) * 90 * minutesShare
+}
+
+// Points per match over each fixture in the range, mildly adjusted for it.
+export function projectPpm(ppm, difficulties, price) {
+  const xPts = difficulties.reduce((sum, d) => sum + ppm * fixtureFactor(d), 0)
+  return { ppm, matches: difficulties.length, xPts, value: xPts / price }
+}
+
 // `difficulties`: the effective difficulty (1–5, venue-adjusted, as the FDR
 // chips show it) of each of his fixtures in the range. `positionRate`: his
 // position's average points per 90 (positionRates); without it there's no
@@ -57,12 +74,19 @@ export function fixtureFactor(difficulty) {
 export function projectLeaguePlayer(player, difficulties, clubMatches, positionRate) {
   const minutesShare = clubMatches > 0 ? Math.min(1, player.minutes / (clubMatches * 90)) : 0
   const rawPpm = clubMatches > 0 ? player.points / clubMatches : 0
-  const ppm =
-    positionRate == null
-      ? rawPpm
-      : ((player.points + (PRIOR_MINUTES / 90) * positionRate) / (player.minutes + PRIOR_MINUTES)) * 90 * minutesShare
-  const xPts = difficulties.reduce((sum, d) => sum + ppm * fixtureFactor(d), 0)
-  return { ppm, rawPpm, minutesShare, matches: difficulties.length, xPts, value: xPts / player.price }
+  const ppm = formPpm(player.points, player.minutes, clubMatches, positionRate)
+  return { rawPpm, minutesShare, ...projectPpm(ppm, difficulties, player.price) }
+}
+
+// Which form the score runs on: UCL points per match, domestic league form
+// (domesticForm.js, as points per match), or both counted equally. A player
+// with no domestic data keeps his UCL form under "both" rather than being
+// halved for a gap in the data; under "domestic" alone he has nothing to go on.
+export const FORM_SOURCES = ['ucl', 'domestic', 'both']
+export function blendForm(source, uclPpm, domesticPpm) {
+  if (source === 'ucl') return uclPpm
+  if (source === 'domestic') return domesticPpm ?? 0
+  return domesticPpm == null ? uclPpm : (uclPpm + domesticPpm) / 2
 }
 
 // The Players tab shows a relative score rather than a points total: this

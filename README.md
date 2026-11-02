@@ -9,7 +9,7 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
+- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below) adds each club's last 5 league matches: goals + assists per 90 and minutes in the table, per-match minutes in a player's details, and under *Both* UCL and domestic form count equally in the score. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 
 ## How difficulty is calculated
@@ -78,6 +78,27 @@ From then on edits to the sheet show up live; every deploy also saves a fallback
 are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
 match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
 
+## Domestic form (API-Football)
+
+`scripts/build-domestic-form.mjs` fetches every club's last 5 domestic league matches from
+[API-Football](https://www.api-football.com/) and saves each sheet player's minutes, goals and assists in them to
+`src/data/domesticForm.js`. The browser never calls the API, so the key stays private.
+
+- **Automatic**: `.github/workflows/domestic-form.yml` runs it every morning and commits the file when there are new
+  matches (which redeploys the site). Add the key as the repository secret `API_FOOTBALL_KEY`
+  (Settings → Secrets and variables → Actions); *Actions → Domestic form → Run workflow* runs it straight away.
+- **By hand**: `API_FOOTBALL_KEY=… node scripts/build-domestic-form.mjs`.
+- **Cost**: about 290 requests a run (36 clubs × league, fixtures and squad, plus one per match), so a paid plan; the
+  free 100 a day isn't enough.
+- **Matching**: clubs are matched to the API by name (`TEAM_ID_OVERRIDES` in the script for any it misses), players by
+  name within their club. The run's log lists everyone it couldn't match; an optional `API ID` column in the player
+  sheet (his API-Football player id) fixes one.
+- **Scoring**: in the score a domestic match counts with UCL Fantasy's main rules (appearance, goals, assists, clean
+  sheets, goals conceded, saves, cards, penalties) — an estimate, without balls recovered or POTM, which the API
+  doesn't have.
+
+Until the file has data the Players tab looks exactly as before; `#/players?demo=1` previews the switch.
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -94,7 +115,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # player sheet parsing + projection checks
+npm test          # player sheet parsing, projection and domestic form checks
 ```
 
 ## Deploy

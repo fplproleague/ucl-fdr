@@ -1,0 +1,41 @@
+# Refreshes src/data/domesticForm.js (each club's last 5 league matches, from
+# API-Football) every morning and commits it when there are new matches;
+# the commit triggers the usual Vercel deploy. Needs the repository secret
+# API_FOOTBALL_KEY (Settings → Secrets and variables → Actions).
+name: Domestic form
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: domestic-form
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch domestic form
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: node scripts/build-domestic-form.mjs
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- src/data/domesticForm.js; then
+            echo "No new matches"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add src/data/domesticForm.js
+          git commit -m "Refresh domestic form"
+          git push
