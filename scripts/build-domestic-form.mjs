@@ -5,14 +5,15 @@
 // Claude Cowork scheduled task), and the result is committed and pushed.
 //
 // Usage:
-//   node scripts/build-domestic-form.mjs        key from ~/.ucl-fdr/api-football-key
+//   node scripts/build-domestic-form.mjs        key from a key file (below)
 //   API_FOOTBALL_KEY=… node scripts/build-domestic-form.mjs
 //   … --soft     never fails (no key, API down, over quota): keeps the saved file
 //
 // Optional environment:
-//   API_FOOTBALL_KEY_FILE  where the key file is (default ~/.ucl-fdr/api-football-key):
-//                          a text file holding only the key, outside the repo, so the
-//                          key never has to be typed into a command or a chat
+//   API_FOOTBALL_KEY_FILE  a text file holding only the key, so it never has to be
+//                          typed into a command or a chat. Without it the script looks
+//                          for api-football-key.local in the repo root (git ignores
+//                          *.local) and then ~/.ucl-fdr/api-football-key.
 //   API_FOOTBALL_SEASON    the UCL season year (default: 2026 for 2026/27)
 //   API_FOOTBALL_DELAY_MS  pause between requests (default 250, ≈240 a minute)
 //   API_FOOTBALL_BASE      another API address (a local mock, for testing)
@@ -44,8 +45,11 @@ const UCL_LEAGUE_ID = 2
 const TEAM_ID_OVERRIDES = {}
 
 const soft = process.argv.includes('--soft')
-const keyFile = process.env.API_FOOTBALL_KEY_FILE ?? path.join(os.homedir(), '.ucl-fdr', 'api-football-key')
-const key = process.env.API_FOOTBALL_KEY || (existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : '')
+const keyFiles = process.env.API_FOOTBALL_KEY_FILE
+  ? [process.env.API_FOOTBALL_KEY_FILE]
+  : [path.join(__dirname, '../api-football-key.local'), path.join(os.homedir(), '.ucl-fdr', 'api-football-key')]
+const keyFile = keyFiles.find((f) => existsSync(f))
+const key = process.env.API_FOOTBALL_KEY || (keyFile ? readFileSync(keyFile, 'utf8').trim() : '')
 const delayMs = Number(process.env.API_FOOTBALL_DELAY_MS ?? 250)
 const today = new Date()
 const season = Number(
@@ -61,7 +65,7 @@ function bail(message) {
   process.exit(1)
 }
 
-if (!key) bail(`no API_FOOTBALL_KEY set and no key file at ${keyFile}`)
+if (!key) bail(`no API_FOOTBALL_KEY set and no key file (${keyFiles.join(' or ')})`)
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let requests = 0
