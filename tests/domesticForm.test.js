@@ -9,6 +9,7 @@ import {
   gamesFor,
   matchApiTeam,
   matchSquadPlayer,
+  pickDomesticLeague,
 } from '../src/utils/domesticForm.js'
 import { blendForm, formPpm } from '../src/utils/playerProjection.js'
 
@@ -56,6 +57,48 @@ test('sheet players match their API squad entry, and ambiguity stays unmatched',
   assert.equal(id('Somebody Else'), null)
   // The sheet's API ID wins over the name.
   assert.equal(id('Anything', { apiId: 4 }), 4)
+})
+
+test('names in another order, double surnames, apostrophes and near-spellings still match', () => {
+  const squad = [
+    { id: 10, name: 'Kim Min-Jae' },
+    { id: 11, name: 'Lee Han-Beom' },
+    { id: 12, name: 'Pablo Barrios Rivas' },
+    { id: 13, name: 'Kouakou Joane Gadou' },
+    { id: 14, name: 'E. Ndicka' },
+    { id: 15, name: 'M. Matvienko' },
+    { id: 16, name: 'A. Maksimovi\u00c4\u0087' }, // "Maksimović" garbled by the API
+    { id: 17, name: 'Pedro Fernández', names: ['Dro Fernández'] },
+    { id: 18, name: 'Alejandro Baena Rodríguez' },
+    { id: 19, name: 'Pedrinho' },
+    { id: 20, name: 'Pedrinho' },
+  ]
+  const id = (name) => matchSquadPlayer({ name }, squad)?.id ?? null
+  assert.equal(id('Minjae Kim'), 10)
+  assert.equal(id('Han-beom Lee'), 11)
+  assert.equal(id('P. Barrios'), 12)
+  assert.equal(id('J. Gadou'), 13)
+  assert.equal(id("E. N'Dicka"), 14)
+  assert.equal(id('M. Matviyenko'), 15)
+  assert.equal(id('A. Maksimović'), 16)
+  assert.equal(id('Dro Fernández'), 17)
+  assert.equal(id('Álex Baena'), 18)
+  assert.equal(id('Pedrinho'), null) // two of them: needs an API ID
+  assert.equal(id('X. Barrios'), null) // initial doesn't fit
+  assert.equal(id('M. Matviyenkooo'), null) // more than one letter off
+})
+
+test('the domestic league wins over a summer tournament and foreign leagues', () => {
+  const entry = (id, name, country, year, stats = true) => ({
+    league: { id, name },
+    country: { name: country },
+    seasons: [{ year, coverage: { fixtures: { statistics_players: stats } } }],
+  })
+  const liverpool = [entry(1022, 'Premier League - Summer Series', 'England', 2025, false), entry(39, 'Premier League', 'England', 2026)]
+  assert.equal(pickDomesticLeague(liverpool, 'England').league.id, 39)
+  assert.equal(pickDomesticLeague([entry(333, 'Premier League', 'Ukraine', 2026), entry(39, 'Premier League', 'England', 2026)], 'Ukraine').league.id, 333)
+  assert.equal(pickDomesticLeague([entry(419, 'Premyer Liqa', 'Azerbaijan', 2026, false)], 'Azerbaijan').league.id, 419)
+  assert.equal(pickDomesticLeague([], 'England'), null)
 })
 
 // Shaped like API-Football's /fixtures and /fixtures/players responses.

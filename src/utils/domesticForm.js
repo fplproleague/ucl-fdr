@@ -94,39 +94,110 @@ export function matchApiTeam(apiName, teams) {
   return prefix.length === 1 ? prefix[0].id : null
 }
 
-const nameParts = (name) => {
-  const tokens = slugifyName(name).split('-').filter(Boolean)
-  const initial = tokens.length > 1 ? tokens[0][0] : null
-  return { slug: tokens.join('-'), tokens, initial, last: tokens[tokens.length - 1] }
+// API-Football now and then sends a UTF-8 name read as Latin-1
+// ("MaksimoviÄ" + U+0087 for "Maksimović"): undo that before comparing.
+function repairMojibake(name) {
+  const codes = [...name].map((ch) => ch.codePointAt(0))
+  const broken = codes.some((c, i) => c >= 0xc2 && c <= 0xf4 && codes[i + 1] >= 0x80 && codes[i + 1] <= 0xbf)
+  if (!broken || codes.some((c) => c > 0xff)) return name
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(codes))
+  } catch {
+    return name
+  }
 }
 
-// A sheet player → one of his club's API players ({ id, name }), or null.
-// In order: the sheet's API ID, the same name, the same surname with a
-// matching initial ("Ronald Araújo" / "R. Araújo"), and a one-word name
-// that is the other's first word ("Gabriel" / "Gabriel Magalhães"). Every
-// step needs a single candidate: two "Silva"s at one club stay unmatched
-// rather than guessed.
+const nameParts = (name) => {
+  // "N'Dicka" and "Ndicka" are one name: apostrophes go before splitting.
+  const tokens = slugifyName(repairMojibake(name).replace(/['’`]/g, ''))
+    .split('-')
+    .filter(Boolean)
+  const initial = tokens.length > 1 ? tokens[0][0] : null
+  return { slug: tokens.join('-'), tokens, initial, last: tokens[tokens.length - 1], compact: tokens.join('') }
+}
+
+// His name read starting from each word in turn, glued together:
+// "Kim Min-Jae" → kimminjae, minjaekim, … (Korean names come surname-first
+// in one source and surname-last in the other).
+const rotations = (tokens) => tokens.map((_, i) => [...tokens.slice(i), ...tokens.slice(0, i)].join(''))
+
+// True when a and b differ by at most one inserted, removed or changed letter.
+function oneEditApart(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1)
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1)
+}
+
+// A sheet player → one of his club's API players ({ id, name, names? }), or
+// null. `names` holds other spellings of the same player (the squad list
+// and the match sheets don't always agree: "Pedro Fernández" / "Dro
+// Fernández"). In order: the sheet's API ID; the same name; the same
+// surname with a matching initial ("Ronald Araújo" / "R. Araújo"); a
+// one-word name that is the other's first word ("Gabriel" / "Gabriel
+// Magalhães"); the same words in another order ("Minjae Kim" / "Kim
+// Min-Jae"); his surname inside a longer name, with his initial on a word
+// before it ("P. Barrios" / "Pablo Barrios Rivas", "J. Gadou" / "Kouakou
+// Joane Gadou"); and a surname one letter off ("Matviyenko" / "Matvienko").
+// Every step needs a single candidate: two "Silva"s at one club stay
+// unmatched rather than guessed, and a later step only runs when the
+// earlier ones found nobody at all.
 export function matchSquadPlayer(sheetPlayer, pool) {
   if (sheetPlayer.apiId != null) return pool.find((p) => String(p.id) === String(sheetPlayer.apiId)) ?? null
   const me = nameParts(sheetPlayer.name)
-  const parts = pool.map((p) => ({ p, ...nameParts(p.name) }))
-  const one = (list) => (list.length === 1 ? list[0].p : null)
-
-  const same = parts.filter((c) => c.slug === me.slug)
-  if (same.length) return one(same)
-  const surname = parts.filter(
-    (c) =>
-      c.last === me.last &&
-      (c.tokens.length > 1 || me.tokens.length > 1) &&
-      (!c.initial || !me.initial || c.initial === me.initial),
+  const parts = pool.flatMap((p) =>
+    [...new Set([p.name, ...(p.names ?? [])].filter(Boolean))].map((name) => ({ p, ...nameParts(name) })),
   )
-  if (surname.length) return one(surname)
-  const firstWord = parts.filter(
+  const one = (list) => (new Set(list.map((c) => c.p.id)).size === 1 ? list[0].p : null)
+  const initialsFit = (c) => !c.initial || !me.initial || c.initial === me.initial
+  const steps = [
+    (c) => c.slug === me.slug,
+    (c) => c.last === me.last && (c.tokens.length > 1 || me.tokens.length > 1) && initialsFit(c),
     (c) =>
       (me.tokens.length === 1 && c.tokens[0] === me.tokens[0]) ||
       (c.tokens.length === 1 && me.tokens[0] === c.tokens[0]),
-  )
-  return one(firstWord)
+    (c) =>
+      me.tokens.length > 1 &&
+      c.tokens.length > 1 &&
+      (rotations(c.tokens).includes(me.compact) || rotations(me.tokens).includes(c.compact)),
+    (c) => {
+      if (me.tokens.length < 2) return false
+      const at = c.tokens.indexOf(me.last)
+      return at > 0 && c.tokens.slice(0, at).some((t) => t[0] === me.initial)
+    },
+    (c) =>
+      me.last.length >= 6 &&
+      me.tokens.length > 1 &&
+      c.tokens.length > 1 &&
+      initialsFit(c) &&
+      oneEditApart(c.last, me.last),
+  ]
+  for (const fits of steps) {
+    const found = parts.filter(fits)
+    if (found.length) return one(found)
+  }
+  return null
+}
+
+// A club's "current" leagues can hold a summer tournament next to the real
+// one (Liverpool: "Premier League - Summer Series", season 2025, before
+// "Premier League"). The domestic league: not an exhibition, in the club's
+// own country, the newest season, and with player stats when there's a choice.
+const EXHIBITION = /summer series|friendl|pre-?season/i
+export function pickDomesticLeague(entries, country) {
+  const rank = (e) => [
+    EXHIBITION.test(e.league?.name ?? '') ? 0 : 1,
+    !country || e.country?.name === country ? 1 : 0,
+    e.seasons?.[0]?.year ?? 0,
+    e.seasons?.[0]?.coverage?.fixtures?.statistics_players === false ? 0 : 1,
+  ]
+  const order = (a, b) => {
+    const [ra, rb] = [rank(a), rank(b)]
+    const i = ra.findIndex((v, k) => v !== rb[k])
+    return i < 0 ? 0 : rb[i] - ra[i]
+  }
+  return [...(entries ?? [])].sort(order)[0] ?? null
 }
 
 // One club's league matches (API /fixtures rows) and the player stats for

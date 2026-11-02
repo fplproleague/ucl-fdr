@@ -32,6 +32,7 @@ import {
   gamesFor,
   matchApiTeam,
   matchSquadPlayer,
+  pickDomesticLeague,
 } from '../src/utils/domesticForm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -43,6 +44,22 @@ const UCL_LEAGUE_ID = 2
 // When the name matching below can't place a club, put its API-Football team
 // id here (the run's log lists any it missed): { SAB: 1234 }.
 const TEAM_ID_OVERRIDES = {}
+// Sheet players the name matching can't place (checked by hand on
+// 2026-11-02): sheet player id → API-Football player id. An "API ID" column
+// in the sheet does the same and wins over this list. `null` means he isn't
+// in API-Football's data for his club at all (not in its squad list nor in
+// any of its recent match squads): he still gets the name matching first,
+// in case the API adds him later, and otherwise his club's matches with
+// 0 minutes, which is what the API's match sheets say.
+const PLAYER_ID_OVERRIDES = {
+  p250174182: 330419, // Alberto Costa (POR) — API: "Alberto Baio" (Alberto Oliveira Baio)
+  p250201725: 490745, // A. Goffi (LIL) — API: "M. Goffi"
+  p250144964: 10244, // Pedrinho (SHK, MID) — Shakhtar has two "Pedrinho"s; this one is the midfielder
+  p250187672: 299925, // Pedro Henrique (SHK, DEF) — API: "Pedrinho" (Pedro Henrique Azevedo Pereira)
+  p250221087: 326102, // R. Cardoso (RBL) — API: "Rômulo" (Rômulo José Cardoso da Cruz)
+  p250123956: null, // M. Medina (FEY)
+  p250223204: null, // J. Tornich (LAS)
+}
 
 const soft = process.argv.includes('--soft')
 const keyFiles = process.env.API_FOOTBALL_KEY_FILE
@@ -134,9 +151,11 @@ async function run() {
   // Our 36 clubs → API team ids, from the UCL's own team list.
   const uclTeams = await api('teams', { league: UCL_LEAGUE_ID, season })
   const apiIds = { ...TEAM_ID_OVERRIDES }
+  const countries = {}
   for (const { team } of uclTeams) {
     const abbr = matchApiTeam(team.name, INITIAL_TEAMS)
     if (abbr && apiIds[abbr] == null) apiIds[abbr] = team.id
+    if (abbr && team.id === apiIds[abbr]) countries[abbr] = team.country
   }
   const unplaced = INITIAL_TEAMS.filter((t) => apiIds[t.id] == null).map((t) => t.id)
   if (unplaced.length)
@@ -150,13 +169,17 @@ async function run() {
   const leagues = {}
   const statsByFixture = new Map()
   const unmatched = []
+  const notInApi = []
 
   for (const team of INITIAL_TEAMS) {
     const teamId = apiIds[team.id]
     if (teamId == null) continue
     // His club's league (type "league": the UCL itself is a cup), and the
     // season that league is in now (Norway runs on the calendar year).
-    const [entry] = await api('leagues', { team: teamId, type: 'league', current: 'true' })
+    const entry = pickDomesticLeague(
+      await api('leagues', { team: teamId, type: 'league', current: 'true' }),
+      countries[team.id],
+    )
     if (!entry) {
       console.warn(`Domestic form: no current league for ${team.id}`)
       continue
@@ -184,23 +207,37 @@ async function run() {
     const games = buildTeamGames(teamId, latest, statsByFixture)
 
     // Everyone the club has registered, plus anyone who played in these
-    // games but isn't in the squad list (a youngster, a late signing).
+    // games but isn't in the squad list (a youngster, a late signing). The
+    // match sheets' spelling of a name is kept next to the squad list's.
     const [squad] = await api('players/squads', { team: teamId })
-    const pool = new Map((squad?.players ?? []).map((p) => [p.id, { id: p.id, name: p.name }]))
-    for (const p of games.players.values()) if (!pool.has(p.id)) pool.set(p.id, { id: p.id, name: p.name })
+    const pool = new Map((squad?.players ?? []).map((p) => [p.id, { id: p.id, name: p.name, names: [] }]))
+    for (const p of games.players.values()) {
+      const known = pool.get(p.id)
+      if (!known) pool.set(p.id, { id: p.id, name: p.name, names: [] })
+      else if (p.name && p.name !== known.name) known.names.push(p.name)
+    }
 
     for (const player of players.filter((p) => p.team === team.id)) {
-      const match = matchSquadPlayer(player, [...pool.values()])
+      const override = PLAYER_ID_OVERRIDES[player.id]
+      const lookup = player.apiId == null && override != null ? { ...player, apiId: override } : player
+      const match = matchSquadPlayer(lookup, [...pool.values()])
       if (match) out[player.id] = gamesFor(games, match.id)
-      else unmatched.push(`${player.name} (${team.id})`)
+      else if (player.apiId == null && override === null) {
+        out[player.id] = gamesFor(games, null)
+        notInApi.push(`${player.name} (${team.id})`)
+      } else unmatched.push(`${player.name} (${team.id})`)
     }
   }
 
-  const matched = Object.keys(out).length
+  const matched = Object.keys(out).length - notInApi.length
   console.log(
     `Domestic form: ${matched} players matched, ${requests} requests` +
       (remainingToday != null ? `, ${remainingToday} left today` : ''),
   )
+  if (notInApi.length)
+    console.log(
+      `Domestic form: ${notInApi.length} not in API-Football, given their club's matches with 0 minutes: ${notInApi.join(', ')}`,
+    )
   if (unmatched.length)
     console.warn(
       `Domestic form: ${unmatched.length} not matched by name (add an "API ID" column to fix one): ${unmatched.join(', ')}`,
