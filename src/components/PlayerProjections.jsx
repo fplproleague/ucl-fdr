@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
@@ -72,7 +72,11 @@ const STAT_LABELS = [
 export default function PlayerProjections() {
   const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo, comparePlayers, setComparePlayers } =
     useTeams()
-  const compareRef = useRef(null)
+  // Picking players and looking at them are two steps: tapping VS only
+  // collects players, the comparison opens from the bar. A shared link
+  // with players in it opens straight on the comparison.
+  const [compareOpen, setCompareOpen] = useState(() => comparePlayers.length > 0)
+  const closeCompare = useCallback(() => setCompareOpen(false), [])
   const live = useLivePlayers()
   const domesticForm = useDomesticForm()
   // Both by default: UCL form alone is three or four matches deep.
@@ -303,16 +307,15 @@ export default function PlayerProjections() {
                 )}
                 <p>
                   Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
-                  (saved in this browser), or tap VS to compare up to {maxCompare} side by side (the comparison is in
-                  the link, so you can share it). {dataSource}
+                  (saved in this browser), or tap VS on up to {maxCompare} players and then Compare to see them side by
+                  side (the comparison is in the link, so you can share it). {dataSource}
                 </p>
               </div>
             )}
           </div>
 
-          {compared.length > 0 && (
+          {compareOpen && compared.length > 0 && (
             <ComparePlayers
-              ref={compareRef}
               players={compared}
               hiddenCount={allCompared.length - compared.length}
               max={maxCompare}
@@ -322,7 +325,11 @@ export default function PlayerProjections() {
               domesticMatches={domesticMatches}
               scoreLabel={scoreLabel}
               onRemove={toggleCompare}
-              onClear={() => setComparePlayers([])}
+              onClear={() => {
+                setComparePlayers([])
+                setCompareOpen(false)
+              }}
+              onClose={closeCompare}
             />
           )}
 
@@ -604,20 +611,28 @@ export default function PlayerProjections() {
               {showAll ? 'Show fewer' : `Show all ${rows.length}`}
             </button>
           )}
-          {compared.length > 0 && (
-            // Follows the list while scrolling, so picks made far down the
-            // table are one tap from the comparison at the top.
+          {compared.length > 0 && !compareOpen && (
+            // Follows the list while scrolling: pick players anywhere in it,
+            // then open them side by side from here.
             <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
-              <div className="flex items-center gap-1 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-3 shadow-card backdrop-blur-md">
-                <span className="text-xs font-semibold">
-                  Compare {compared.length}/{maxCompare}
+              <div className="flex items-center gap-1.5 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
+                <span className="flex -space-x-1.5" aria-hidden="true">
+                  {compared.map((p) => (
+                    <span key={p.id} className="rounded-full bg-ucl-navy p-0.5">
+                      <TeamBadge abbr={p.team} size={20} />
+                    </span>
+                  ))}
+                </span>
+                <span className="text-xs font-semibold tabular-nums">
+                  {compared.length}/{maxCompare}
                 </span>
                 <button
                   type="button"
-                  onClick={() => compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="min-h-[36px] rounded-full bg-ucl-accent px-3 text-xs font-semibold text-white"
+                  disabled={compared.length < 2}
+                  onClick={() => setCompareOpen(true)}
+                  className="min-h-[36px] rounded-full bg-ucl-accent px-3 text-xs font-semibold text-white disabled:bg-white/10 disabled:text-ucl-star/60"
                 >
-                  View
+                  {compared.length < 2 ? 'Pick 1 more' : 'Compare'}
                 </button>
                 <button
                   type="button"

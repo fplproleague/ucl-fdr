@@ -85,7 +85,8 @@ test('league rows come from the domestic summary, and every one can be opened ma
     domesticMatches: 2,
   })
   const row = (label) => rows.find((r) => r.group === 'League · last 2' && r.label === label)
-  assert.deepEqual(row('Points per match').values, [6.5, null])
+  // No league Fantasy points exist: no estimated points row in the comparison.
+  assert.equal(row('Points per match'), undefined)
   assert.equal(row('Minutes').subs[0], '90/180')
   // Clean sheets: counted from the matches (60+ minutes, nothing conceded).
   assert.deepEqual(row('Clean sheets').values, [1, null])
@@ -128,11 +129,11 @@ test('UCL rows open by matchday when the UCL matches are saved; season totals al
   )
   assert.equal(row('Goals per 90').breakdown[1], null) // b: totals only
   assert.deepEqual(
-    row('Points per match').breakdown[0].map((m) => m.label),
+    row('Fantasy pts per match').breakdown[0].map((m) => m.label),
     ['MD1 @ Arsenal', 'MD2 v PSV'],
   )
   assert.deepEqual(
-    row('Points per match').breakdown[1].map((m) => m.label),
+    row('Fantasy pts per match').breakdown[1].map((m) => m.label),
     ['MD1'],
   )
   // Shots per 90 from the saved matches: 8 in 165'.

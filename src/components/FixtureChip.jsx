@@ -31,17 +31,14 @@ export default function FixtureChip({
 
   const chip = (
     <div
-      className={`relative flex h-8 min-w-[52px] shrink-0 items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[11px] font-bold sm:min-w-[68px] sm:text-xs ${showDay ? '' : className}`}
+      className={`relative inline-flex h-8 w-[58px] shrink-0 align-middle items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[11px] font-bold sm:w-[72px] sm:text-xs ${showDay ? '' : className}`}
       style={{ backgroundColor: color.bg, color: color.text }}
       title={fullDescription}
     >
       <span aria-hidden="true">
         {opp} ({venue})
       </span>
-      <span
-        aria-hidden="true"
-        className="absolute right-[3px] top-[1px] text-[9px] font-black leading-none opacity-60"
-      >
+      <span aria-hidden="true" className="absolute right-[3px] top-[1px] text-[9px] font-black leading-none opacity-60">
         {band}
       </span>
       {awayBumpApplied && (
@@ -63,7 +60,9 @@ export default function FixtureChip({
   // outside the active day filter are dimmed, not removed, so the grid/ranking
   // never changes shape based on the filter.
   return (
-    <div className={`inline-flex flex-col items-center gap-0.5 transition-opacity ${dimmed ? 'opacity-30' : ''} ${className}`}>
+    <div
+      className={`inline-flex flex-col items-center gap-0.5 transition-opacity ${dimmed ? 'opacity-30' : ''} ${className}`}
+    >
       {chip}
       {day && (
         <span className="rounded-full bg-white/10 px-1.5 py-px text-[8px] font-bold uppercase leading-none tracking-wide text-ucl-star/70">
