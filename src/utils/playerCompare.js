@@ -11,7 +11,6 @@
 // per-match data, which exists for the league matches (API-Football) and
 // for UCL points per matchday; the sheet's other UCL stats are season
 // totals only, so those rows have no breakdown.
-import { domesticPoints } from './domesticForm.js'
 
 // Totals turned into a rate per 90 only once there are 90 minutes to go
 // on: one goal in a 20-minute cameo isn't 4.5 per 90.
@@ -110,7 +109,8 @@ export function compareRows(players, { domesticMatches = 5, scoreLabel = 'Score'
 
     {
       group: 'UCL',
-      label: 'Points per match',
+      label: 'Fantasy pts per match',
+      hint: 'UCL Fantasy points per match from the player sheet',
       better: 'high',
       get: (p) => p.rawPpm,
       format: fixed(1),
@@ -184,16 +184,6 @@ export function compareRows(players, { domesticMatches = 5, scoreLabel = 'Score'
     { group: 'UCL', label: 'POTM', better: 'high', get: (p) => stat(p, 'potm'), format: String },
 
     ...[
-      {
-        label: 'Points per match',
-        get: (d) => d.points / d.matches,
-        format: fixed(1),
-        hint: 'UCL Fantasy rules, an estimate',
-        match: (g, p) => {
-          const pts = domesticPoints(g, p.position)
-          return [`${pts} pts`, pts > 2]
-        },
-      },
       {
         label: 'Minutes',
         get: (d) => (d.minutes / (d.matches * 90)) * 100,

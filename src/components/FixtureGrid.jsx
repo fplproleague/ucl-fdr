@@ -82,6 +82,7 @@ export default function FixtureGrid({
   // frame. Compact, the floor drops away and the column is badge + code.
   const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
 
+  const spacer = mds.length < 4
   return (
     <>
       <div className="relative">
@@ -109,6 +110,9 @@ export default function FixtureGrid({
                     </span>
                   </th>
                 ))}
+                {/* With only a few matchdays, an empty last column takes the spare width so the
+                    chips stay next to the team names instead of floating in wide columns. */}
+                {spacer && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
               </tr>
             </thead>
             <tbody>
@@ -231,6 +235,7 @@ export default function FixtureGrid({
                         )}
                       </td>
                     ))}
+                    {spacer && <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />}
                   </tr>
                 )
               })}
