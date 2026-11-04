@@ -41,7 +41,10 @@ const UCL_LEAGUE_ID = 2
 const TEAM_NAME_OVERRIDES = {}
 // Sheet players the bookmakers spell too differently to match by name:
 // sheet player id → the name in the bookmaker's player markets.
-const PLAYER_NAME_OVERRIDES = {}
+const PLAYER_NAME_OVERRIDES = {
+  p250121533: 'Vinicius Jr.', // Vinícius Júnior (RMA)
+  p250116683: 'Anastasios Douvikas', // T. (Tasos) Douvikas (COM)
+}
 
 const keyFiles = process.env.API_FOOTBALL_KEY_FILE
   ? [process.env.API_FOOTBALL_KEY_FILE]
