@@ -74,10 +74,48 @@ test('team rows: priced where possible, estimated elsewhere, sorted by the metri
   assert.ok(sorted[0].avg <= sorted[1].avg)
 })
 
-test('player rows come from the priced matches only', () => {
+test('player rows: priced where he has prices, else his share of the team estimate', () => {
   const index = indexOdds(odds)
-  const rows = playerOddsRows([{ id: 'p1', team: 'A' }, { id: 'p2', team: 'A' }], [1, 2], index)
-  assert.equal(rows.length, 1) // A plays at md 1 (A–B); md 2 is C–D
-  assert.equal(rows[0].md, 1)
-  near(rows[0].pGoal, 1 - Math.exp(-rows[0].xg), 1e-9, 'goal chance')
+  const est = fitEstimator(odds, (t) => ratings[t])
+  // p1 is priced for every match in `odds`; FIXTURES decide which clubs
+  // play which matchday, so use made-up clubs with no fixtures: no rows.
+  assert.deepEqual(playerOddsRows([{ id: 'p1', team: 'A' }], [1, 2], index, est), [])
+})
+
+test('player rows over real fixtures: estimates follow the team, skipped when priced without him', () => {
+  const ars = FIXTURES.ARS
+  const [f1, f2, f3] = ars
+  const side = (f, xg) => (f.venue === 'H' ? { home: 'ARS', away: f.opp, xg: [xg, 1] } : { home: f.opp, away: 'ARS', xg: [1, xg] })
+  const archive = {
+    matches: {
+      1: { md: f1.gw, ...side(f1, 2), cs: [0.3, 0.3], players: { saka: [2, 1.5], other: [3, 2] } },
+      // Priced with player markets, but without saka: the bookmakers don't expect him to play.
+      2: { md: f2.gw, ...side(f2, 1.5), cs: [0.3, 0.3], players: { other: [3, 2] } },
+    },
+  }
+  const index = indexOdds(archive)
+  const est = fitEstimator(archive, () => 3)
+  const [row] = playerOddsRows([{ id: 'saka', team: 'ARS' }], [f1.gw, f2.gw, f3.gw], index, est)
+  assert.deepEqual(row.matches.map((m) => m.md), [f1.gw, f3.gw])
+  assert.equal(row.matches[0].estimated, false)
+  assert.equal(row.matches[1].estimated, true)
+  const priced = row.matches[0]
+  const share = priced.xg / 2
+  const team3 = est.estimate('ARS', f3.opp, f3.venue)
+  near(row.matches[1].xg, share * team3.xgFor, 1e-9, 'estimated xG = share × team xG')
+  near(row.xg, priced.xg + row.matches[1].xg, 1e-9, 'total')
+  near(row.cs, 0.3 + team3.cs, 1e-9, 'expected clean sheets')
+  assert.equal(row.estimated, true)
+})
+
+test('sorting on one matchday instead of the average', () => {
+  const rows = [
+    { team: { name: 'A' }, avg: 0.4, cells: [{ cs: 0.1 }, { cs: 0.7 }] },
+    { team: { name: 'B' }, avg: 0.3, cells: [{ cs: 0.5 }, null] },
+  ]
+  assert.deepEqual([...rows].sort(compareRows('cs')).map((r) => r.team.name), ['A', 'B'])
+  assert.deepEqual([...rows].sort(compareRows('cs', 0)).map((r) => r.team.name), ['B', 'A'])
+  // No fixture that matchday: last.
+  assert.deepEqual([...rows].sort(compareRows('cs', 1)).map((r) => r.team.name), ['A', 'B'])
+  assert.deepEqual([...rows].sort(compareRows('xgAgainst', 0)).map((r) => r.team.name), ['A', 'B'])
 })

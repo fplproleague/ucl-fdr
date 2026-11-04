@@ -149,35 +149,90 @@ export function teamOddsRows(teams, mds, index, estimator, metric) {
   })
 }
 
-export function compareRows(metric) {
+// Best first for the metric: on the average over the matchdays shown, or
+// on one matchday's cell (its index in the row) when one is picked.
+export function compareRows(metric, cellIndex = null) {
   const sign = METRICS[metric].better === 'high' ? -1 : 1
-  return (a, b) => (a.avg == null) - (b.avg == null) || sign * (a.avg - b.avg) || a.team.name.localeCompare(b.team.name)
+  const value = (row) => (cellIndex == null ? row.avg : (row.cells[cellIndex]?.[metric] ?? null))
+  return (a, b) => {
+    const [va, vb] = [value(a), value(b)]
+    return (va == null) - (vb == null) || sign * (va - vb) || a.team.name.localeCompare(b.team.name)
+  }
 }
 
-// One row per sheet player per priced match in the matchdays shown:
-// expected goals and assists if he plays, his chance of scoring, and his
-// team's clean-sheet chance.
-export function playerOddsRows(players, mds, index) {
+// Each player's share of his team's expected goals, from every priced
+// match he has prices in: expected goals and assists if he plays, divided
+// by the team's expected goals. What his later matches are estimated from.
+export function playerShares(index) {
+  const sums = new Map()
+  for (const match of index.values())
+    for (const [id, odds] of Object.entries(match.players)) {
+      const { xg, xa } = playerRates(odds)
+      if (xg == null || !(match.xgFor > 0)) continue
+      // Both sides' entries hold the match's players: each share is kept
+      // with the side it was divided by, and playerOddsRows keeps only the
+      // one for his club.
+      const t = sums.get(id) ?? []
+      t.push({ team: match.team, g: xg / match.xgFor, a: xa == null ? null : xa / match.xgFor })
+      sums.set(id, t)
+    }
+  return sums
+}
+
+// One row per sheet player over the matchdays shown: per match his
+// expected goals and assists if he plays — priced, or estimated from his
+// share of his team's goals times the team's expected goals there — and
+// his team's clean-sheet chance; and the totals over those matches.
+//   A priced match with player prices that leave him out is skipped: the
+//   bookmakers don't expect him to play.
+export function playerOddsRows(players, mds, index, estimator) {
+  const shares = playerShares(index)
   const rows = []
   for (const p of players) {
+    const mine = (shares.get(p.id) ?? []).filter((s) => s.team === p.team)
+    if (!mine.length) continue
+    const avg = (key) => {
+      const xs = mine.map((s) => s[key]).filter((x) => x != null)
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+    }
+    const share = { g: avg('g'), a: avg('a') }
+
+    const matches = []
     for (const md of mds) {
-      const match = index.get(`${md}:${p.team}`)
-      const odds = match?.players[p.id]
-      if (!odds) continue
-      const { xg, xa } = playerRates(odds)
-      if (xg == null) continue
-      rows.push({
-        player: p,
+      const fixture = (FIXTURES[p.team] ?? []).find((f) => f.gw === md)
+      if (!fixture) continue
+      const priced = index.get(`${md}:${p.team}`)
+      const odds = priced?.players[p.id]
+      if (odds) {
+        const { xg, xa } = playerRates(odds)
+        matches.push({ md, opp: priced.opp, venue: priced.venue, xg, xa, cs: priced.cs, estimated: false })
+        continue
+      }
+      if (priced && Object.keys(priced.players).length) continue // priced without him
+      const team = priced ?? estimator.estimate(p.team, fixture.opp, fixture.venue)
+      matches.push({
         md,
-        opp: match.opp,
-        venue: match.venue,
-        xg,
-        xa,
-        xgi: xg + (xa ?? 0),
-        pGoal: 1 - Math.exp(-xg),
-        cs: match.cs,
+        opp: fixture.opp,
+        venue: fixture.venue,
+        xg: share.g * team.xgFor,
+        xa: share.a == null ? null : share.a * team.xgFor,
+        cs: team.cs,
+        estimated: true,
       })
     }
+    if (!matches.length) continue
+    const sum = (key) => matches.reduce((s, m) => s + (m[key] ?? 0), 0)
+    const xg = sum('xg')
+    const xa = matches.some((m) => m.xa != null) ? sum('xa') : null
+    rows.push({
+      player: p,
+      matches,
+      xg,
+      xa,
+      xgi: xg + (xa ?? 0),
+      cs: sum('cs'),
+      estimated: matches.some((m) => m.estimated),
+    })
   }
   return rows
 }
