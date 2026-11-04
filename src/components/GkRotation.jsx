@@ -5,6 +5,8 @@ import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
+import { useOdds } from '../utils/useOdds.js'
+import { teamOddsRows } from '../utils/oddsView.js'
 import { findStoredGoalkeeper, rankGoalkeepers } from '../utils/gkPool.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
@@ -39,8 +41,18 @@ function sheetFacts(gk) {
     .join(' · ')
 }
 
+// What the complements are ranked on: the FDR facts (default) or the
+// bookmakers' clean-sheet chances — the clean sheets you'd expect by
+// starting the better of the two keepers every matchday.
+const RANK_BY = [
+  ['fdr', 'FDR'],
+  ['cs', 'CS odds'],
+]
+
 export default function GkRotation() {
-  const { teamsByAbbr, venueAdjust } = useTeams()
+  const { teams, teamsByAbbr, venueAdjust } = useTeams()
+  const [rankBy, setRankBy] = useState('fdr')
+  const { odds, index, estimator } = useOdds()
   // Every goalkeeper in the player sheet (live, or its saved copy if Google
   // can't be reached — see useLivePlayers.js), most minutes first.
   const { players, loading: gkLoading, live: gkLive } = useLivePlayers()
@@ -124,6 +136,13 @@ export default function GkRotation() {
     setExpandedId(null)
   }
 
+  // Each club's clean-sheet chance per matchday in the range (odds, or the
+  // estimate where a match isn't priced yet).
+  const csByTeam = useMemo(() => {
+    if (!odds) return null
+    return new Map(teamOddsRows(teams, mds, index, estimator, 'cs').map((r) => [r.team.abbr, r.cells.map((c) => c?.cs ?? null)]))
+  }, [odds, teams, mds, index, estimator])
+
   // Every other goalkeeper in the database, ranked by the transparent
   // priority order from the spec — never a combined score.
   const complements = useMemo(() => {
@@ -135,10 +154,14 @@ export default function GkRotation() {
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
         const rows = compareTeamFixtures(selectedGk.team, gk.team, mds, teamsByAbbr, venueAdjust)
-        return { candidate: gk, rows, summary: summarizeComparison(rows) }
+        const csA = csByTeam?.get(selectedGk.team)
+        const csB = csByTeam?.get(gk.team)
+        const withCs = rows.map((r, i) => ({ ...r, csA: csA?.[i] ?? null, csB: csB?.[i] ?? null }))
+        const bestCs = csByTeam ? withCs.reduce((sum, r) => sum + Math.max(r.csA ?? 0, r.csB ?? 0), 0) : null
+        return { candidate: gk, rows: withCs, summary: summarizeComparison(rows), bestCs }
       })
-      .sort(compareComplementSummaries)
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS])
+      .sort((a, b) => (rankBy === 'cs' && csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b))
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS, csByTeam, rankBy])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -147,6 +170,27 @@ export default function GkRotation() {
         subtitle={`Pick a goalkeeper you own to see who complements their fixtures over MD${from}–MD${to}${
           skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
+        action={
+          <div
+            role="group"
+            aria-label="Rank by"
+            className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold"
+          >
+            {RANK_BY.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setRankBy(id)}
+                aria-pressed={rankBy === id}
+                className={`min-h-[36px] whitespace-nowrap rounded-full px-3 transition ${
+                  rankBy === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        }
       />
 
       <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
@@ -224,7 +268,9 @@ export default function GkRotation() {
         <>
           <h2 className="mb-1 text-base font-bold text-ucl-star sm:text-lg">Best complements for {selectedGk.name}</h2>
           <p className="mb-3 text-xs text-ucl-muted">
-            A favourable fixture is band 1–2 (green), under your current FDR settings.
+            {rankBy === 'cs'
+              ? 'Ranked on the clean sheets you’d expect by starting the better of the two every matchday (bookmaker odds, estimates where not priced yet).'
+              : 'A favourable fixture is band 1–2 (green), under your current FDR settings.'}
           </p>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
@@ -236,7 +282,7 @@ export default function GkRotation() {
           )}
 
           <ul className="space-y-2">
-            {complements.map(({ candidate: gk, rows, summary }) => {
+            {complements.map(({ candidate: gk, rows, summary, bestCs }) => {
               const isOpen = expandedId === gk.id
               return (
                 <li key={gk.id} className="rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
@@ -273,6 +319,11 @@ export default function GkRotation() {
                     <span>
                       Both favourable: <strong className="text-ucl-star">{summary.bothFavourable}/{summary.total}</strong>
                     </span>
+                    {rankBy === 'cs' && bestCs != null && (
+                      <span title="Clean sheets expected when you start the better of the two every matchday">
+                        Best-of CS: <strong className="text-ucl-star">{bestCs.toFixed(1)}</strong>
+                      </span>
+                    )}
                   </div>
 
                   {isOpen && (
@@ -297,6 +348,7 @@ export default function GkRotation() {
                               <td className="text-left text-[11px] font-semibold text-ucl-muted">MD{row.md}</td>
                               <td>
                                 {row.a ? (
+                                  <>
                                   <FixtureChip
                                     opp={row.a.opp}
                                     oppName={teamsByAbbr[row.a.opp]?.name}
@@ -308,12 +360,15 @@ export default function GkRotation() {
                                     showDay
                                     className="mx-auto"
                                   />
+                                  {rankBy === 'cs' && row.csA != null && <CsNote cs={row.csA} best={row.csA >= (row.csB ?? 0)} />}
+                                  </>
                                 ) : (
                                   <span className="text-ucl-star/20">–</span>
                                 )}
                               </td>
                               <td>
                                 {row.b ? (
+                                  <>
                                   <FixtureChip
                                     opp={row.b.opp}
                                     oppName={teamsByAbbr[row.b.opp]?.name}
@@ -325,6 +380,8 @@ export default function GkRotation() {
                                     showDay
                                     className="mx-auto"
                                   />
+                                  {rankBy === 'cs' && row.csB != null && <CsNote cs={row.csB} best={row.csB > (row.csA ?? 0)} />}
+                                  </>
                                 ) : (
                                   <span className="text-ucl-star/20">–</span>
                                 )}
@@ -342,5 +399,15 @@ export default function GkRotation() {
         </>
       )}
     </div>
+  )
+}
+
+// A keeper's clean-sheet chance under his fixture chip; the better of the
+// two that matchday stands out.
+function CsNote({ cs, best }) {
+  return (
+    <span className={`mt-0.5 block text-[10px] tabular-nums ${best ? 'font-bold text-ucl-star' : 'text-ucl-muted'}`}>
+      CS {Math.round(cs * 100)}%
+    </span>
   )
 }

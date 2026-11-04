@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Scale, Star, X } from 'lucide-react'
+import { Percent, Scale, Star, Users, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES, TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
 import { RATING_COLORS } from '../data/teams.js'
 import { difficultyBand, effectiveDifficulty, formatAvg, ratingColor } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
+import { useOdds } from '../utils/useOdds.js'
+import { teamOddsRows } from '../utils/oddsView.js'
 import { findBestWorstRuns } from '../utils/teamRuns.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
@@ -19,7 +21,8 @@ import StrengthPicker from './StrengthPicker.jsx'
 // site, not just this panel), independent of whatever MD range the table
 // itself is currently showing.
 export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
-  const { teamsByAbbr, venueAdjust, setRating, togglePin, setCompare, setTab } = useTeams()
+  const { teamsByAbbr, venueAdjust, setRating, togglePin, setCompare, setTab, openTab } = useTeams()
+  const { odds, index, estimator } = useOdds()
   const team = teamsByAbbr[abbr]
   const closeButtonRef = useRef(null)
 
@@ -78,7 +81,20 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
       .slice(0, 3)
   }, [team, teamsByAbbr, venueAdjust, seasonMds])
 
+  // The bookmakers' numbers for the same fixtures (estimates where a match
+  // isn't priced yet), from the Odds tab's data.
+  const oddsRow = useMemo(
+    () => (team && odds ? teamOddsRows([team], seasonMds, index, estimator, 'cs')[0] : null),
+    [team, odds, seasonMds, index, estimator],
+  )
+
   if (!team || !row) return null
+
+  function openPlayers(tab) {
+    onClose()
+    if (tab === 'odds') openTab('odds', { oddsView: 'players', oddsQuery: team.name })
+    else openTab('players', { playersQuery: team.name })
+  }
 
   const avgBand = ratingColor(difficultyBand(row.avg))
   const strengthColor = RATING_COLORS[team.rating] ?? RATING_COLORS[3]
@@ -170,6 +186,60 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
                 </div>
               ))}
             </div>
+          </div>
+
+          {oddsRow && (
+            <div>
+              <p className="mb-2 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+                <span>Bookmaker odds</span>
+                <span className="text-[10px] font-medium normal-case tracking-normal">clean sheet · goals for</span>
+              </p>
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
+                {oddsRow.cells.map((cell, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                      MD{seasonMds[i]}
+                    </span>
+                    {cell ? (
+                      <div
+                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded-md text-center sm:w-[64px] ${
+                          cell.estimated ? 'border border-dashed border-ucl-star/30 bg-ucl-accent/10' : 'bg-ucl-accent/25'
+                        }`}
+                        title={`${cell.estimated ? 'Estimate' : 'Bookmaker odds'}: clean sheet ${Math.round(cell.cs * 100)}%, xG ${cell.xgFor.toFixed(
+                          2,
+                        )} for, ${cell.xgAgainst.toFixed(2)} against`}
+                      >
+                        <span className="text-xs font-extrabold leading-none">{Math.round(cell.cs * 100)}%</span>
+                        <span className="mt-0.5 text-[10px] leading-none text-ucl-star/70">{cell.xgFor.toFixed(1)}</span>
+                        {cell.estimated && <span className="sr-only"> (estimate)</span>}
+                      </div>
+                    ) : (
+                      <span className="text-ucl-star/20">–</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10px] text-ucl-muted">Dashed: estimate until bookmakers price the match.</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => openPlayers('players')}
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+            >
+              <Users size={14} aria-hidden="true" />
+              {team.shortName ?? team.name} players
+            </button>
+            <button
+              type="button"
+              onClick={() => openPlayers('odds')}
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+            >
+              <Percent size={14} aria-hidden="true" />
+              Player odds
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

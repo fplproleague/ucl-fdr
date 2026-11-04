@@ -119,3 +119,16 @@ test('sorting on one matchday instead of the average', () => {
   assert.deepEqual([...rows].sort(compareRows('cs', 1)).map((r) => r.team.name), ['A', 'B'])
   assert.deepEqual([...rows].sort(compareRows('xgAgainst', 0)).map((r) => r.team.name), ['A', 'B'])
 })
+
+test('implied ratings: a team the odds rate above its rating moves up, shrunk', async () => {
+  const { impliedRatings } = await import('../src/utils/oddsView.js')
+  const imp = impliedRatings(odds, (t) => ratings[t])
+  // The made-up odds follow the ratings exactly: everyone stays put.
+  for (const [team, v] of Object.entries(imp)) near(v.rating, ratings[team], 1e-6, team)
+  const boosted = structuredClone(odds)
+  boosted.matches['0'].xg[0] *= Math.exp(0.6) // A scores far more than its 5 says
+  boosted.matches['0'].xg[1] *= Math.exp(-0.6) // and concedes far less
+  const moved = impliedRatings(boosted, (t) => ({ ...ratings, A: 3 })[t])
+  assert.ok(moved.A.rating > 3, `A ${moved.A.rating}`)
+  assert.ok(moved.A.rating <= 5)
+})

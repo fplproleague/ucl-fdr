@@ -5,6 +5,8 @@ import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { useOdds } from '../utils/useOdds.js'
+import { teamOddsRows } from '../utils/oddsView.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
 import TeamBadge from './TeamBadge.jsx'
 import ControlBar from './ControlBar.jsx'
@@ -14,6 +16,13 @@ import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 const PREVIEW = 8
+// What the ranking runs on: the FDR (default), or the bookmakers' clean-sheet
+// chances or expected goals for (Odds tab; estimates where not priced yet).
+const RANK_BY = [
+  ['fdr', 'FDR'],
+  ['cs', 'CS'],
+  ['xgFor', 'xG'],
+]
 
 export default function BestFixtureRuns() {
   const {
@@ -33,13 +42,27 @@ export default function BestFixtureRuns() {
   } = useTeams()
   const [showAll, setShowAll] = useState(false)
   const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false)
+  const [rankBy, setRankBy] = useState('fdr')
   const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
+  const { odds, index, estimator } = useOdds()
 
   const shownTeams = myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
 
   const mds = useVisibleMds(from, to, skipMd)
   const rows = useFixtureRows(shownTeams, teamsByAbbr, mds, venueAdjust)
-  const ranked = useMemo(() => [...rows].sort(compareRuns), [rows])
+  // Each team's average clean-sheet chance and expected goals over the range.
+  const oddsAvg = useMemo(() => {
+    if (!odds) return null
+    const cs = teamOddsRows(shownTeams, mds, index, estimator, 'cs')
+    const xg = teamOddsRows(shownTeams, mds, index, estimator, 'xgFor')
+    return new Map(cs.map((r, i) => [r.team.id, { cs: r.avg, xgFor: xg[i].avg }]))
+  }, [odds, shownTeams, mds, index, estimator])
+  const byOdds = rankBy !== 'fdr' && oddsAvg
+  const ranked = useMemo(() => {
+    if (!byOdds) return [...rows].sort(compareRuns)
+    const v = (r) => oddsAvg.get(r.team.id)?.[rankBy] ?? -1
+    return [...rows].sort((a, b) => v(b) - v(a) || compareRuns(a, b))
+  }, [rows, byOdds, oddsAvg, rankBy])
 
   // Teams whose selected window is much kinder than their league phase as a
   // whole. This is the insight people screenshot: not "who is easiest", but
@@ -59,7 +82,31 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${shownTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, easiest average first.`}
+        subtitle={`${shownTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
+          byOdds ? (rankBy === 'cs' ? 'best clean-sheet odds first' : 'most expected goals first') : 'easiest average first'
+        }.`}
+        action={
+          <div
+            role="group"
+            aria-label="Rank by"
+            className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold"
+          >
+            {RANK_BY.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setRankBy(id)}
+                aria-pressed={rankBy === id}
+                title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
+                className={`min-h-[36px] rounded-full px-3 transition ${
+                  rankBy === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        }
       />
 
       <ControlBar className="mb-3" showMyTeamsFilter />
@@ -77,7 +124,7 @@ export default function BestFixtureRuns() {
         </p>
       )}
 
-      {swings.length > 0 && (
+      {!byOdds && swings.length > 0 && (
         <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
             <TrendingUp size={14} aria-hidden="true" />
@@ -147,6 +194,17 @@ export default function BestFixtureRuns() {
                   <p className="truncate text-sm font-semibold sm:text-base">{row.team.name}</p>
                   <p className="text-[11px] text-ucl-muted">
                     avg {formatAvg(row.avg)} · {row.homes} home
+                    {oddsAvg?.get(row.team.id) && rankBy !== 'fdr' && (
+                      <>
+                        {' · '}
+                        <strong className="text-ucl-star">
+                          {rankBy === 'cs'
+                            ? `CS ${Math.round(oddsAvg.get(row.team.id).cs * 100)}%`
+                            : `xG ${oddsAvg.get(row.team.id).xgFor.toFixed(2)}`}
+                        </strong>{' '}
+                        per match
+                      </>
+                    )}
                   </p>
                 </button>
                 <button

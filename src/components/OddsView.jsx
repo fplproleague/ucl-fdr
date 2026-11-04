@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowDown, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
+import { useOdds } from '../utils/useOdds.js'
+import { useTeamDetail } from '../utils/useTeamDetail.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
-import { METRICS, compareRows, fitEstimator, indexOdds, playerOddsRows, teamOddsRows } from '../utils/oddsView.js'
+import { METRICS, compareRows, playerOddsRows, teamOddsRows } from '../utils/oddsView.js'
 import MdRangePicker from './MdRangePicker.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
+import ShowFilter from './ShowFilter.jsx'
+import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
 // The bookmakers' view, kept apart from the 1–5 ratings: expected goals
@@ -69,7 +73,7 @@ function Segmented({ options, value, onChange, label, className = '' }) {
   )
 }
 
-function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd }) {
+function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClick }) {
   const { format, label, better } = METRICS[metric]
   const order = better === 'high' ? 'highest first' : 'lowest first'
   const headerButton = (active) =>
@@ -130,9 +134,21 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd }) {
         </thead>
         <tbody>
           {rows.map(({ team, cells, avg }, idx) => (
-            <tr key={team.id} className={idx % 2 === 0 ? 'bg-white/[0.015]' : ''}>
+            <tr
+              key={team.id}
+              onClick={() => onTeamClick(team)}
+              className={`cursor-pointer transition hover:bg-white/[0.06] ${idx % 2 === 0 ? 'bg-white/[0.015]' : ''}`}
+            >
               <th scope="row" className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal">
-                <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTeamClick(team)
+                  }}
+                  aria-label={`View ${team.name} details`}
+                  className="flex items-center gap-1.5 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ucl-accent"
+                >
                   <TeamBadge abbr={team.abbr} size={20} />
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold sm:text-sm">{team.abbr}</span>
@@ -142,7 +158,8 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd }) {
                       </span>
                     )}
                   </span>
-                </div>
+                  {team.pinned && <Star size={10} className="shrink-0 text-ucl-accent" fill="currentColor" aria-label="My team" />}
+                </button>
               </th>
               {cells.map((cell, i) => (
                 <td key={i} className="border-t border-white/5 px-1 py-1.5 text-center">
@@ -190,11 +207,14 @@ const sortValue = {
 }
 
 function PlayerOdds({ rows, single, teamsByAbbr }) {
+  const { oddsQuery: query, setOddsQuery: setQuery, starred, toggleStar, openTab } = useTeams()
   const [position, setPosition] = useState('ALL')
   const [sortBy, setSortBy] = useState('ga')
   const [showAll, setShowAll] = useState(false)
-  const [query, setQuery] = useState('')
   const [maxPrice, setMaxPrice] = useState(null)
+  const [show, setShow] = useState('all')
+  const starredCount = rows.filter((r) => starred.has(r.player.id)).length
+  const pinnedCount = rows.filter((r) => teamsByAbbr[r.player.team]?.pinned).length
 
   const priceBounds = useMemo(() => {
     const prices = rows.map((r) => r.player.price)
@@ -208,13 +228,15 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
     return rows
       .filter((r) => position === 'ALL' || r.player.position === position)
       .filter((r) => maxPrice == null || r.player.price <= maxPrice)
+      .filter((r) => show !== 'starred' || starred.has(r.player.id))
+      .filter((r) => show !== 'mine' || teamsByAbbr[r.player.team]?.pinned)
       .filter((r) => {
         if (!q) return true
         const team = teamsByAbbr[r.player.team]
         return [r.player.name, team?.name, team?.shortName, r.player.team].some((x) => x?.toLowerCase().includes(q))
       })
       .sort((a, b) => sortValue[sortBy](b) - sortValue[sortBy](a) || a.player.name.localeCompare(b.player.name))
-  }, [rows, position, maxPrice, query, sortBy, teamsByAbbr])
+  }, [rows, position, maxPrice, query, sortBy, teamsByAbbr, show, starred])
   const visible = showAll ? filtered : filtered.slice(0, PREVIEW)
 
   if (!rows.length) {
@@ -233,7 +255,7 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
       active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
     }`
   // One matchday: chances. Several: expected totals over them.
-  const show = (rate) => (rate == null ? '–' : single ? pct(chance(rate)) : rate.toFixed(2))
+  const fmt = (rate) => (rate == null ? '–' : single ? pct(chance(rate)) : rate.toFixed(2))
   const csShow = (r) => (single ? pct(r.cs) : r.cs.toFixed(1))
   const head = single
     ? { ga: 'G/A', goal: 'Goal', assist: 'Assist', cs: 'CS' }
@@ -249,6 +271,15 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
             </button>
           ))}
         </div>
+        <ShowFilter
+          value={show}
+          onChange={setShow}
+          options={[
+            { id: 'all', label: 'All players' },
+            { id: 'starred', label: 'Starred', count: starredCount },
+            { id: 'mine', label: 'My teams', count: pinnedCount },
+          ]}
+        />
       </div>
 
       <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
@@ -272,11 +303,11 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
           </caption>
           <thead className="bg-white/[0.04] text-[10px] uppercase tracking-wider text-ucl-muted">
             <tr>
-              <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
+              <th scope="col" className="w-full py-2 pl-9 pr-2 text-left font-semibold">
                 Player
               </th>
               {single && (
-                <th scope="col" className="px-1 py-2 text-left font-semibold">
+                <th scope="col" className="hidden px-1 py-2 text-left font-semibold sm:table-cell">
                   vs
                 </th>
               )}
@@ -310,29 +341,52 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
               const tone = r.estimated ? 'text-ucl-star/60' : ''
               return (
                 <tr key={r.player.id} className="border-t border-white/5">
-                  <th scope="row" className="w-full max-w-0 py-1.5 pl-2 pr-2 text-left font-normal">
-                    <div className="flex items-center gap-1.5">
-                      <TeamBadge abbr={r.player.team} size={18} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold sm:text-sm">{r.player.name}</span>
-                        <span className="block truncate text-[10px] text-ucl-muted">
-                          {r.player.position} · €{r.player.price.toFixed(1)}m
-                          {!single && ` · ${r.matches.length} match${r.matches.length === 1 ? '' : 'es'}`}
+                  <th scope="row" className="w-full max-w-0 py-1 pl-0.5 pr-2 text-left font-normal">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-pressed={starred.has(r.player.id)}
+                        aria-label={starred.has(r.player.id) ? `Unstar ${r.player.name}` : `Star ${r.player.name}`}
+                        onClick={() => toggleStar(r.player.id)}
+                        className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
+                          starred.has(r.player.id) ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
+                        }`}
+                      >
+                        <Star size={14} aria-hidden="true" fill={starred.has(r.player.id) ? 'currentColor' : 'none'} />
+                      </button>
+                      {/* His name opens him on the Players tab: form, minutes, compare. */}
+                      <button
+                        type="button"
+                        onClick={() => openTab('players', { playersQuery: r.player.name })}
+                        title={`${r.player.name} on the Players tab`}
+                        className="flex min-w-0 items-center gap-1.5 rounded text-left hover:text-ucl-accent"
+                      >
+                        <TeamBadge abbr={r.player.team} size={18} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-semibold sm:text-sm">{r.player.name}</span>
+                          <span className="block truncate text-[10px] text-ucl-muted">
+                            {/* On a phone the opponent moves in here (no vs column) and the
+                                position, which the chips filter on, steps out. */}
+                            <span className={single ? 'hidden sm:inline' : ''}>{r.player.position} · </span>€
+                            {r.player.price.toFixed(1)}m
+                            {single && <span className="sm:hidden"> · {m.opp} ({m.venue})</span>}
+                            {!single && ` · ${r.matches.length} match${r.matches.length === 1 ? '' : 'es'}`}
+                          </span>
                         </span>
-                      </span>
+                      </button>
                     </div>
                   </th>
                   {single && (
-                    <td className="px-1 py-1.5 text-xs text-ucl-star/80">
+                    <td className="hidden px-1 py-1.5 text-xs text-ucl-star/80 sm:table-cell">
                       {m.opp} ({m.venue})
                     </td>
                   )}
                   {PLAYER_SORTS.map(([id]) => (
-                    <td key={id} className={`px-2 py-1.5 text-right text-xs tabular-nums ${tone} ${sortBy === id ? 'font-bold' : ''}`}>
-                      {show(id === 'ga' ? r.xgi : id === 'goal' ? r.xg : r.xa)}
+                    <td key={id} className={`px-1.5 py-1.5 text-right text-xs tabular-nums sm:px-2 ${tone} ${sortBy === id ? 'font-bold' : ''}`}>
+                      {fmt(id === 'ga' ? r.xgi : id === 'goal' ? r.xg : r.xa)}
                     </td>
                   ))}
-                  <td className={`px-2 py-1.5 text-right text-xs tabular-nums ${tone}`}>{csShow(r)}</td>
+                  <td className={`py-1.5 pl-1.5 pr-2 text-right text-xs tabular-nums ${tone}`}>{csShow(r)}</td>
                 </tr>
               )
             })}
@@ -354,7 +408,7 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
       <div className="mt-3 space-y-1 text-xs text-ucl-muted">
         <p>
           All <strong className="text-ucl-star/80">if he plays</strong>: anytime-scorer bets are void for a player who
-          doesn&apos;t, so check his minutes on the Players tab.
+          doesn&apos;t, so check his minutes: tap his name for him on the Players tab.
         </p>
         <p>
           Bookmakers price players only for the next matchday, a few days before it. Lighter rows include later
@@ -366,33 +420,35 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
 }
 
 export default function OddsView() {
-  const { teams, teamsByAbbr, from, to, skipMd, setRange, setSkipMd } = useTeams()
-  const [view, setView] = useState('teams')
-  const [metric, setMetric] = useState('cs')
-  const [sortMd, setSortMd] = useState(null)
-  const [odds, setOdds] = useState(null)
+  const {
+    teams,
+    teamsByAbbr,
+    from,
+    to,
+    skipMd,
+    setRange,
+    setSkipMd,
+    oddsView: view,
+    setOddsView: setView,
+    oddsMetric: metric,
+    setOddsMetric: setMetric,
+    oddsSortMd: sortMd,
+    setOddsSortMd: setSortMd,
+    pinnedCount,
+  } = useTeams()
+  const [teamsShown, setTeamsShown] = useState('all')
+  const { odds, index, estimator } = useOdds()
   const { players } = useLivePlayers()
-
-  // The archive grows with every matchday: loaded with the tab, not with
-  // the site.
-  useEffect(() => {
-    let cancelled = false
-    import('../data/odds.js').then(({ ODDS }) => {
-      if (!cancelled) setOdds(ODDS)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
 
   const mds = useVisibleMds(from, to, skipMd)
-  const index = useMemo(() => indexOdds(odds), [odds])
-  const estimator = useMemo(() => fitEstimator(odds, (abbr) => teamsByAbbr[abbr]?.rating ?? 3), [odds, teamsByAbbr])
   // A picked matchday that has left the range sorts on the average again.
   const sortIndex = sortMd == null ? -1 : mds.indexOf(sortMd)
+  const shownTeams = teamsShown === 'mine' && pinnedCount > 0 ? teams.filter((t) => t.pinned) : teams
   const rows = useMemo(
-    () => [...teamOddsRows(teams, mds, index, estimator, metric)].sort(compareRows(metric, sortIndex < 0 ? null : sortIndex)),
-    [teams, mds, index, estimator, metric, sortIndex],
+    () =>
+      [...teamOddsRows(shownTeams, mds, index, estimator, metric)].sort(compareRows(metric, sortIndex < 0 ? null : sortIndex)),
+    [shownTeams, mds, index, estimator, metric, sortIndex],
   )
   const playerRows = useMemo(() => playerOddsRows(players, mds, index, estimator), [players, mds, index, estimator])
   const pricedMds = mds.filter((md) => teams.some((t) => index.has(`${md}:${t.abbr}`)))
@@ -423,13 +479,24 @@ export default function OddsView() {
         <p className="py-10 text-center text-sm text-ucl-muted">Loading odds…</p>
       ) : view === 'teams' ? (
         <>
-          <Segmented
-            label="Show"
-            className="mb-3 sm:max-w-md"
-            value={metric}
-            onChange={setMetric}
-            options={Object.entries(METRICS).map(([id, m]) => [id, m.label])}
-          />
+          <div className="mb-3 flex items-center gap-2">
+            <Segmented
+              label="Show"
+              className="flex-1 sm:max-w-md sm:flex-none"
+              value={metric}
+              onChange={setMetric}
+              options={Object.entries(METRICS).map(([id, m]) => [id, m.label])}
+            />
+            <ShowFilter
+              label="Teams"
+              value={teamsShown}
+              onChange={setTeamsShown}
+              options={[
+                { id: 'all', label: 'All teams' },
+                { id: 'mine', label: 'My teams', count: pinnedCount },
+              ]}
+            />
+          </div>
           <OddsGrid
             mds={mds}
             rows={rows}
@@ -437,6 +504,7 @@ export default function OddsView() {
             teamsByAbbr={teamsByAbbr}
             sortMd={sortIndex < 0 ? null : sortMd}
             onSortMd={setSortMd}
+            onTeamClick={openTeam}
           />
           <div className="mt-3 space-y-1 text-xs text-ucl-muted">
             <p>
@@ -452,12 +520,16 @@ export default function OddsView() {
             <p>
               Estimates come from the team ratings, fitted to {estimator.matches} priced match
               {estimator.matches === 1 ? '' : 'es'} so far, and sharpen as more matchdays are priced. More fill = better for
-              a fantasy pick. Tap a matchday to sort on it.
+              a fantasy pick. Tap a matchday to sort on it, a team for its details.
             </p>
           </div>
         </>
       ) : (
         <PlayerOdds rows={playerRows} single={mds.length === 1} teamsByAbbr={teamsByAbbr} />
+      )}
+
+      {detailAbbr && (
+        <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
       )}
     </div>
   )

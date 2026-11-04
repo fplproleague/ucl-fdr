@@ -7,6 +7,9 @@
 //   #/players?demo=1            (Players with made-up players, for previews)
 //   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
 //   #/odds?from=5&to=8          (bookmaker odds, apart from the ratings)
+//   #/odds?ov=players&q=arsenal (its Players view, searched)
+//   #/odds?om=xgFor&os=6        (goals for, sorted on MD6)
+//   #/players?q=mbappe          (the Players tab, searched)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
@@ -15,6 +18,8 @@
 export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
+export const ODDS_VIEWS = ['teams', 'players']
+export const ODDS_METRICS = ['cs', 'xgFor', 'xgAgainst']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
@@ -27,6 +32,8 @@ export function parseHash(hash = window.location.hash) {
   }
   const day = params.get('day')
   const demo = params.get('demo')
+  const ov = params.get('ov')
+  const om = params.get('om')
   return {
     tab,
     from: num('from'),
@@ -40,6 +47,11 @@ export function parseHash(hash = window.location.hash) {
     demo: demo || null,
     // Player ids are the sheet's ("p250016833", or a name slug): anything
     // else is dropped rather than trusted.
+    // A search typed on the Players or Odds tab, so a link can carry it.
+    query: (params.get('q') || '').slice(0, 60),
+    oddsView: ODDS_VIEWS.includes(ov) ? ov : null,
+    oddsMetric: ODDS_METRICS.includes(om) ? om : null,
+    oddsSortMd: num('os'),
     players: [...new Set((params.get('cmp') || '').split(',').filter((id) => /^[\w-]{1,64}$/.test(id)))].slice(
       0,
       MAX_COMPARE_PLAYERS,
@@ -80,6 +92,10 @@ export function buildHash({
   ratings,
   demo,
   players,
+  query,
+  oddsView,
+  oddsMetric,
+  oddsSortMd,
 }) {
   const params = new URLSearchParams()
   if (from) params.set('from', String(from))
@@ -93,8 +109,12 @@ export function buildHash({
   if (packed) params.set('r', packed)
   if (tab === 'players' && demo) params.set('demo', demo)
   if (tab === 'players' && players?.length) params.set('cmp', players.join(','))
-  const query = params.toString()
-  return `#/${tab}${query ? `?${query}` : ''}`
+  if (tab === 'odds' && oddsView && oddsView !== 'teams') params.set('ov', oddsView)
+  if (tab === 'odds' && oddsMetric && oddsMetric !== 'cs') params.set('om', oddsMetric)
+  if (tab === 'odds' && oddsSortMd) params.set('os', String(oddsSortMd))
+  if ((tab === 'players' || tab === 'odds') && query?.trim()) params.set('q', query.trim())
+  const search = params.toString()
+  return `#/${tab}${search ? `?${search}` : ''}`
 }
 
 export function writeHash(next, { push = false } = {}) {

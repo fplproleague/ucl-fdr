@@ -4,6 +4,8 @@ import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
+import { useOdds } from '../utils/useOdds.js'
+import { playerOddsRows } from '../utils/oddsView.js'
 import { POSITIONS } from '../utils/parsePlayersCsv.js'
 import {
   blendForm,
@@ -23,6 +25,7 @@ import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import ComparePlayers from './ComparePlayers.jsx'
+import ShowFilter from './ShowFilter.jsx'
 import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
 
 // How many players a phone compares: three fit side by side without
@@ -33,18 +36,6 @@ const PREVIEW = 40
 export const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
-
-// Starred players, per browser. A convenience, so a blocked or cleared
-// storage just means no stars.
-const STARRED_KEY = 'ucl-fdr:starred-players:v1'
-function readStarred() {
-  try {
-    const ids = JSON.parse(localStorage.getItem(STARRED_KEY) ?? '[]')
-    return new Set(Array.isArray(ids) ? ids : [])
-  } catch {
-    return new Set()
-  }
-}
 
 // The form switch. "Domestic" is each club's last few league matches.
 const FORM_LABELS = [
@@ -70,8 +61,24 @@ const STAT_LABELS = [
 // answers "whose fixtures are good"; this answers "who do I want for them".
 // Same matchday range as every other view.
 export default function PlayerProjections() {
-  const { teamsByAbbr, venueAdjust, from, to, skipMd, setRange, setSkipMd, demo, comparePlayers, setComparePlayers } =
-    useTeams()
+  const {
+    teamsByAbbr,
+    venueAdjust,
+    from,
+    to,
+    skipMd,
+    setRange,
+    setSkipMd,
+    demo,
+    comparePlayers,
+    setComparePlayers,
+    starred,
+    toggleStar,
+    playersQuery: query,
+    setPlayersQuery: setQuery,
+    openTab,
+    pinnedCount,
+  } = useTeams()
   // Picking players and looking at them are two steps: tapping VS only
   // collects players, the comparison opens from the bar. A shared link
   // with players in it opens straight on the comparison.
@@ -83,21 +90,15 @@ export default function PlayerProjections() {
   const [formSource, setFormSource] = useState('both')
   const [position, setPosition] = useState('ALL')
   const [maxPrice, setMaxPrice] = useState(null)
-  const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState('score')
   const [showAll, setShowAll] = useState(false)
-  const [differentialsOnly, setDifferentialsOnly] = useState(false)
+  // One menu for the shortlists: all / starred / my teams / differentials.
+  const [show, setShow] = useState('all')
   const [openId, setOpenId] = useState(null)
   const [showInfo, setShowInfo] = useState(false)
-  const [starred, setStarred] = useState(readStarred)
-  const [starredOnly, setStarredOnly] = useState(false)
-  useEffect(() => {
-    try {
-      localStorage.setItem(STARRED_KEY, JSON.stringify([...starred]))
-    } catch {
-      // storage blocked: the stars just don't outlive the tab
-    }
-  }, [starred])
+  // A search arriving from another tab (a player's name, a club) opens
+  // that player's details when it finds exactly one.
+  const [autoOpened, setAutoOpened] = useState(null)
   const compareSet = new Set(comparePlayers)
   // A phone fits three players side by side without scrolling sideways.
   const isPhone = useIsPhone()
@@ -107,14 +108,6 @@ export default function PlayerProjections() {
     if (compareSet.has(id)) setComparePlayers(comparePlayers.filter((x) => x !== id))
     else if (!compareFull) setComparePlayers([...comparePlayers, id])
   }
-  const toggleStar = (id) =>
-    setStarred((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
   const clubMatches = leagueMatchesPlayed()
   // The demo's made-up totals are sized to the matchdays played so far, so
   // their points per match look like real ones.
@@ -130,6 +123,13 @@ export default function PlayerProjections() {
   const hasDomestic = players.some((p) => p.domestic?.length)
   const source = hasDomestic ? formSource : 'ucl'
   const mds = useVisibleMds(from, to, skipMd)
+  // The bookmakers' view of each player over the same matchdays (Odds tab):
+  // in his details and in the comparison.
+  const { index: oddsIndex, estimator } = useOdds()
+  const oddsById = useMemo(
+    () => (demo ? new Map() : new Map(playerOddsRows(players, mds, oddsIndex, estimator).map((r) => [r.player.id, r]))),
+    [demo, players, mds, oddsIndex, estimator],
+  )
   // Computed over the whole sheet, before any filter: the average a player
   // is pulled towards mustn't change because someone set a price cap.
   const rates = useMemo(() => positionRates(players), [players])
@@ -202,16 +202,25 @@ export default function PlayerProjections() {
     return scored
       .filter((p) => position === 'ALL' || p.position === position)
       .filter((p) => maxPrice == null || p.price <= maxPrice)
-      .filter((p) => !differentialsOnly || (p.ownership != null && p.ownership <= DIFFERENTIAL_MAX))
-      .filter((p) => !starredOnly || starred.has(p.id))
+      .filter((p) => show !== 'diff' || (p.ownership != null && p.ownership <= DIFFERENTIAL_MAX))
+      .filter((p) => show !== 'starred' || starred.has(p.id))
+      .filter((p) => show !== 'mine' || teamsByAbbr[p.team]?.pinned)
       .filter((p) => {
         if (!q) return true
         const team = teamsByAbbr[p.team]
         return [p.name, team?.name, team?.shortName, p.team].some((s) => s?.toLowerCase().includes(q))
       })
       .sort((a, b) => b[sortKey] - a[sortKey] || b.score - a.score || a.price - b.price)
-  }, [scored, position, maxPrice, differentialsOnly, starredOnly, starred, query, teamsByAbbr, sortKey])
+  }, [scored, position, maxPrice, show, starred, query, teamsByAbbr, sortKey])
+  useEffect(() => {
+    const q = query.trim()
+    if (q && rows.length === 1 && autoOpened !== q) {
+      setOpenId(rows[0].id)
+      setAutoOpened(q)
+    }
+  }, [query, rows, autoOpened])
   const hasOwnership = players.some((p) => p.ownership != null)
+  const starredCount = players.filter((p) => starred.has(p.id)).length
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
@@ -230,8 +239,11 @@ export default function PlayerProjections() {
   // (an old link) is skipped.
   const allCompared = useMemo(() => {
     const byId = new Map(scored.map((p) => [p.id, p]))
-    return comparePlayers.map((id) => byId.get(id)).filter(Boolean)
-  }, [scored, comparePlayers])
+    return comparePlayers
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((p) => ({ ...p, odds: oddsById.get(p.id) ?? null }))
+  }, [scored, comparePlayers, oddsById])
   // A shared link can hold five; a phone shows the first three.
   const compared = allCompared.slice(0, maxCompare)
   const scoreLabel = { ucl: 'Score (UCL form)', domestic: 'Score (league form)', both: 'Score' }[source]
@@ -380,31 +392,16 @@ export default function PlayerProjections() {
                 </button>
               ))}
             </div>
-            {hasOwnership && (
-              <button
-                type="button"
-                aria-pressed={differentialsOnly}
-                onClick={() => setDifferentialsOnly(!differentialsOnly)}
-                title={`Only players owned by ${DIFFERENTIAL_MAX}% of managers or fewer`}
-                className={`min-h-[40px] rounded-lg px-3 text-xs font-semibold transition ${
-                  differentialsOnly ? 'bg-ucl-accent text-white' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
-                }`}
-              >
-                Differentials ≤{DIFFERENTIAL_MAX}%
-              </button>
-            )}
-            <button
-              type="button"
-              aria-pressed={starredOnly}
-              onClick={() => setStarredOnly(!starredOnly)}
-              title="Only your starred players"
-              className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
-                starredOnly ? 'bg-ucl-accent text-white' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
-              }`}
-            >
-              <Star size={13} aria-hidden="true" fill={starredOnly ? 'currentColor' : 'none'} />
-              Starred{starred.size > 0 && ` (${starred.size})`}
-            </button>
+            <ShowFilter
+              value={show}
+              onChange={setShow}
+              options={[
+                { id: 'all', label: 'All players' },
+                { id: 'starred', label: 'Starred', count: starredCount },
+                { id: 'mine', label: 'My teams', count: pinnedCount },
+                ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
+              ]}
+            />
           </div>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
@@ -581,6 +578,8 @@ export default function PlayerProjections() {
                           <td colSpan={5} className="whitespace-normal px-2 pb-3 pt-1">
                             <PlayerDetails
                               player={p}
+                              odds={oddsById.get(p.id)}
+                              onOpenOdds={() => openTab('odds', { oddsView: 'players', oddsQuery: p.name })}
                               teamsByAbbr={teamsByAbbr}
                               venueAdjust={venueAdjust}
                               league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
@@ -762,12 +761,47 @@ function useIsPhone() {
 // What's behind the numbers: points per matchday (is that average one big
 // haul or steady returns?), the season stats, and — for phones, where the
 // fixtures column is hidden — the fixtures in the range.
-function PlayerDetails({ player, teamsByAbbr, venueAdjust, league, clubMatches }) {
+function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, league, clubMatches }) {
   const stats = STAT_LABELS.filter(
     ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
   )
   return (
     <div className="space-y-2.5">
+      {odds && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
+            Goal or assist chance · bookmaker odds, if he plays
+          </p>
+          <div className="flex flex-wrap items-center gap-1">
+            {odds.matches.map((m) => (
+              <span
+                key={m.md}
+                title={`MD${m.md} ${m.venue === 'H' ? 'v' : 'at'} ${m.opp}: xG ${m.xg.toFixed(2)}${
+                  m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
+                }${m.estimated ? ' (estimate)' : ''}`}
+                className={`inline-flex min-w-[52px] flex-col items-center rounded-md px-1.5 py-1 text-xs ${
+                  m.estimated ? 'border border-dashed border-ucl-star/25' : 'bg-ucl-accent/20'
+                }`}
+              >
+                <span className="text-[10px] text-ucl-muted">
+                  MD{m.md} {m.opp}
+                </span>
+                <span className="font-bold tabular-nums">{Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%</span>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenOdds()
+              }}
+              className="ml-1 min-h-[32px] rounded-md px-2 text-xs font-semibold text-ucl-accent hover:bg-white/10"
+            >
+              Odds →
+            </button>
+          </div>
+        </div>
+      )}
       {player.form?.length > 0 && (
         <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Points per matchday</p>

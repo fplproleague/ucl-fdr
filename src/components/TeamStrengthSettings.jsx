@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { RotateCcw, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { useOdds } from '../utils/useOdds.js'
+import { impliedRatings } from '../utils/oddsView.js'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
 
@@ -19,6 +21,14 @@ export default function TeamStrengthSettings() {
   // A sub-tab, not two stacked sections — most people never scroll far enough
   // to find Away Difficulty if it just sits below all 36 strength rows.
   const [subTab, setSubTab] = useState('strength')
+  // The rating the bookmakers' prices point to, as advice next to each
+  // team's own: it never changes a rating by itself.
+  const { odds } = useOdds()
+  const implied = useMemo(() => {
+    const ratingOf = Object.fromEntries(teams.map((t) => [t.abbr, t.rating]))
+    return odds ? impliedRatings(odds, (abbr) => ratingOf[abbr] ?? 3) : {}
+  }, [odds, teams])
+  const hasImplied = Object.keys(implied).length > 0
 
   // Ordered by the seed rating, never the live one — otherwise a team jumps
   // rows the instant you change it and you lose your place in a 36-row list.
@@ -71,6 +81,13 @@ export default function TeamStrengthSettings() {
       {subTab === 'strength' && (
         <>
           <RatingLegend variant="full" className="mb-3" />
+          {hasImplied && (
+            <p className="mb-3 text-xs text-ucl-muted">
+              <span className="font-semibold text-ucl-star/80">Odds ≈</span> is the rating the bookmakers&apos; prices
+              point to, from the matches priced so far (few matches still count for little). Highlighted when it sits a
+              step or more away from yours.
+            </p>
+          )}
 
           <div className="relative mb-3">
             <Search
@@ -110,6 +127,9 @@ export default function TeamStrengthSettings() {
                       </button>
                     ) : (
                       <span className="uppercase tracking-wide text-ucl-muted">{team.abbr}</span>
+                    )}
+                    {implied[team.abbr] && (
+                      <OddsHint rating={team.rating} implied={implied[team.abbr]} />
                     )}
                     {team.hidden && (
                       <>
@@ -174,5 +194,21 @@ export default function TeamStrengthSettings() {
         </>
       )}
     </div>
+  )
+}
+
+// "Odds ≈ 3.6" on its own line, lit up with an arrow when it's a step or more from the
+// rating as set.
+function OddsHint({ rating, implied }) {
+  const gap = implied.rating - rating
+  const far = Math.abs(gap) >= 0.75
+  return (
+    <span
+      className={`w-full ${far ? 'font-semibold text-ucl-accent' : 'text-ucl-muted'}`}
+      title={`From ${implied.matches} priced match${implied.matches === 1 ? '' : 'es'}`}
+    >
+      Odds ≈ {implied.rating.toFixed(1)}
+      {far && (gap > 0 ? ' ↑' : ' ↓')}
+    </span>
   )
 }

@@ -236,3 +236,47 @@ export function playerOddsRows(players, mds, index, estimator) {
   }
   return rows
 }
+
+// The 1–5 rating each team's priced matches point to, under the same model
+// the estimates use: every priced match says how far a team's goals for
+// (and its opponents' goals against it) sit from what the ratings predict,
+// and that gap, divided by what one rating step is worth, moves its rating.
+// Only for teams with priced matches; noisy with few, so `matches` comes
+// along. Uses the ratings as set (ratingOf), so it answers "should this
+// rating go up or down?".
+export const IMPLIED_SHRINK = 4
+export function impliedRatings(odds, ratingOf) {
+  const est = fitEstimator(odds, ratingOf)
+  const { base, home, strength } = est.fit
+  if (!(strength > 0.05)) return {}
+  const sums = {}
+  const add = (team, r) => {
+    const t = (sums[team] ??= { sum: 0, n: 0 })
+    t.sum += r
+    t.n++
+  }
+  const matches = {}
+  for (const m of Object.values(odds?.matches ?? {})) {
+    if (!(m.xg?.[0] > 0 && m.xg?.[1] > 0)) continue
+    for (const [team, opp, v, xg] of [
+      [m.home, m.away, 1, m.xg[0]],
+      [m.away, m.home, -1, m.xg[1]],
+    ]) {
+      const gap = (Math.log(xg) - base - home * v) / strength // = rating(team) − rating(opp)
+      add(team, ratingOf(opp) + gap)
+      add(opp, ratingOf(team) - gap)
+    }
+    matches[m.home] = (matches[m.home] ?? 0) + 1
+    matches[m.away] = (matches[m.away] ?? 0) + 1
+  }
+  // Pulled towards the rating as set until the matches pile up: one match
+  // (two readings) moves it a third of the way, four matches two thirds.
+  return Object.fromEntries(
+    Object.entries(sums).map(([team, t]) => {
+      const raw = t.sum / t.n
+      const r = ratingOf(team)
+      const rating = r + ((raw - r) * t.n) / (t.n + IMPLIED_SHRINK)
+      return [team, { rating: Math.min(5, Math.max(1, rating)), matches: matches[team] ?? 0 }]
+    }),
+  )
+}
