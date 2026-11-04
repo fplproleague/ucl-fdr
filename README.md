@@ -127,7 +127,10 @@ and push the file.
   club (`PLAYER_NAME_OVERRIDES`: sheet id → the bookmaker's spelling). The log lists loose matches and likely scorers it
   couldn't place.
 - **Elo**: every run also saves each club's Elo rating from [clubelo.com](http://clubelo.com) (free, no key) for the
-  estimates; `ELO_NAMES` in the script maps a club the log says it couldn't find. Unreachable: the saved Elo is kept.
+  estimates; `ELO_NAMES` in the script maps a club the log says it couldn't find. When the machine it runs on can't
+  reach clubelo.com (Cowork's sandbox can't), save `http://api.clubelo.com/<today's date>` from a browser into the repo
+  folder (as `clubelo.csv`, or under the date-name the browser picks; git ignores both) and the script reads the newest
+  one. Neither: the saved Elo is kept. Elo moves slowly, so a download every few weeks is enough.
 - `scripts/probe-odds.mjs` prints which bookmakers and markets exist right now, without changing anything.
 
 ## Analytics

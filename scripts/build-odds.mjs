@@ -27,8 +27,9 @@
 // objective club strength the Odds tab estimates unpriced matches from (the
 // site's 1–5 ratings are opinions and never feed the odds). Clubs it can't
 // find are listed; ELO_NAMES fixes a name. If clubelo.com can't be reached
-// the Elo saved last time is kept.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+// it reads a download saved in the repo folder (see eloFile), and failing
+// that keeps the Elo saved last time.
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -171,9 +172,38 @@ async function sheetPlayers() {
 
 // Every club's Elo today from clubelo.com: { date, teams: { ARS: 2034, … } },
 // or null when it can't be fetched.
+// A clubelo.com download saved in the repo folder, for when the network the
+// script runs on can't reach clubelo.com (a sandbox's allowlist): the
+// newest file named clubelo*.csv, or named after a date the way a browser
+// saves http://api.clubelo.com/2026-11-05 ("2026-11-05" / "2026-11-05.csv").
+// Git ignores both. → { date, text } or null
+function eloFile() {
+  const root = path.join(__dirname, '..')
+  const pick = process.env.CLUBELO_FILE
+    ? [process.env.CLUBELO_FILE]
+    : readdirSync(root)
+        .filter((f) => /^clubelo.*\.csv$/i.test(f) || /^\d{4}-\d{2}-\d{2}(\.(csv|txt))?$/i.test(f))
+        .map((f) => path.join(root, f))
+        .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
+  for (const file of pick) {
+    if (!existsSync(file)) continue
+    const text = readFileSync(file, 'utf8')
+    if (!/^\s*Rank,Club,Country,Level,Elo/i.test(text)) {
+      console.log(`Odds: ${path.basename(file)} isn't a clubelo.com download (no "Rank,Club,Country,Level,Elo" header), skipped`)
+      continue
+    }
+    const date = path.basename(file).match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? new Date(statSync(file).mtimeMs).toISOString().slice(0, 10)
+    return { date, text, file: path.basename(file) }
+  }
+  return null
+}
+
+// Every club's Elo from clubelo.com — fetched, or from a saved download (see
+// eloFile): { date, teams: { ARS: 2034, … } }, or null.
 async function fetchElo() {
-  const date = now.toISOString().slice(0, 10)
+  let date = now.toISOString().slice(0, 10)
   let text = null
+  let source = 'clubelo.com'
   const failures = []
   const bases = process.env.CLUBELO_BASE ? [process.env.CLUBELO_BASE] : ['https://api.clubelo.com', 'http://api.clubelo.com']
   for (const base of bases) {
@@ -188,11 +218,22 @@ async function fetchElo() {
       failures.push(`${base}: ${err.cause?.code ?? err.cause?.message ?? err.message}`)
     }
   }
-  // Why it failed, so a blocked network (a sandbox's allowlist) can be told
-  // from clubelo.com being down.
   if (!text) {
+    // Why it failed, so a blocked network can be told from clubelo.com
+    // being down — then the saved download, if there is one.
     console.log(`Odds: clubelo.com not reached — ${failures.join('; ')}`)
-    return null
+    const saved = eloFile()
+    if (!saved) {
+      console.log(
+        'Odds: no clubelo download in the repo folder either: open http://api.clubelo.com/' +
+          date +
+          ' in a browser and save it in the repo folder (as clubelo.csv, or under the name the browser picks)',
+      )
+      return null
+    }
+    console.log(`Odds: Elo from ${saved.file} (${saved.date})`)
+    ;({ date, text } = saved)
+    source = `clubelo.com (${saved.file})`
   }
   // Rank,Club,Country,Level,Elo,From,To
   const key = (name) =>
@@ -215,7 +256,7 @@ async function fetchElo() {
     else missing.push(team.id)
   }
   if (missing.length) console.log(`Odds: no Elo found on clubelo.com for ${missing.join(', ')} (ELO_NAMES)`)
-  return Object.keys(teams).length ? { date, source: 'clubelo.com', teams } : null
+  return Object.keys(teams).length ? { date, source, teams } : null
 }
 
 async function run() {
