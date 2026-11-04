@@ -1,6 +1,6 @@
 // Betting odds (API-Football's /odds) → per match: each team's expected
 // goals, clean-sheet chance and win/draw/loss chances, and per player his
-// expected goals and assists. Used by scripts/build-odds.mjs; pure, so it
+// prices, turned into expected goals and assists if he plays. Used by scripts/build-odds.mjs; pure, so it
 // is tested in tests/odds.test.js.
 //
 // Bookmaker prices carry a margin (the implied chances add up to more than
@@ -20,10 +20,6 @@ export const BET = {
   awayAnytimeScorer: 218,
   scoreOrAssist: 257,
 }
-
-// Share of a team's goals that are own goals: no player scores those, so
-// the players' expected goals add up to a little less than the team's.
-const OWN_GOAL_SHARE = 0.03
 
 export const median = (xs) => {
   const s = xs.filter((x) => Number.isFinite(x)).sort((a, b) => a - b)
@@ -189,24 +185,38 @@ export function teamNumbers(entry) {
   }
 }
 
-// Player markets → { name: { side: 'home'|'away'|null, xg, xa } } for one
-// fixture, from the bookmaker that prices the most players. Anytime-scorer
-// odds give his chance of scoring, turned into expected goals (Poisson:
-// xg = −ln(1 − P)); "to score or assist" gives the same for a goal or an
-// assist, and the difference is his expected assists. These markets have a
-// big margin and can't be de-vigged outcome by outcome (several players
-// can score), so each side's players are scaled down together until their
-// expected goals add up to the team's (less own goals) — never up, since
-// the list can miss a few unlikely scorers.
-export function playerNumbers(entry, teamXg) {
-  const books = (entry.bookmakers ?? []).filter((b) => betOf(b, BET.anytimeScorer))
-  const book = books.sort((x, y) => (betOf(y, BET.anytimeScorer).values?.length ?? 0) - (betOf(x, BET.anytimeScorer).values?.length ?? 0))[0]
+// A player's prices for one match → his expected goals and assists IF HE
+// PLAYS. Anytime-scorer bets are void when a player doesn't take part, so
+// the prices are conditional on playing, and the bookmaker lists the whole
+// squad: the prices can't be scaled to add up to the team's goals (the
+// bench would eat a starter's share). Instead each price loses a typical
+// margin (PLAYER_MARGIN), and the chance left is turned into expected goals
+// (Poisson: xg = −ln(1 − P)); "to score or assist" gives the same for a
+// goal or an assist, and the difference is his expected assists.
+//   odds: [anytime scorer, score or assist] (decimal; the second may be null)
+export const PLAYER_MARGIN = 1.15
+export function playerRates([scorer, scoreOrAssist] = []) {
+  const rate = (odd) => {
+    const p = price(odd) ? 1 / price(odd) / PLAYER_MARGIN : null
+    return p == null ? null : -Math.log(1 - Math.min(p, 0.99))
+  }
+  const g = rate(scorer)
+  const ga = rate(scoreOrAssist)
+  return {
+    xg: round(g),
+    xa: g == null || ga == null ? null : round(Math.max(0, ga - g)),
+  }
+}
+
+// Player markets → { name: { side: 'home'|'away'|null, odds: [anytime
+// scorer, score or assist] } } for one fixture, from the bookmaker that
+// prices the most players. The raw prices are what gets saved, so a change
+// to playerRates never needs the (by then deleted) odds again.
+export function playerOdds(entry) {
+  const count = (b) => betOf(b, BET.anytimeScorer)?.values?.length ?? 0
+  const book = (entry.bookmakers ?? []).filter(count).sort((x, y) => count(y) - count(x))[0]
   if (!book) return {}
 
-  const rate = (odd) => {
-    const p = price(odd) ? 1 / price(odd) : null
-    return p == null || p >= 1 ? null : -Math.log(1 - p)
-  }
   const isPlayer = (name) => name && !/no goal ?scorer/i.test(name)
   const sideOf = new Map()
   for (const [id, side] of [
@@ -214,32 +224,12 @@ export function playerNumbers(entry, teamXg) {
     [BET.awayAnytimeScorer, 'away'],
   ])
     for (const v of betOf(book, id)?.values ?? []) if (isPlayer(v.value)) sideOf.set(v.value, side)
-
-  const players = {}
-  for (const v of betOf(book, BET.anytimeScorer).values ?? []) {
-    if (!isPlayer(v.value)) continue
-    const g = rate(v.odd)
-    if (g == null) continue
-    players[v.value] = { side: sideOf.get(v.value) ?? null, g, ga: null }
-  }
-  for (const v of betOf(book, BET.scoreOrAssist)?.values ?? []) if (players[v.value]) players[v.value].ga = rate(v.odd)
+  const assistOdd = new Map((betOf(book, BET.scoreOrAssist)?.values ?? []).map((v) => [v.value, price(v.odd)]))
 
   const out = {}
-  for (const [side, i] of [
-    ['home', 0],
-    ['away', 1],
-  ]) {
-    const mine = Object.entries(players).filter(([, p]) => p.side === side)
-    const total = mine.reduce((s, [, p]) => s + p.g, 0)
-    const scale = teamXg?.[i] != null && total > 0 ? Math.min(1, ((1 - OWN_GOAL_SHARE) * teamXg[i]) / total) : 1
-    for (const [name, p] of mine)
-      out[name] = {
-        side,
-        xg: round(p.g * scale),
-        xa: p.ga == null ? null : round(Math.max(0, p.ga - p.g) * scale),
-      }
+  for (const v of betOf(book, BET.anytimeScorer).values ?? []) {
+    if (!isPlayer(v.value) || !price(v.odd)) continue
+    out[v.value] = { side: sideOf.get(v.value) ?? null, odds: [price(v.odd), assistOdd.get(v.value) ?? null] }
   }
-  for (const [name, p] of Object.entries(players))
-    if (!p.side) out[name] = { side: null, xg: round(p.g), xa: p.ga == null ? null : round(Math.max(0, p.ga - p.g)) }
   return out
 }

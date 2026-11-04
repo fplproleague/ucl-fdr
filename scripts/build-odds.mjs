@@ -1,7 +1,7 @@
 // Regenerates src/data/odds.js from API-Football's betting odds: for every
 // UCL match that bookmakers have priced, each team's expected goals,
-// clean-sheet chance and win/draw/loss chances, and the expected goals and
-// assists of the sheet players they price (see src/utils/odds.js for the
+// clean-sheet chance and win/draw/loss chances, and the prices of the sheet
+// players the bookmakers price (anytime scorer, score or assist) (see src/utils/odds.js for the
 // maths). The site never calls the API itself, so the key stays private:
 // this runs on a laptop (by hand, or as a Claude Cowork scheduled task),
 // and the result is committed and pushed.
@@ -9,6 +9,8 @@
 // Usage:
 //   node scripts/build-odds.mjs        key from the same key file as
 //                                      scripts/build-domestic-form.mjs
+//   … --refresh   also re-save matches that have kicked off (the API keeps
+//                 their pre-match odds for about a week)
 //
 // Bookmakers price a match from about two weeks before it, and API-Football
 // drops the odds about a week after it. So the file is an archive: every
@@ -27,7 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { buildClubLookup } from '../src/utils/parseGoalkeepersCsv.js'
 import { parsePlayerRows } from '../src/utils/parsePlayersCsv.js'
 import { matchApiTeam, matchSquadPlayer, uclMatchday } from '../src/utils/domesticForm.js'
-import { playerNumbers, teamNumbers } from '../src/utils/odds.js'
+import { playerOdds, playerRates, teamNumbers } from '../src/utils/odds.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(__dirname, '../src/data/odds.js')
@@ -52,6 +54,7 @@ const keyFiles = process.env.API_FOOTBALL_KEY_FILE
 const keyFile = keyFiles.find((f) => existsSync(f))
 const key = process.env.API_FOOTBALL_KEY || (keyFile ? readFileSync(keyFile, 'utf8').trim() : '')
 const now = new Date()
+const refresh = process.argv.includes('--refresh')
 const season = Number(
   process.env.API_FOOTBALL_SEASON ?? (now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1),
 )
@@ -156,9 +159,10 @@ async function run() {
     if (!away) unplacedTeams.add(fixture.teams.away.name)
     if (!home || !away) continue // a qualifier against a club outside the 36
 
-    // Kicked off and already saved: keep the closing odds.
+    // Kicked off and already saved: keep the closing odds (unless --refresh,
+    // for re-saving a match while the API still has its odds).
     const kickoff = fixture.fixture.date
-    if (matches[id] && new Date(kickoff) <= now) {
+    if (matches[id] && new Date(kickoff) <= now && !refresh) {
       kept++
       continue
     }
@@ -167,7 +171,7 @@ async function run() {
     if (!team) continue
 
     // Bookmaker names → sheet players, per side.
-    const priced = playerNumbers(entry, team.xg)
+    const priced = playerOdds(entry)
     const pool = (side) =>
       Object.entries(priced)
         .filter(([, p]) => p.side === side || p.side == null)
@@ -186,16 +190,17 @@ async function run() {
           ? candidates.find((c) => c.name === override)
           : matchSquadPlayer({ ...player, apiId: null }, candidates, info)
         if (!match) continue
-        const p = priced[match.name]
-        byPlayer[player.id] = [p.xg, p.xa]
+        byPlayer[player.id] = priced[match.name].odds
         used.add(match.name)
         playersMatched++
         if (info.loose) loose.push(`${player.name} = ${match.name} (${abbr})`)
       }
     }
     // Priced as likely scorers but not found in the sheet: worth a look.
-    for (const [name, p] of Object.entries(priced))
-      if (!used.has(name) && p.xg >= 0.15) unpriced.push(`${name} (${p.side === 'away' ? away : home}, xG ${p.xg})`)
+    for (const [name, p] of Object.entries(priced)) {
+      const { xg } = playerRates(p.odds)
+      if (!used.has(name) && xg >= 0.3) unpriced.push(`${name} (${p.side === 'away' ? away : home}, xG ${xg})`)
+    }
 
     const md = uclMatchday(fixture)
     matches[id] = {
@@ -263,7 +268,9 @@ writeFileSync(
 //   win  [home, draw, away] chances
 //   bookmakers, source ('totals': team-total markets; 'result': fitted
 //   from 1X2 + over/under), updated (the bookmakers' last update)
-//   players  { sheet player id: [expected goals, expected assists] }
+//   players  { sheet player id: [anytime-scorer odds, score-or-assist odds] }
+//            (playerRates in src/utils/odds.js turns them into expected
+//            goals and assists if he plays)
 export const ODDS = {
   updated: ${quote(updated)},
   matches: {

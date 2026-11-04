@@ -113,12 +113,12 @@ and push the file.
 - **Maths** (`src/utils/odds.js`): every market is de-vigged (implied chances scaled back to 100%) and the median over
   bookmakers is used. Expected goals come from the team-total over/under lines through a Poisson model (or, without
   those, are fitted to the 1X2 and over/under 2.5 odds); a clean sheet is priced directly by the Clean Sheet market and
-  the other side's Under 0.5. A player's expected goals come from his anytime-scorer price, his expected assists from
-  "to score or assist" minus that; each side's players are scaled down together when they add up to more than the
-  team's expected goals.
+  the other side's Under 0.5. Players are saved as raw prices (anytime scorer, score or assist); `playerRates` turns
+  them into expected goals and assists **if he plays** (those bets are void for a player who doesn't), after taking a
+  typical margin (`PLAYER_MARGIN`, an estimate) off each price.
 - **When**: bookmakers price a match about two weeks ahead and API-Football drops the odds about a week after it, so
   the file is an archive: each run adds what's priced now and keeps the rest, and a match that has kicked off keeps the
-  odds saved before kick-off. Run it in the days before every matchday and on the day itself (player markets fill up
+  odds saved before kick-off (`--refresh` re-saves those while the API still has them). Run it in the days before every matchday and on the day itself (player markets fill up
   late).
 - **Cost**: one request for the fixture list plus one per 10 priced matches.
 - **Matching**: clubs by name like the domestic form (`TEAM_NAME_OVERRIDES` for a miss), players by name within their

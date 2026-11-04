@@ -5,7 +5,9 @@ import {
   devig,
   fitFromResult,
   lambdaFromOver,
-  playerNumbers,
+  PLAYER_MARGIN,
+  playerOdds,
+  playerRates,
   poissonOver,
   teamNumbers,
 } from '../src/utils/odds.js'
@@ -106,24 +108,25 @@ test('the median over bookmakers ignores one odd price', () => {
   near(t.xg[0], teamNumbers({ bookmakers: [bet365] }).xg[0], 1e-9, 'home xG')
 })
 
-test('player numbers: scaled to the team, assists from score-or-assist', () => {
-  const team = teamNumbers({ bookmakers: [bet365] })
-  const p = playerNumbers({ bookmakers: [bet365] }, team.xg)
-  assert.equal(p['Kylian Mbappe'].side, 'away')
-  assert.equal(p['Barnabas Varga'].side, 'home')
-  // Mbappé alone: −ln(1 − 1/1.36) ≈ 1.33; with Güler the away side sums to
-  // 1.33 + 0.36 = 1.69, under the team's 3.0, so no scaling.
-  near(p['Kylian Mbappe'].xg, 1.33, 0.01, 'Mbappé xG')
-  near(p['Kylian Mbappe'].xa, -Math.log(1 - 1 / 1.2) - 1.33, 0.02, 'Mbappé xA')
-  near(p['Barnabas Varga'].xg, 0.26, 0.01, 'Varga xG')
-  // A side whose priced players add up to more than its goals is scaled down to them.
-  const tight = playerNumbers({ bookmakers: [bet365] }, [0.2, 1])
-  near(tight['Barnabas Varga'].xg, 0.97 * 0.2, 0.01, 'Varga scaled')
-  near(tight['Kylian Mbappe'].xg / tight['Arda Guler'].xg, 1.33 / 0.36, 0.1, 'shares kept')
-  assert.ok(p['Barnabas Varga'].xa > 0)
+test('player odds: raw prices per player, with his side', () => {
+  const p = playerOdds({ bookmakers: [bet365] })
+  assert.deepEqual(p['Kylian Mbappe'], { side: 'away', odds: [1.36, 1.2] })
+  assert.deepEqual(p['Barnabas Varga'], { side: 'home', odds: [4.33, 3] })
 })
 
-test('no player markets, no player numbers', () => {
+test('player rates: margin off, then Poisson; assists are the difference', () => {
+  // Mbappé at 1.36: 73.5% implied, 63.9% without the margin → 1.02 goals.
+  const m = playerRates([1.36, 1.2])
+  near(m.xg, -Math.log(1 - 1 / 1.36 / PLAYER_MARGIN), 0.006, 'Mbappé xG')
+  near(m.xg, 1.02, 0.03, 'Mbappé xG, by hand')
+  near(m.xa, -Math.log(1 - 1 / 1.2 / PLAYER_MARGIN) - m.xg, 0.011, 'Mbappé xA')
+  assert.deepEqual(playerRates([4.33, null]).xa, null)
+  assert.deepEqual(playerRates([]), { xg: null, xa: null })
+  // A price below the margin can't give a chance above 99%.
+  assert.ok(playerRates([1.01, 1.01]).xg < 5)
+})
+
+test('no player markets, no player odds', () => {
   const plain = { ...bet365, bets: bet365.bets.filter((b) => b.id === BET.matchWinner) }
-  assert.deepEqual(playerNumbers({ bookmakers: [plain] }, [1, 1]), {})
+  assert.deepEqual(playerOdds({ bookmakers: [plain] }), {})
 })
