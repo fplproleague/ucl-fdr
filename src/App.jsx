@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users, Percent } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -7,16 +7,18 @@ import BestFixtureRuns from './components/BestFixtureRuns.jsx'
 import CompareTeams from './components/CompareTeams.jsx'
 import GkRotation from './components/GkRotation.jsx'
 import PlayerProjections from './components/PlayerProjections.jsx'
+import OddsView from './components/OddsView.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 
 const TABS = [
-  { id: 'table', label: 'FDR Table', icon: Calendar, Component: FDRTable },
-  { id: 'runs', label: 'Best Runs', icon: TrendingUp, Component: BestFixtureRuns },
+  { id: 'table', label: 'FDR Table', short: 'FDR', icon: Calendar, Component: FDRTable },
+  { id: 'runs', label: 'Best Runs', short: 'Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
-  { id: 'gk', label: 'GK Rotation', icon: Repeat, Component: GkRotation },
+  { id: 'gk', label: 'GK Rotation', short: 'GK', icon: Repeat, Component: GkRotation },
   { id: 'players', label: 'Players', icon: Users, Component: PlayerProjections },
+  { id: 'odds', label: 'Odds', icon: Percent, Component: OddsView },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
@@ -104,20 +106,23 @@ function Shell() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ucl-navy/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
       >
         <div className="mx-auto flex max-w-6xl">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {/* Seven tabs across a phone: the long labels get a short form
+              (the full one stays as the accessible name). */}
+          {tabs.map(({ id, label, short, icon: Icon }) => (
             <a
               key={id}
               href={`#/${id}`}
               role="tab"
               aria-selected={tab === id}
+              aria-label={label}
               onClick={(e) => goToTab(e, id)}
               onKeyDown={(e) => onTabKeyDown(e, id)}
-              className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
+              className={`flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
                 tab === id ? 'text-ucl-accent' : 'text-ucl-star/60'
               }`}
             >
               <Icon size={20} aria-hidden="true" />
-              {label}
+              <span aria-hidden="true">{short ?? label}</span>
             </a>
           ))}
         </div>

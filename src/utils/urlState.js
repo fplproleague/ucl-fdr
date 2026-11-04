@@ -6,12 +6,13 @@
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/players?demo=1            (Players with made-up players, for previews)
 //   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
+//   #/odds?from=5&to=8          (bookmaker odds, apart from the ratings)
 //
 // Tab changes push a history entry (so the phone's back button walks back
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players']
+export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
 
