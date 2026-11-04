@@ -21,12 +21,13 @@ export default function TeamStrengthSettings() {
   // A sub-tab, not two stacked sections — most people never scroll far enough
   // to find Away Difficulty if it just sits below all 36 strength rows.
   const [subTab, setSubTab] = useState('strength')
-  // The rating the bookmakers' prices point to, as advice next to each
-  // team's own: it never changes a rating by itself.
+  // Where the bookmakers (and Elo) would put each team, as advice next to
+  // its own rating: it never changes one, and doesn't look at them either
+  // (only the seeded ratings' band sizes).
   const { odds } = useOdds()
   const implied = useMemo(() => {
-    const ratingOf = Object.fromEntries(teams.map((t) => [t.abbr, t.rating]))
-    return odds ? impliedRatings(odds, (abbr) => ratingOf[abbr] ?? 3) : {}
+    if (!odds) return {}
+    return impliedRatings(odds, Object.fromEntries(teams.map((t) => [t.abbr, t.baseRating])))
   }, [odds, teams])
   const hasImplied = Object.keys(implied).length > 0
 
@@ -83,9 +84,9 @@ export default function TeamStrengthSettings() {
           <RatingLegend variant="full" className="mb-3" />
           {hasImplied && (
             <p className="mb-3 text-xs text-ucl-muted">
-              <span className="font-semibold text-ucl-star/80">Odds ≈</span> is the rating the bookmakers&apos; prices
-              point to, from the matches priced so far (few matches still count for little). Highlighted when it sits a
-              step or more away from yours.
+              <span className="font-semibold text-ucl-star/80">Odds ≈</span> is where the bookmakers&apos; prices (and
+              Elo club ratings) put a team: all 36 ranked, in bands as big as the seeded ones. Highlighted when it differs
+              from yours. Still rough with few matches priced.
             </p>
           )}
 
@@ -197,17 +198,17 @@ export default function TeamStrengthSettings() {
   )
 }
 
-// "Odds ≈ 3.6" on its own line, lit up with an arrow when it's a step or more from the
+// "Odds ≈ 4" on its own line, lit up with an arrow when it differs from the
 // rating as set.
 function OddsHint({ rating, implied }) {
   const gap = implied.rating - rating
-  const far = Math.abs(gap) >= 0.75
+  const far = gap !== 0
   return (
     <span
       className={`w-full ${far ? 'font-semibold text-ucl-accent' : 'text-ucl-muted'}`}
       title={`From ${implied.matches} priced match${implied.matches === 1 ? '' : 'es'}`}
     >
-      Odds ≈ {implied.rating.toFixed(1)}
+      Odds ≈ {implied.rating}
       {far && (gap > 0 ? ' ↑' : ' ↓')}
     </span>
   )

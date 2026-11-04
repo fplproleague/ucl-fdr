@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
@@ -26,6 +26,7 @@ import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import ComparePlayers from './ComparePlayers.jsx'
 import ShowFilter from './ShowFilter.jsx'
+import StickyHead from './StickyHead.jsx'
 import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
 
 // How many players a phone compares: three fit side by side without
@@ -99,6 +100,8 @@ export default function PlayerProjections() {
   // A search arriving from another tab (a player's name, a club) opens
   // that player's details when it finds exactly one.
   const [autoOpened, setAutoOpened] = useState(null)
+  const tableScrollerRef = useRef(null)
+  const tableRef = useRef(null)
   const compareSet = new Set(comparePlayers)
   // A phone fits three players side by side without scrolling sideways.
   const isPhone = useIsPhone()
@@ -248,6 +251,46 @@ export default function PlayerProjections() {
   const compared = allCompared.slice(0, maxCompare)
   const scoreLabel = { ucl: 'Score (UCL form)', domestic: 'Score (league form)', both: 'Score' }[source]
   const withoutDomestic = players.length - domestic.size
+  // In the table and in the sticky copy under the site header.
+  const headRow = (
+    <tr className="bg-ucl-deep text-[10px] uppercase tracking-wider text-ucl-muted">
+      {/* w-full + max-w-0 on the name column: it takes whatever the
+          number columns leave, and truncates instead of squeezing them. */}
+      <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
+        Player
+      </th>
+      <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
+        Fixtures{mds.length > 0 && ` · MD${mds[0]} → MD${mds[mds.length - 1]}`}
+      </th>
+      <th scope="col" className="px-1.5 py-2 text-right font-semibold">
+        €m
+      </th>
+      <th
+        scope="col"
+        className="px-1.5 py-2 text-right font-semibold"
+        title={
+          source === 'domestic'
+            ? `Points per match in the last ${domesticMatches} league matches (UCL Fantasy rules), goals + assists per 90 below`
+            : source === 'both'
+              ? 'Average of UCL and domestic points per match, domestic goals + assists per 90 below'
+              : 'UCL points per match so far'
+        }
+      >
+        Form
+      </th>
+      <th
+        scope="col"
+        className="px-2 py-2 text-left font-semibold"
+        title={
+          sortBy === 'value'
+            ? 'Score per €1m, 100 = best value over these matchdays'
+            : 'Form and fixtures, 100 = best player over these matchdays'
+        }
+      >
+        {sortBy === 'value' ? 'Score / €m' : 'Score'}
+      </th>
+    </tr>
+  )
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -422,46 +465,13 @@ export default function PlayerProjections() {
             />
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full whitespace-nowrap text-sm">
-              <thead className="bg-white/[0.04] text-[10px] uppercase tracking-wider text-ucl-muted">
-                <tr>
-                  {/* w-full + max-w-0 on the name column: it takes whatever the
-                      number columns leave, and truncates instead of squeezing them. */}
-                  <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
-                    Player
-                  </th>
-                  <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
-                    Fixtures{mds.length > 0 && ` · MD${mds[0]} → MD${mds[mds.length - 1]}`}
-                  </th>
-                  <th scope="col" className="px-1.5 py-2 text-right font-semibold">
-                    €m
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-1.5 py-2 text-right font-semibold"
-                    title={
-                      source === 'domestic'
-                        ? `Points per match in the last ${domesticMatches} league matches (UCL Fantasy rules), goals + assists per 90 below`
-                        : source === 'both'
-                          ? 'Average of UCL and domestic points per match, domestic goals + assists per 90 below'
-                          : 'UCL points per match so far'
-                    }
-                  >
-                    Form
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-2 text-left font-semibold"
-                    title={
-                      sortBy === 'value'
-                        ? 'Score per €1m, 100 = best value over these matchdays'
-                        : 'Form and fixtures, 100 = best player over these matchdays'
-                    }
-                  >
-                    {sortBy === 'value' ? 'Score / €m' : 'Score'}
-                  </th>
-                </tr>
+          <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">
+            {headRow}
+          </StickyHead>
+          <div ref={tableScrollerRef} className="overflow-x-auto rounded-2xl border border-white/10">
+            <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
+              <thead>
+                {headRow}
               </thead>
               <tbody>
                 {visible.map((p) => {

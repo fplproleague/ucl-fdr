@@ -319,7 +319,7 @@ export default function GkRotation() {
                     <span>
                       Both favourable: <strong className="text-ucl-star">{summary.bothFavourable}/{summary.total}</strong>
                     </span>
-                    {rankBy === 'cs' && bestCs != null && (
+                    {bestCs != null && (
                       <span title="Clean sheets expected when you start the better of the two every matchday">
                         Best-of CS: <strong className="text-ucl-star">{bestCs.toFixed(1)}</strong>
                       </span>
@@ -360,7 +360,7 @@ export default function GkRotation() {
                                     showDay
                                     className="mx-auto"
                                   />
-                                  {rankBy === 'cs' && row.csA != null && <CsNote cs={row.csA} best={row.csA >= (row.csB ?? 0)} />}
+                                  {row.csA != null && <CsNote cs={row.csA} best={row.csA >= (row.csB ?? 0)} />}
                                   </>
                                 ) : (
                                   <span className="text-ucl-star/20">–</span>
@@ -380,7 +380,7 @@ export default function GkRotation() {
                                     showDay
                                     className="mx-auto"
                                   />
-                                  {rankBy === 'cs' && row.csB != null && <CsNote cs={row.csB} best={row.csB > (row.csA ?? 0)} />}
+                                  {row.csB != null && <CsNote cs={row.csB} best={row.csB > (row.csA ?? 0)} />}
                                   </>
                                 ) : (
                                   <span className="text-ucl-star/20">–</span>

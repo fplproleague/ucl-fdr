@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ArrowDown, Search, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { MATCHDAY_LABEL } from '../data/matchdays.js'
@@ -12,6 +12,7 @@ import MdRangePicker from './MdRangePicker.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
 import ShowFilter from './ShowFilter.jsx'
+import StickyHead from './StickyHead.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
 
@@ -74,63 +75,72 @@ function Segmented({ options, value, onChange, label, className = '' }) {
 }
 
 function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClick }) {
+  const scrollerRef = useRef(null)
+  const tableRef = useRef(null)
   const { format, label, better } = METRICS[metric]
   const order = better === 'high' ? 'highest first' : 'lowest first'
   const headerButton = (active) =>
     `inline-flex min-h-[36px] w-full flex-col items-center justify-center rounded-md px-1 transition ${
       active ? 'bg-ucl-accent/20 text-ucl-star' : 'hover:bg-white/5 hover:text-ucl-star'
     }`
+  const headRow = (
+    <tr>
+      <th
+        scope="col"
+        aria-sort={sortMd == null ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
+        className="sticky left-0 z-20 min-w-[92px] bg-ucl-deep px-1 py-1 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted"
+      >
+        <button
+          type="button"
+          onClick={() => onSortMd(null)}
+          title={`Sort on the average over these matchdays, ${order}`}
+          className={`${headerButton(sortMd == null)} !items-start px-1`}
+        >
+          <span className="flex items-center gap-1">
+            Team avg
+            {sortMd == null && <ArrowDown size={11} aria-hidden="true" />}
+          </span>
+        </button>
+      </th>
+      {mds.map((md) => (
+        <th
+          key={md}
+          scope="col"
+          aria-sort={sortMd === md ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
+          className="min-w-[62px] bg-ucl-deep px-0.5 py-1 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[76px]"
+        >
+          <button
+            type="button"
+            onClick={() => onSortMd(sortMd === md ? null : md)}
+            title={sortMd === md ? 'Back to the average' : `Sort on MD${md}, ${order}`}
+            className={headerButton(sortMd === md)}
+          >
+            <span className="flex items-center gap-0.5 leading-tight">
+              MD{md}
+              {sortMd === md && <ArrowDown size={11} aria-hidden="true" />}
+            </span>
+            <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
+              {MATCHDAY_LABEL[md]}
+            </span>
+          </button>
+        </th>
+      ))}
+      {mds.length < 4 && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
+    </tr>
+  )
   return (
-    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
-      <table className="w-full border-separate border-spacing-0 text-sm">
+    <>
+    <StickyHead scrollerRef={scrollerRef} tableRef={tableRef}>
+      {headRow}
+    </StickyHead>
+    <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
+      <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
         <caption className="sr-only">
           {label} per team, matchday {mds[0]} to {mds[mds.length - 1]}, sorted {sortMd ? `on matchday ${sortMd}` : 'on the average'},{' '}
           {order}; estimates are marked
         </caption>
         <thead>
-          <tr>
-            <th
-              scope="col"
-              aria-sort={sortMd == null ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
-              className="sticky left-0 z-20 min-w-[92px] bg-ucl-deep px-1 py-1 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted"
-            >
-              <button
-                type="button"
-                onClick={() => onSortMd(null)}
-                title={`Sort on the average over these matchdays, ${order}`}
-                className={`${headerButton(sortMd == null)} !items-start px-1`}
-              >
-                <span className="flex items-center gap-1">
-                  Team avg
-                  {sortMd == null && <ArrowDown size={11} aria-hidden="true" />}
-                </span>
-              </button>
-            </th>
-            {mds.map((md) => (
-              <th
-                key={md}
-                scope="col"
-                aria-sort={sortMd === md ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
-                className="min-w-[62px] bg-ucl-deep px-0.5 py-1 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[76px]"
-              >
-                <button
-                  type="button"
-                  onClick={() => onSortMd(sortMd === md ? null : md)}
-                  title={sortMd === md ? 'Back to the average' : `Sort on MD${md}, ${order}`}
-                  className={headerButton(sortMd === md)}
-                >
-                  <span className="flex items-center gap-0.5 leading-tight">
-                    MD{md}
-                    {sortMd === md && <ArrowDown size={11} aria-hidden="true" />}
-                  </span>
-                  <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
-                    {MATCHDAY_LABEL[md]}
-                  </span>
-                </button>
-              </th>
-            ))}
-            {mds.length < 4 && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
-          </tr>
+          {headRow}
         </thead>
         <tbody>
           {rows.map(({ team, cells, avg }, idx) => (
@@ -190,6 +200,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
         </tbody>
       </table>
     </div>
+    </>
   )
 }
 
@@ -206,7 +217,9 @@ const sortValue = {
   assist: (r) => r.xa ?? 0,
 }
 
-function PlayerOdds({ rows, single, teamsByAbbr }) {
+function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
+  const scrollerRef = useRef(null)
+  const tableRef = useRef(null)
   const { oddsQuery: query, setOddsQuery: setQuery, starred, toggleStar, openTab } = useTeams()
   const [position, setPosition] = useState('ALL')
   const [sortBy, setSortBy] = useState('ga')
@@ -261,8 +274,59 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
     ? { ga: 'G/A', goal: 'Goal', assist: 'Assist', cs: 'CS' }
     : { ga: 'xG+xA', goal: 'xG', assist: 'xA', cs: 'CS' }
 
+  const headRow = (
+    <tr className="bg-ucl-deep text-[10px] uppercase tracking-wider text-ucl-muted">
+      <th scope="col" className="w-full py-2 pl-9 pr-2 text-left font-semibold">
+        Player
+      </th>
+      {single && (
+        <th scope="col" className="hidden px-1 py-2 text-left font-semibold sm:table-cell">
+          vs
+        </th>
+      )}
+      {PLAYER_SORTS.map(([id, oneMatch, total]) => (
+        <th key={id} scope="col" className="px-0.5 py-1 text-right font-semibold" aria-sort={sortBy === id ? 'descending' : 'none'}>
+          <button
+            type="button"
+            onClick={() => setSortBy(id)}
+            title={single ? `Chance of ${oneMatch}, if he plays` : `Expected ${total} over these matchdays, if he plays`}
+            className={`inline-flex min-h-[32px] items-center gap-0.5 rounded px-1.5 uppercase tracking-wider ${
+              sortBy === id ? 'bg-ucl-accent/20 text-ucl-star' : 'hover:text-ucl-star'
+            }`}
+          >
+            {head[id]}
+            {sortBy === id && <ArrowDown size={10} aria-hidden="true" />}
+          </button>
+        </th>
+      ))}
+      <th
+        scope="col"
+        className="px-2 py-2 text-right font-semibold"
+        title={single ? "His team's clean-sheet chance" : "His team's expected clean sheets over these matchdays"}
+      >
+        {head.cs}
+      </th>
+    </tr>
+  )
+
   return (
     <>
+      {/* What the numbers are, up front: one matchday and several read differently. */}
+      <p className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ucl-muted">
+        {single ? (
+          <>
+            <strong className="text-ucl-star/90">1 matchday</strong>: each player&apos;s chances from the bookmakers&apos;
+            odds. Pick more matchdays for expected totals.
+          </>
+        ) : (
+          <>
+            <strong className="text-ucl-star/90">{rowsMds} matchdays</strong>: expected goals and assists added up. Only
+            the next matchday has odds; later ones are estimated (lighter). Pick 1 matchday for the odds themselves.
+          </>
+        )}{' '}
+        All <strong className="text-ucl-star/80">if he plays</strong>: tap a name to check his minutes.
+      </p>
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
           {['ALL', ...POSITIONS].map((pos) => (
@@ -296,44 +360,16 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10">
-        <table className="w-full whitespace-nowrap text-sm">
+      <StickyHead scrollerRef={scrollerRef} tableRef={tableRef} className="rounded-t-lg">
+        {headRow}
+      </StickyHead>
+      <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10">
+        <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
           <caption className="sr-only">
             {single ? 'Chances of a goal or an assist' : 'Expected goals and assists over the matchdays shown'}, if he plays
           </caption>
-          <thead className="bg-white/[0.04] text-[10px] uppercase tracking-wider text-ucl-muted">
-            <tr>
-              <th scope="col" className="w-full py-2 pl-9 pr-2 text-left font-semibold">
-                Player
-              </th>
-              {single && (
-                <th scope="col" className="hidden px-1 py-2 text-left font-semibold sm:table-cell">
-                  vs
-                </th>
-              )}
-              {PLAYER_SORTS.map(([id, oneMatch, total]) => (
-                <th key={id} scope="col" className="px-0.5 py-1 text-right font-semibold" aria-sort={sortBy === id ? 'descending' : 'none'}>
-                  <button
-                    type="button"
-                    onClick={() => setSortBy(id)}
-                    title={single ? `Chance of ${oneMatch}, if he plays` : `Expected ${total} over these matchdays, if he plays`}
-                    className={`inline-flex min-h-[32px] items-center gap-0.5 rounded px-1.5 uppercase tracking-wider ${
-                      sortBy === id ? 'bg-ucl-accent/20 text-ucl-star' : 'hover:text-ucl-star'
-                    }`}
-                  >
-                    {head[id]}
-                    {sortBy === id && <ArrowDown size={10} aria-hidden="true" />}
-                  </button>
-                </th>
-              ))}
-              <th
-                scope="col"
-                className="px-2 py-2 text-right font-semibold"
-                title={single ? "His team's clean-sheet chance" : "His team's expected clean sheets over these matchdays"}
-              >
-                {head.cs}
-              </th>
-            </tr>
+          <thead>
+            {headRow}
           </thead>
           <tbody>
             {visible.map((r) => {
@@ -405,16 +441,6 @@ function PlayerOdds({ rows, single, teamsByAbbr }) {
         </button>
       )}
 
-      <div className="mt-3 space-y-1 text-xs text-ucl-muted">
-        <p>
-          All <strong className="text-ucl-star/80">if he plays</strong>: anytime-scorer bets are void for a player who
-          doesn&apos;t, so check his minutes: tap his name for him on the Players tab.
-        </p>
-        <p>
-          Bookmakers price players only for the next matchday, a few days before it. Lighter rows include later
-          matchdays, estimated from his share of his team&apos;s goals in the matches already priced.
-        </p>
-      </div>
     </>
   )
 }
@@ -458,7 +484,7 @@ export default function OddsView() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Odds"
-        subtitle="What the bookmakers expect: goals and clean sheets per match, and each player's chance of a goal or an assist. Separate from the 1–5 ratings."
+        subtitle="What the bookmakers expect: goals and clean sheets per match, and each player's chance of a goal or an assist. Independent of the 1–5 ratings."
       />
 
       <div className="mb-3 flex flex-col gap-2">
@@ -518,14 +544,15 @@ export default function OddsView() {
               Estimate, until bookmakers price the match (about a week before).
             </p>
             <p>
-              Estimates come from the team ratings, fitted to {estimator.matches} priced match
-              {estimator.matches === 1 ? '' : 'es'} so far, and sharpen as more matchdays are priced. More fill = better for
-              a fantasy pick. Tap a matchday to sort on it, a team for its details.
+              Estimates come from {estimator.usesElo ? 'Elo club ratings (clubelo.com) and ' : ''}
+              {estimator.matches} priced match{estimator.matches === 1 ? '' : 'es'}, never from the 1–5 ratings, and sharpen
+              as more matchdays are priced. More fill = better for a fantasy pick. Tap a matchday to sort on it, a team for
+              its details.
             </p>
           </div>
         </>
       ) : (
-        <PlayerOdds rows={playerRows} single={mds.length === 1} teamsByAbbr={teamsByAbbr} />
+        <PlayerOdds rows={playerRows} single={mds.length === 1} rowsMds={mds.length} teamsByAbbr={teamsByAbbr} />
       )}
 
       {detailAbbr && (

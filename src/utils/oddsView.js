@@ -2,25 +2,34 @@
 // against and the clean-sheet chance — from the bookmakers when they have
 // priced the match (src/data/odds.js), otherwise estimated.
 //
-// The estimate is fitted to the bookmakers' own numbers in the archive, so
-// it speaks the same language as the priced matches:
+// The estimate never uses the site's 1–5 ratings (they're opinions, and
+// anyone can change them). It is fitted to the bookmakers' own numbers in
+// the archive, so it speaks the same language as the priced matches:
 //
-//   log(expected goals) = base + home·venue + strength·(own rating − opponent rating)
+//   log(expected goals) = base + home·venue + elo·(own Elo − opponent Elo)/100
 //                         + attack(team) + defence(opponent)
 //
-// venue is +1 at home and −1 away; the ratings are the site's 1–5 team
-// ratings (with any overrides the user set). attack and defence are what
-// the ratings miss — a team the bookmakers rate above its 1–5 band — shrunk
-// towards 0 by SHRINK so one match only counts for a quarter. The clean-
-// sheet chance is Poisson's chance of the opponent scoring nothing, lifted
-// by how much the bookmakers' clean-sheet prices sit above Poisson.
+// venue is +1 at home and −1 away. Elo is each club's rating from
+// clubelo.com, saved with the odds (when it isn't there, that term drops
+// out). attack and defence are what Elo misses, or everything when there is
+// no Elo: fitted to the priced matches together, so a team isn't marked
+// down for having just played Bayern, and shrunk towards 0 (SHRINK) so one
+// match only counts for half (a quarter without Elo). The clean-sheet chance is Poisson's chance of
+// the opponent scoring nothing, lifted by how much the bookmakers' clean-
+// sheet prices sit above Poisson.
 import { FIXTURES } from '../data/fixtures.js'
 import { median, playerRates } from './odds.js'
 
-export const SHRINK = 3
-// Before there is enough in the archive to fit: roughly what UCL odds say.
-export const DEFAULT_FIT = { base: Math.log(1.55), home: 0.12, strength: 0.25 }
+// How far one match moves a team's attack or defence: by half with Elo
+// underneath, by a quarter without (one match is all the odds have to go on
+// then, and an estimate that swings on it misleads more than a flat one).
+export const SHRINK = 1
+export const SHRINK_WITHOUT_ELO = 3
+// Before there is enough in the archive to fit: roughly what UCL odds say
+// (one Elo point is worth about as much in goals as it is in results).
+export const DEFAULT_FIT = { base: Math.log(1.45), home: 0.12, elo: 0.17 }
 const MIN_FIT_MATCHES = 6
+const RIDGE_ROUNDS = 30
 
 // Every priced match, by "md:team" for both sides.
 export function indexOdds(odds) {
@@ -70,58 +79,92 @@ function solve(rows, ys) {
   return a.map((row, i) => row[n] / row[i])
 }
 
-// The estimate, fitted to every priced match in the archive.
-//   ratingOf(abbr) → the team's 1–5 rating
-export function fitEstimator(odds, ratingOf) {
+// Each club's Elo from the archive, or null without one.
+const eloOf = (odds) => {
+  const teams = odds?.elo?.teams ?? {}
+  return (abbr) => (Number.isFinite(teams[abbr]) ? teams[abbr] : null)
+}
+
+// The estimate, fitted to every priced match in the archive (and the Elo
+// saved with it).
+export function fitEstimator(odds) {
+  const elo = eloOf(odds)
+  const eloGap = (team, opp) => (elo(team) != null && elo(opp) != null ? (elo(team) - elo(opp)) / 100 : null)
   const obs = []
   const lifts = []
   for (const m of Object.values(odds?.matches ?? {})) {
     if (!(m.xg?.[0] > 0 && m.xg?.[1] > 0)) continue
-    obs.push({ team: m.home, opp: m.away, v: 1, y: Math.log(m.xg[0]) })
-    obs.push({ team: m.away, opp: m.home, v: -1, y: Math.log(m.xg[1]) })
+    obs.push({ team: m.home, opp: m.away, v: 1, y: Math.log(m.xg[0]), e: eloGap(m.home, m.away) })
+    obs.push({ team: m.away, opp: m.home, v: -1, y: Math.log(m.xg[1]), e: eloGap(m.away, m.home) })
     if (m.cs?.[0] > 0) lifts.push(m.cs[0] / Math.exp(-m.xg[1]))
     if (m.cs?.[1] > 0) lifts.push(m.cs[1] / Math.exp(-m.xg[0]))
   }
-  const diff = (o) => ratingOf(o.team) - ratingOf(o.opp)
 
-  let fit = DEFAULT_FIT
+  // base, home and the Elo weight, by least squares; Elo only when most
+  // matches have it for both sides.
+  const withElo = obs.filter((o) => o.e != null)
+  const useElo = withElo.length >= Math.max(2 * MIN_FIT_MATCHES, obs.length * 0.75)
+  let fit = { ...DEFAULT_FIT, elo: useElo || obs.length < 2 * MIN_FIT_MATCHES ? DEFAULT_FIT.elo : 0 }
   if (obs.length >= 2 * MIN_FIT_MATCHES) {
-    const b = solve(
-      obs.map((o) => [1, o.v, diff(o)]),
-      obs.map((o) => o.y),
-    )
-    if (b && b.every(Number.isFinite)) fit = { base: b[0], home: b[1], strength: b[2] }
+    const b = useElo
+      ? solve(
+          withElo.map((o) => [1, o.v, o.e]),
+          withElo.map((o) => o.y),
+        )
+      : solve(
+          obs.map((o) => [1, o.v]),
+          obs.map((o) => o.y),
+        )
+    if (b && b.every(Number.isFinite)) fit = { base: b[0], home: b[1], elo: useElo ? Math.max(0, b[2]) : 0 }
   }
-  const baseLog = (o) => fit.base + fit.home * o.v + fit.strength * diff(o)
+  const baseLog = (team, opp, v) => fit.base + fit.home * v + fit.elo * (eloGap(team, opp) ?? 0)
+  const shrink = fit.elo > 0 && withElo.length ? SHRINK : SHRINK_WITHOUT_ELO
 
+  // attack and defence together (ridge regression, solved round by round):
+  // each team's attack is what its goals say once its opponents' defences
+  // are accounted for, and the other way round.
   const attack = {}
   const defence = {}
-  const add = (bucket, key, e) => {
-    const t = (bucket[key] ??= { sum: 0, n: 0 })
-    t.sum += e
-    t.n++
+  for (let round = 0; round < RIDGE_ROUNDS; round++) {
+    const sums = { a: {}, d: {} }
+    const add = (bucket, key, x) => {
+      const t = (bucket[key] ??= { sum: 0, n: 0 })
+      t.sum += x
+      t.n++
+    }
+    for (const o of obs) {
+      const rest = o.y - baseLog(o.team, o.opp, o.v)
+      add(sums.a, o.team, rest - (defence[o.opp] ?? 0))
+      add(sums.d, o.opp, rest - (attack[o.team] ?? 0))
+    }
+    for (const [k, t] of Object.entries(sums.a)) attack[k] = t.sum / (t.n + shrink)
+    for (const [k, t] of Object.entries(sums.d)) defence[k] = t.sum / (t.n + shrink)
   }
-  for (const o of obs) {
-    const e = o.y - baseLog(o)
-    add(attack, o.team, e)
-    add(defence, o.opp, e)
-  }
-  const shrunk = (bucket, key) => (bucket[key] ? bucket[key].sum / (bucket[key].n + SHRINK) : 0)
   const csLift = Math.min(1.3, Math.max(1, median(lifts) ?? 1.05))
 
-  const expectedGoals = (team, opp, v) =>
-    Math.exp(baseLog({ team, opp, v }) + shrunk(attack, team) + shrunk(defence, opp))
+  const expectedGoals = (team, opp, v) => Math.exp(baseLog(team, opp, v) + (attack[team] ?? 0) + (defence[opp] ?? 0))
+  const meanElo = (() => {
+    const xs = Object.values(odds?.elo?.teams ?? {}).filter(Number.isFinite)
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+  })()
 
   return {
     fit,
     csLift,
     matches: obs.length / 2,
+    usesElo: fit.elo > 0 && Object.keys(odds?.elo?.teams ?? {}).length > 0,
     // One fixture from `team`'s side; venue 'H' or 'A'.
     estimate(team, opp, venue) {
       const v = venue === 'H' ? 1 : -1
       const xgFor = expectedGoals(team, opp, v)
       const xgAgainst = expectedGoals(opp, team, -v)
       return { xgFor, xgAgainst, cs: Math.min(0.9, Math.exp(-xgAgainst) * csLift) }
+    },
+    // How strong a team is overall, in log-goals: its attack, minus how
+    // leaky its defence is, plus its Elo's worth at both ends.
+    strength(team) {
+      const e = elo(team) != null && meanElo != null ? (2 * fit.elo * (elo(team) - meanElo)) / 100 : 0
+      return (attack[team] ?? 0) - (defence[team] ?? 0) + e
     },
   }
 }
@@ -237,46 +280,16 @@ export function playerOddsRows(players, mds, index, estimator) {
   return rows
 }
 
-// The 1–5 rating each team's priced matches point to, under the same model
-// the estimates use: every priced match says how far a team's goals for
-// (and its opponents' goals against it) sit from what the ratings predict,
-// and that gap, divided by what one rating step is worth, moves its rating.
-// Only for teams with priced matches; noisy with few, so `matches` comes
-// along. Uses the ratings as set (ratingOf), so it answers "should this
-// rating go up or down?".
-export const IMPLIED_SHRINK = 4
-export function impliedRatings(odds, ratingOf) {
-  const est = fitEstimator(odds, ratingOf)
-  const { base, home, strength } = est.fit
-  if (!(strength > 0.05)) return {}
-  const sums = {}
-  const add = (team, r) => {
-    const t = (sums[team] ??= { sum: 0, n: 0 })
-    t.sum += r
-    t.n++
-  }
-  const matches = {}
-  for (const m of Object.values(odds?.matches ?? {})) {
-    if (!(m.xg?.[0] > 0 && m.xg?.[1] > 0)) continue
-    for (const [team, opp, v, xg] of [
-      [m.home, m.away, 1, m.xg[0]],
-      [m.away, m.home, -1, m.xg[1]],
-    ]) {
-      const gap = (Math.log(xg) - base - home * v) / strength // = rating(team) − rating(opp)
-      add(team, ratingOf(opp) + gap)
-      add(opp, ratingOf(team) - gap)
-    }
-    matches[m.home] = (matches[m.home] ?? 0) + 1
-    matches[m.away] = (matches[m.away] ?? 0) + 1
-  }
-  // Pulled towards the rating as set until the matches pile up: one match
-  // (two readings) moves it a third of the way, four matches two thirds.
-  return Object.fromEntries(
-    Object.entries(sums).map(([team, t]) => {
-      const raw = t.sum / t.n
-      const r = ratingOf(team)
-      const rating = r + ((raw - r) * t.n) / (t.n + IMPLIED_SHRINK)
-      return [team, { rating: Math.min(5, Math.max(1, rating)), matches: matches[team] ?? 0 }]
-    }),
-  )
+// Where the bookmakers (and Elo) would put each team on the 1–5 scale:
+// teams ranked on the estimate's strength, then cut into bands of the same
+// sizes as the seeded ratings (eight 5s, nine 4s, …). Ratings as anyone has
+// set them play no part. Only once matches are priced.
+//   seedRatings: the seeded 1–5 rating per team, for the band sizes only
+export function impliedRatings(odds, seedRatings) {
+  const est = fitEstimator(odds)
+  if (!est.matches) return {}
+  const teams = Object.keys(seedRatings)
+  const bands = Object.values(seedRatings).sort((x, y) => y - x)
+  const ranked = [...teams].sort((x, y) => est.strength(y) - est.strength(x))
+  return Object.fromEntries(ranked.map((team, i) => [team, { rating: bands[i], matches: est.matches }]))
 }

@@ -7,11 +7,13 @@ const near = (actual, expected, tolerance, label) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual} not within ${tolerance} of ${expected}`)
 
 // Made-up odds that follow the model exactly: log xG = 0.4 + 0.15·venue +
-// 0.2·(rating difference), clean sheets 10% above Poisson.
+// 0.2·(Elo gap / 100), clean sheets 10% above Poisson. Elo saved with them.
 const ratings = { A: 5, B: 4, C: 3, D: 2, E: 1, F: 3, G: 4, H: 2 }
-const truth = (t, o, v) => Math.exp(0.4 + 0.15 * v + 0.2 * (ratings[t] - ratings[o]))
+const elo = Object.fromEntries(Object.entries(ratings).map(([t, r]) => [t, 1500 + 100 * r]))
+const truth = (t, o, v) => Math.exp(0.4 + 0.15 * v + 0.2 * ((elo[t] - elo[o]) / 100))
 const pairs = [['A', 'B'], ['C', 'D'], ['E', 'F'], ['G', 'H'], ['B', 'C'], ['D', 'E'], ['F', 'G'], ['H', 'A'], ['A', 'E'], ['C', 'G']]
 const odds = {
+  elo: { date: '2026-11-04', teams: elo },
   matches: Object.fromEntries(
     pairs.map(([h, a], i) => {
       const xg = [truth(h, a, 1), truth(a, h, -1)]
@@ -20,11 +22,12 @@ const odds = {
   ),
 }
 
-test('the estimate recovers the model the odds follow', () => {
-  const est = fitEstimator(odds, (t) => ratings[t])
+test('the estimate recovers the model the odds follow, from Elo', () => {
+  const est = fitEstimator(odds)
   near(est.fit.base, 0.4, 1e-6, 'base')
   near(est.fit.home, 0.15, 1e-6, 'home')
-  near(est.fit.strength, 0.2, 1e-6, 'strength')
+  near(est.fit.elo, 0.2, 1e-6, 'elo')
+  assert.equal(est.usesElo, true)
   near(est.csLift, 1.1, 1e-6, 'clean-sheet lift')
   const e = est.estimate('A', 'D', 'A')
   near(e.xgFor, truth('A', 'D', -1), 1e-6, 'xG for')
@@ -32,19 +35,31 @@ test('the estimate recovers the model the odds follow', () => {
   near(e.cs, Math.exp(-e.xgAgainst) * 1.1, 1e-6, 'clean sheet')
 })
 
-test('too few priced matches: the default fit', () => {
-  const few = { matches: Object.fromEntries(Object.entries(odds.matches).slice(0, 3)) }
-  assert.deepEqual(fitEstimator(few, (t) => ratings[t]).fit, DEFAULT_FIT)
-  assert.deepEqual(fitEstimator({ matches: {} }, () => 3).fit, DEFAULT_FIT)
+test('without Elo the odds alone tell the teams apart', () => {
+  const noElo = { matches: odds.matches }
+  const est = fitEstimator(noElo)
+  assert.equal(est.usesElo, false)
+  assert.equal(est.fit.elo, 0)
+  // A (strongest) scores more than E (weakest) against the same opponent.
+  assert.ok(est.estimate('A', 'C', 'H').xgFor > est.estimate('E', 'C', 'H').xgFor)
+  assert.ok(est.strength('A') > est.strength('E'))
 })
 
-test('a team the odds rate above its band gets part of that, shrunk', () => {
+test('the 1–5 ratings play no part: the estimate only takes the odds', () => {
+  assert.equal(fitEstimator.length, 1)
+})
+
+test('too few priced matches: the default fit', () => {
+  const few = { matches: Object.fromEntries(Object.entries(odds.matches).slice(0, 3)) }
+  assert.deepEqual(fitEstimator(few).fit, DEFAULT_FIT)
+  assert.deepEqual(fitEstimator({ matches: {} }).fit, DEFAULT_FIT)
+})
+
+test('a team the odds rate above its Elo gets part of that, shrunk', () => {
   const boosted = structuredClone(odds)
-  boosted.matches['0'].xg[0] *= Math.exp(0.8) // A scores far more than its rating says
-  const est = fitEstimator(boosted, (t) => ratings[t])
-  const plain = fitEstimator(odds, (t) => ratings[t])
-  const lift = Math.log(est.estimate('A', 'C', 'H').xgFor / plain.estimate('A', 'C', 'H').xgFor)
-  assert.ok(lift > 0.05 && lift < 0.4, `lift ${lift}`)
+  boosted.matches['0'].xg[0] *= Math.exp(0.8) // A scores far more than its Elo says
+  const lift = Math.log(fitEstimator(boosted).estimate('A', 'C', 'H').xgFor / fitEstimator(odds).estimate('A', 'C', 'H').xgFor)
+  assert.ok(lift > 0.05 && lift < 0.6, `lift ${lift}`)
 })
 
 test('both sides of a priced match are indexed', () => {
@@ -62,7 +77,7 @@ test('team rows: priced where possible, estimated elsewhere, sorted by the metri
   const opp = FIXTURES[ars][0].opp
   const venue = FIXTURES[ars][0].venue
   const priced = { matches: { 1: { md, home: venue === 'H' ? ars : opp, away: venue === 'H' ? opp : ars, xg: [1.5, 1.5], cs: [0.3, 0.3] } } }
-  const est = fitEstimator(priced, () => 3)
+  const est = fitEstimator(priced)
   const teams = [{ abbr: ars, name: 'Arsenal' }, { abbr: bay, name: 'Bayern' }]
   const rows = teamOddsRows(teams, [md, md + 1], indexOdds(priced), est, 'cs')
   assert.equal(rows[0].cells[0].estimated, false)
@@ -76,7 +91,7 @@ test('team rows: priced where possible, estimated elsewhere, sorted by the metri
 
 test('player rows: priced where he has prices, else his share of the team estimate', () => {
   const index = indexOdds(odds)
-  const est = fitEstimator(odds, (t) => ratings[t])
+  const est = fitEstimator(odds)
   // p1 is priced for every match in `odds`; FIXTURES decide which clubs
   // play which matchday, so use made-up clubs with no fixtures: no rows.
   assert.deepEqual(playerOddsRows([{ id: 'p1', team: 'A' }], [1, 2], index, est), [])
@@ -94,7 +109,7 @@ test('player rows over real fixtures: estimates follow the team, skipped when pr
     },
   }
   const index = indexOdds(archive)
-  const est = fitEstimator(archive, () => 3)
+  const est = fitEstimator(archive)
   const [row] = playerOddsRows([{ id: 'saka', team: 'ARS' }], [f1.gw, f2.gw, f3.gw], index, est)
   assert.deepEqual(row.matches.map((m) => m.md), [f1.gw, f3.gw])
   assert.equal(row.matches[0].estimated, false)
@@ -120,15 +135,15 @@ test('sorting on one matchday instead of the average', () => {
   assert.deepEqual([...rows].sort(compareRows('xgAgainst', 0)).map((r) => r.team.name), ['A', 'B'])
 })
 
-test('implied ratings: a team the odds rate above its rating moves up, shrunk', async () => {
+test('implied ratings: teams ranked on the odds, in bands the size of the seeded ones', async () => {
   const { impliedRatings } = await import('../src/utils/oddsView.js')
-  const imp = impliedRatings(odds, (t) => ratings[t])
-  // The made-up odds follow the ratings exactly: everyone stays put.
-  for (const [team, v] of Object.entries(imp)) near(v.rating, ratings[team], 1e-6, team)
-  const boosted = structuredClone(odds)
-  boosted.matches['0'].xg[0] *= Math.exp(0.6) // A scores far more than its 5 says
-  boosted.matches['0'].xg[1] *= Math.exp(-0.6) // and concedes far less
-  const moved = impliedRatings(boosted, (t) => ({ ...ratings, A: 3 })[t])
-  assert.ok(moved.A.rating > 3, `A ${moved.A.rating}`)
-  assert.ok(moved.A.rating <= 5)
+  const imp = impliedRatings(odds, ratings)
+  // The odds follow Elo, which follows the ratings: the bands come back.
+  assert.equal(imp.A.rating, 5)
+  assert.equal(imp.E.rating, 1)
+  assert.deepEqual(
+    Object.values(imp).map((v) => v.rating).sort(),
+    Object.values(ratings).sort(),
+  )
+  assert.deepEqual(impliedRatings({ matches: {} }, ratings), {})
 })

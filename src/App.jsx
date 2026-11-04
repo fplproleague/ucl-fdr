@@ -1,4 +1,5 @@
 import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users, Percent } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -30,6 +31,18 @@ const PLAYERS_OPEN = PLAYERS_SHEET_URL != null
 
 function Shell() {
   const { tab, setTab } = useTeams()
+  // The site header's height as --header-h, for the sticky table headers
+  // that sit right under it.
+  const headerRef = useRef(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return undefined
+    const set = () => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`)
+    set()
+    const observer = new ResizeObserver(set)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
   const tabs = TABS.filter((t) => t.id !== 'players' || PLAYERS_OPEN || tab === 'players')
 
@@ -50,7 +63,7 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen flex-col pb-[4.5rem] sm:pb-0">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/85 backdrop-blur-md">
+      <header ref={headerRef} className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-2 sm:px-4 sm:py-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white p-1 shadow-card sm:h-11 sm:w-11 sm:p-1.5">
             <img src={uclLogo} alt="" width="44" height="44" className="h-full w-full object-contain" />
@@ -131,11 +144,21 @@ function Shell() {
   )
 }
 
+// Vercel Analytics counts pages by path, and the whole app is one path with
+// the view in the hash — so every tab (and the Odds tab's Teams/Players
+// view) is reported as a page of its own: /table, /odds/players, … A
+// pageview goes out whenever that changes, never for a filter or a search.
+function TrackedAnalytics() {
+  const { tab, oddsView } = useTeams()
+  const page = tab === 'odds' ? `/odds/${oddsView}` : `/${tab}`
+  return <Analytics route={page} path={page} />
+}
+
 export default function App() {
   return (
     <TeamsProvider>
       <Shell />
-      <Analytics />
+      <TrackedAnalytics />
     </TeamsProvider>
   )
 }

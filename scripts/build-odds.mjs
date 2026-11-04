@@ -22,6 +22,12 @@
 //
 // Cost: one request for the fixture list plus one per 10 priced matches
 // (two or three a matchday).
+//
+// It also saves every club's Elo rating from clubelo.com (free, no key), the
+// objective club strength the Odds tab estimates unpriced matches from (the
+// site's 1–5 ratings are opinions and never feed the odds). Clubs it can't
+// find are listed; ELO_NAMES fixes a name. If clubelo.com can't be reached
+// the Elo saved last time is kept.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -43,6 +49,45 @@ const UCL_LEAGUE_ID = 2
 const TEAM_NAME_OVERRIDES = {}
 // Sheet players the bookmakers spell too differently to match by name:
 // sheet player id → the name in the bookmaker's player markets.
+// Our clubs → their names on clubelo.com (the first that exists wins).
+const ELO_NAMES = {
+  ARS: ['Arsenal'],
+  BAY: ['Bayern'],
+  BAR: ['Barcelona'],
+  MCI: ['Man City'],
+  PSG: ['Paris SG'],
+  RMA: ['Real Madrid'],
+  LIV: ['Liverpool'],
+  INT: ['Inter'],
+  ATM: ['Atletico'],
+  BVB: ['Dortmund'],
+  MUN: ['Man United'],
+  AVL: ['Aston Villa'],
+  ROM: ['Roma'],
+  SPO: ['Sporting'],
+  POR: ['Porto'],
+  NAP: ['Napoli'],
+  RBL: ['RB Leipzig', 'Leipzig'],
+  LIL: ['Lille'],
+  VIL: ['Villarreal'],
+  BET: ['Betis'],
+  STU: ['Stuttgart'],
+  CLU: ['Brugge', 'Club Brugge'],
+  PSV: ['PSV'],
+  LEN: ['Lens'],
+  COM: ['Como'],
+  SLA: ['Slavia Praha', 'Slavia Prague'],
+  SHK: ['Shakhtar'],
+  BOD: ['Bodoe/Glimt', 'Bodo/Glimt', 'Bodoe Glimt', 'Glimt'],
+  FEN: ['Fenerbahce'],
+  GAL: ['Galatasaray'],
+  FEY: ['Feyenoord'],
+  SAB: ['Sabah', 'Sabah FK'],
+  VIK: ['Viking'],
+  SLO: ['Slovan Bratislava', 'Slovan'],
+  LAS: ['LASK'],
+  AEK: ['AEK', 'AEK Athens'],
+}
 const PLAYER_NAME_OVERRIDES = {
   p250121533: 'Vinicius Jr.', // Vinícius Júnior (RMA)
   p250116683: 'Anastasios Douvikas', // T. (Tasos) Douvikas (COM)
@@ -122,6 +167,48 @@ async function sheetPlayers() {
   }
   console.warn('Odds: player sheet unreachable, using the saved copy (src/data/players.js)')
   return (await import('../src/data/players.js')).PLAYERS
+}
+
+// Every club's Elo today from clubelo.com: { date, teams: { ARS: 2034, … } },
+// or null when it can't be fetched.
+async function fetchElo() {
+  const date = now.toISOString().slice(0, 10)
+  let text = null
+  const bases = process.env.CLUBELO_BASE ? [process.env.CLUBELO_BASE] : ['https://api.clubelo.com', 'http://api.clubelo.com']
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}/${date}`, { signal: AbortSignal.timeout(20000) })
+      if (res.ok) {
+        text = await res.text()
+        break
+      }
+    } catch {
+      // try the next address
+    }
+  }
+  if (!text) return null
+  // Rank,Club,Country,Level,Elo,From,To
+  const key = (name) =>
+    name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+  const byName = new Map()
+  for (const line of text.trim().split('\n').slice(1)) {
+    const [, club, , , elo] = line.split(',')
+    if (club && Number.isFinite(Number(elo))) byName.set(key(club), Math.round(Number(elo)))
+  }
+  const teams = {}
+  const missing = []
+  for (const team of INITIAL_TEAMS) {
+    const names = [...(ELO_NAMES[team.id] ?? []), team.name, team.shortName, ...(team.aliases ?? [])].filter(Boolean)
+    const found = names.map(key).find((k) => byName.has(k))
+    if (found) teams[team.id] = byName.get(found)
+    else missing.push(team.id)
+  }
+  if (missing.length) console.log(`Odds: no Elo found on clubelo.com for ${missing.join(', ')} (ELO_NAMES)`)
+  return Object.keys(teams).length ? { date, source: 'clubelo.com', teams } : null
 }
 
 async function run() {
@@ -237,6 +324,12 @@ try {
 } catch (err) {
   bail(err.message)
 }
+const elo = (await fetchElo()) ?? SAVED?.elo ?? null
+console.log(
+  elo
+    ? `Odds: Elo for ${Object.keys(elo.teams).length} of ${INITIAL_TEAMS.length} clubs (${elo.date})`
+    : 'Odds: no Elo (clubelo.com unreachable and none saved) — estimates use the odds alone',
+)
 
 // The newest bookmaker update in the data, not the time of the run: the
 // file (and with it a commit and a deploy) only changes when odds do.
@@ -269,10 +362,14 @@ writeFileSync(
 //   bookmakers, source ('totals': team-total markets; 'result': fitted
 //   from 1X2 + over/under), updated (the bookmakers' last update)
 //   players  { sheet player id: [anytime-scorer odds, score-or-assist odds] }
+//
+// elo: every club's Elo rating from clubelo.com on \`date\`, the objective
+// club strength unpriced matches are estimated from.
 //            (playerRates in src/utils/odds.js turns them into expected
 //            goals and assists if he plays)
 export const ODDS = {
   updated: ${quote(updated)},
+  elo: ${elo ? toJs(elo) : 'null'},
   matches: {
 ${sorted.map(([id, m]) => `    ${quote(id)}: ${toJs(m)},`).join('\n')}
   },
