@@ -103,6 +103,29 @@ match divide by the matchdays played *by today*, so a sheet that lags behind und
 
 Until the file has data the Players tab looks exactly as before; `#/players?demo=1` previews the switch.
 
+## Betting odds (API-Football)
+
+`scripts/build-odds.mjs` saves, for every UCL match bookmakers have priced, each team's expected goals, clean-sheet
+chance and win/draw/loss chances, plus the expected goals and assists of the sheet players they price, to
+`src/data/odds.js`. Same key and same laptop routine as the domestic form: run `node scripts/build-odds.mjs`, then commit
+and push the file.
+
+- **Maths** (`src/utils/odds.js`): every market is de-vigged (implied chances scaled back to 100%) and the median over
+  bookmakers is used. Expected goals come from the team-total over/under lines through a Poisson model (or, without
+  those, are fitted to the 1X2 and over/under 2.5 odds); a clean sheet is priced directly by the Clean Sheet market and
+  the other side's Under 0.5. A player's expected goals come from his anytime-scorer price, his expected assists from
+  "to score or assist" minus that; each side's players are scaled down together when they add up to more than the
+  team's expected goals.
+- **When**: bookmakers price a match about two weeks ahead and API-Football drops the odds about a week after it, so
+  the file is an archive: each run adds what's priced now and keeps the rest, and a match that has kicked off keeps the
+  odds saved before kick-off. Run it in the days before every matchday and on the day itself (player markets fill up
+  late).
+- **Cost**: one request for the fixture list plus one per 10 priced matches.
+- **Matching**: clubs by name like the domestic form (`TEAM_NAME_OVERRIDES` for a miss), players by name within their
+  club (`PLAYER_NAME_OVERRIDES`: sheet id → the bookmaker's spelling). The log lists loose matches and likely scorers it
+  couldn't place.
+- `scripts/probe-odds.mjs` prints which bookmakers and markets exist right now, without changing anything.
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -119,7 +142,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # player sheet parsing, projection and domestic form checks
+npm test          # player sheet parsing, projection, domestic form and odds checks
 ```
 
 ## Deploy
