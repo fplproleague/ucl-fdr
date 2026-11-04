@@ -147,3 +147,12 @@ test('implied ratings: teams ranked on the odds, in bands the size of the seeded
   )
   assert.deepEqual(impliedRatings({ matches: {} }, ratings), {})
 })
+
+test('Elo gaps wider than the priced matches have shown are capped', () => {
+  const wide = structuredClone(odds)
+  wide.elo.teams = { ...wide.elo.teams, Z: 500 } // 1,500+ points below everyone
+  const est = fitEstimator(wide)
+  const capped = est.estimate('A', 'Z', 'H').xgFor
+  // No wider than the widest priced gap (A–E, 400 points; at least 300).
+  near(capped, est.estimate('A', 'Y', 'H').xgFor * Math.exp(est.fit.elo * 4), 1e-6, 'capped at the widest priced gap')
+})

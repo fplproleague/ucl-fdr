@@ -89,7 +89,18 @@ const eloOf = (odds) => {
 // saved with it).
 export function fitEstimator(odds) {
   const elo = eloOf(odds)
-  const eloGap = (team, opp) => (elo(team) != null && elo(opp) != null ? (elo(team) - elo(opp)) / 100 : null)
+  const rawGap = (team, opp) => (elo(team) != null && elo(opp) != null ? (elo(team) - elo(opp)) / 100 : null)
+  // Elo gaps only as wide as the priced matches have shown (at least 300
+  // points): past that the fit would be guessing, and a straight line
+  // through log-goals runs away (Bayern–Sabah, 477 apart, came out at 5.8).
+  const gapCap = Math.max(
+    3,
+    ...Object.values(odds?.matches ?? {}).map((m) => Math.abs(rawGap(m.home, m.away) ?? 0)),
+  )
+  const eloGap = (team, opp) => {
+    const g = rawGap(team, opp)
+    return g == null ? null : Math.max(-gapCap, Math.min(gapCap, g))
+  }
   const obs = []
   const lifts = []
   for (const m of Object.values(odds?.matches ?? {})) {

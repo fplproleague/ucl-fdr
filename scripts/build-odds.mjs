@@ -53,14 +53,14 @@ const TEAM_NAME_OVERRIDES = {}
 // Our clubs → their names on clubelo.com (the first that exists wins).
 const ELO_NAMES = {
   ARS: ['Arsenal'],
-  BAY: ['Bayern'],
+  BAY: ['Bayern München', 'Bayern'],
   BAR: ['Barcelona'],
   MCI: ['Man City'],
   PSG: ['Paris SG'],
   RMA: ['Real Madrid'],
   LIV: ['Liverpool'],
-  INT: ['Inter'],
-  ATM: ['Atletico'],
+  INT: ['Internazionale', 'Inter'],
+  ATM: ['Atlético', 'Atletico'],
   BVB: ['Dortmund'],
   MUN: ['Man United'],
   AVL: ['Aston Villa'],
@@ -85,7 +85,7 @@ const ELO_NAMES = {
   FEY: ['Feyenoord'],
   SAB: ['Sabah', 'Sabah FK'],
   VIK: ['Viking'],
-  SLO: ['Slovan Bratislava', 'Slovan'],
+  SLO: ['Slovan', 'Slovan Bratislava'],
   LAS: ['LASK'],
   AEK: ['AEK', 'AEK Athens'],
 }
