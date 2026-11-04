@@ -174,6 +174,7 @@ async function sheetPlayers() {
 async function fetchElo() {
   const date = now.toISOString().slice(0, 10)
   let text = null
+  const failures = []
   const bases = process.env.CLUBELO_BASE ? [process.env.CLUBELO_BASE] : ['https://api.clubelo.com', 'http://api.clubelo.com']
   for (const base of bases) {
     try {
@@ -182,11 +183,17 @@ async function fetchElo() {
         text = await res.text()
         break
       }
-    } catch {
-      // try the next address
+      failures.push(`${base}: HTTP ${res.status}`)
+    } catch (err) {
+      failures.push(`${base}: ${err.cause?.code ?? err.cause?.message ?? err.message}`)
     }
   }
-  if (!text) return null
+  // Why it failed, so a blocked network (a sandbox's allowlist) can be told
+  // from clubelo.com being down.
+  if (!text) {
+    console.log(`Odds: clubelo.com not reached — ${failures.join('; ')}`)
+    return null
+  }
   // Rank,Club,Country,Level,Elo,From,To
   const key = (name) =>
     name
