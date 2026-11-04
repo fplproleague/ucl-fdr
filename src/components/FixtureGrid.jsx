@@ -5,6 +5,7 @@ import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import { difficultyBand, formatAvg, ratingColor } from '../utils/difficulty.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
+import StickyHead from './StickyHead.jsx'
 
 const TEAM_COL = 122
 
@@ -24,6 +25,7 @@ export default function FixtureGrid({
 }) {
   const { teamsByAbbr, venueAdjust, showMatchday, dayFilter } = useTeams()
   const scrollerRef = useRef(null)
+  const tableRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
   const [scrollable, setScrollable] = useState(false)
   // Once you swipe into the fixtures the full names have done their job: the
@@ -83,37 +85,45 @@ export default function FixtureGrid({
   const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
 
   const spacer = mds.length < 4
+  // Rendered twice: in the table, and in the sticky copy that stays under
+  // the site header on long tables.
+  const headRow = (
+    <tr>
+      <th
+        scope="col"
+        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted transition-[min-width,width] duration-300 ease-out"
+        style={teamColStyle}
+      >
+        Team
+      </th>
+      {mds.map((md) => (
+        <th
+          key={md}
+          scope="col"
+          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[72px]"
+        >
+          <span className="block leading-tight">MD{md}</span>
+          <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
+            {MATCHDAY_LABEL[md]}
+          </span>
+        </th>
+      ))}
+      {/* With only a few matchdays, an empty last column takes the spare width so the
+          chips stay next to the team names instead of floating in wide columns. */}
+      {spacer && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
+    </tr>
+  )
   return (
     <>
+      <StickyHead scrollerRef={scrollerRef} tableRef={tableRef}>
+        {headRow}
+      </StickyHead>
       <div className="relative">
         <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
-          <table className="w-full border-separate border-spacing-0 text-sm">
+          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted transition-[min-width,width] duration-300 ease-out"
-                  style={teamColStyle}
-                >
-                  Team
-                </th>
-                {mds.map((md) => (
-                  <th
-                    key={md}
-                    scope="col"
-                    className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[72px]"
-                  >
-                    <span className="block leading-tight">MD{md}</span>
-                    <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
-                      {MATCHDAY_LABEL[md]}
-                    </span>
-                  </th>
-                ))}
-                {/* With only a few matchdays, an empty last column takes the spare width so the
-                    chips stay next to the team names instead of floating in wide columns. */}
-                {spacer && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
-              </tr>
+              {headRow}
             </thead>
             <tbody>
               {rows.map(({ team, cells, avg }, idx) => {

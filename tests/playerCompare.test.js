@@ -152,3 +152,21 @@ test('the comparison rides along in the Players link, capped at 5 and cleaned', 
   // Only on the Players tab.
   assert.equal(buildHash({ tab: 'table', players: ['p1'] }), '#/table')
 })
+
+test('the comparison has bookmaker odds rows when the players have odds', async () => {
+  const { compareRows: rowsFor } = await import('../src/utils/playerCompare.js')
+  const odds = (xg, xa, cs, estimated) => ({ xg, xa, xgi: xg + xa, cs, matches: [{ md: 5, opp: 'ARS', venue: 'H', xg, xa, cs, estimated }] })
+  const a = { id: 'a', position: 'MID', price: 8, score: 60, valueScore: 50, odds: odds(0.5, 0.3, 0.3, false) }
+  const b = { id: 'b', position: 'FWD', price: 9, score: 70, valueScore: 55, odds: odds(0.8, 0.1, 0.2, true) }
+  const rows = rowsFor([a, b])
+  const ga = rows.find((r) => r.label === 'Expected goals + assists')
+  assert.deepEqual(ga.text, ['0.80', '0.90'])
+  assert.deepEqual([...ga.best], [1])
+  assert.equal(ga.breakdown[0][0].sub, 'odds')
+  assert.equal(ga.breakdown[1][0].sub, 'estimate')
+  // A forward has no clean-sheet row value.
+  const cs = rows.find((r) => r.label === 'Expected clean sheets')
+  assert.deepEqual(cs.text, ['0.3', '–'])
+  // Without odds the rows disappear.
+  assert.equal(rowsFor([{ ...a, odds: null }, { ...b, odds: null }]).some((r) => r.group === 'Bookmaker odds'), false)
+})

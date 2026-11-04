@@ -13,6 +13,8 @@ const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
 const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
 const PINNED_KEY = 'ucl-fdr:pinned-teams:v1'
 const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
+// Starred players: one shortlist for every tab (the key predates sharing).
+const STARRED_KEY = 'ucl-fdr:starred-players:v1'
 
 const TeamsContext = createContext(null)
 
@@ -64,6 +66,15 @@ function readStoredPinned() {
   try {
     const raw = localStorage.getItem(PINNED_KEY)
     const ids = raw ? JSON.parse(raw) : []
+    return Array.isArray(ids) ? ids : []
+  } catch {
+    return []
+  }
+}
+
+function readStoredStarred() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(STARRED_KEY) ?? '[]')
     return Array.isArray(ids) ? ids : []
   } catch {
     return []
@@ -124,6 +135,22 @@ function initialState() {
     // Players picked for the side-by-side comparison: in the link, so a
     // comparison can be shared like a team comparison.
     comparePlayers: url.players,
+    // Starred players — a personal shortlist like pinned teams, local-only,
+    // shared by the Players and Odds tabs.
+    starred: readStoredStarred(),
+    // The searches on the Players and Odds tabs, and the Odds tab's view:
+    // in the link, so another tab (or someone else) can open them as set.
+    ...linkedViewState(url),
+  }
+}
+
+function linkedViewState(url) {
+  return {
+    playersQuery: url.tab === 'players' ? url.query : '',
+    oddsQuery: url.tab === 'odds' ? url.query : '',
+    oddsView: url.oddsView ?? 'teams',
+    oddsMetric: url.oddsMetric ?? 'cs',
+    oddsSortMd: url.oddsSortMd,
   }
 }
 
@@ -145,6 +172,12 @@ export function TeamsProvider({ children }) {
     dayFilter,
     demo,
     comparePlayers,
+    starred,
+    playersQuery,
+    oddsQuery,
+    oddsView,
+    oddsMetric,
+    oddsSortMd,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
@@ -172,6 +205,10 @@ export function TeamsProvider({ children }) {
         ratings: overrides,
         demo,
         players: comparePlayers,
+        query: tab === 'odds' ? oddsQuery : playersQuery,
+        oddsView,
+        oddsMetric,
+        oddsSortMd,
       },
       { push: pushNext.current },
     )
@@ -180,7 +217,24 @@ export function TeamsProvider({ children }) {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, demo, comparePlayers])
+  }, [
+    tab,
+    from,
+    to,
+    skipMd,
+    compare,
+    overrides,
+    venueAdjust,
+    showMatchday,
+    dayFilter,
+    demo,
+    comparePlayers,
+    playersQuery,
+    oddsQuery,
+    oddsView,
+    oddsMetric,
+    oddsSortMd,
+  ])
 
   useEffect(() => {
     function onNav() {
@@ -203,6 +257,7 @@ export function TeamsProvider({ children }) {
           overrides: url.ratings ?? prev.overrides,
           demo: url.demo,
           comparePlayers: url.players,
+          ...linkedViewState(url),
         }
       })
     }
@@ -223,12 +278,13 @@ export function TeamsProvider({ children }) {
       localStorage.setItem(MY_TEAMS_KEY, myTeamsOnly ? '1' : '0')
       localStorage.setItem(MATCHDAY_SPLIT_KEY, showMatchday ? '1' : '0')
       localStorage.setItem(AWAY_DIFFICULTY_KEY, JSON.stringify(awayDifficulty))
+      localStorage.setItem(STARRED_KEY, JSON.stringify(starred))
     } catch {
       // private mode or quota — the URL still carries the whole state
       // (hidden/pinned teams and away difficulty excepted: those are
       // local-only, see initialState)
     }
-  }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty])
+  }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty, starred])
 
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
@@ -251,6 +307,7 @@ export function TeamsProvider({ children }) {
   }, [dayFilter, availableDayOptions, patch])
 
   const hiddenSet = useMemo(() => new Set(hidden), [hidden])
+  const starredSet = useMemo(() => new Set(starred), [starred])
   const pinnedSet = useMemo(() => new Set(pinned), [pinned])
 
   const teams = useMemo(
@@ -305,6 +362,25 @@ export function TeamsProvider({ children }) {
       demo,
       comparePlayers,
       setComparePlayers: (ids) => patch({ comparePlayers: ids }),
+      starred: starredSet,
+      toggleStar: (id) =>
+        setState((prev) => ({
+          ...prev,
+          starred: prev.starred.includes(id) ? prev.starred.filter((x) => x !== id) : [...prev.starred, id],
+        })),
+      playersQuery,
+      setPlayersQuery: (q) => patch({ playersQuery: q }),
+      oddsQuery,
+      setOddsQuery: (q) => patch({ oddsQuery: q }),
+      oddsView,
+      setOddsView: (v) => patch({ oddsView: v }),
+      oddsMetric,
+      setOddsMetric: (m) => patch({ oddsMetric: m }),
+      oddsSortMd,
+      setOddsSortMd: (md) => patch({ oddsSortMd: md }),
+      // Another tab, opened as set: e.g. the Odds tab's players searched for
+      // one club. A history entry, like any tab change.
+      openTab: (id, next = {}) => patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
       setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
@@ -369,6 +445,12 @@ export function TeamsProvider({ children }) {
       compare,
       demo,
       comparePlayers,
+      starredSet,
+      playersQuery,
+      oddsQuery,
+      oddsView,
+      oddsMetric,
+      oddsSortMd,
       patch,
     ],
   )

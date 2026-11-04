@@ -9,7 +9,9 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **FDR Table** — all 36 teams as rows, MD1–MD8 as columns. Each cell shows the opponent, home/away and a difficulty band (colour *and* a printed digit). The sticky team column carries each team's average over the selected range.
 - **Best Fixture Runs** — every team ranked by average difficulty, with real tiebreaks (home games, then count of very hard fixtures) and a "biggest swing" panel showing whose fixtures improve most inside the selected window.
 - **Compare Teams** — up to five teams in one aligned grid, sorted easiest run first.
-- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below; *Both* by default) adds each club's last 5 league matches: form as points per match (missed matches count as zeros, so cameos don't top the Form sort), goals + assists per 90, and minutes plus per-match lines in a player's details; under *Both* UCL and domestic form count equally in the score. Players can be starred into a shortlist (kept in the browser) and filtered on. Tap **VS** on up to 5 players (3 on a phone, so the table never scrolls sideways) to compare them side by side: stats as rows (overview, fixtures per matchday, UCL, last 5 league matches, rates per 90), the best value in each row highlighted, bars where more is better, and a "best in N" count per player. A stat with match-by-match data opens to show where it comes from (which matches the clean sheets, goals or minutes came in). The comparison is in the link (`#/players?cmp=…`), so it can be shared. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
+- **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below; *Both* by default) adds each club's last 5 league matches: form as points per match (missed matches count as zeros, so cameos don't top the Form sort), goals + assists per 90, and minutes plus per-match lines in a player's details; under *Both* UCL and domestic form count equally in the score. Players can be starred into a shortlist (kept in the browser, shared with the Odds tab) and filtered on from the *Show* menu, with *My teams* and Differentials. Tap **VS** on up to 5 players (3 on a phone, so the table never scrolls sideways) to compare them side by side: stats as rows (overview, fixtures per matchday, UCL, last 5 league matches, rates per 90), the best value in each row highlighted, bars where more is better, and a "best in N" count per player. A stat with match-by-match data opens to show where it comes from (which matches the clean sheets, goals or minutes came in). The comparison is in the link (`#/players?cmp=…`), so it can be shared. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
+- **Odds** — the bookmakers' view, independent of the 1–5 ratings (they're opinions anyone can change, so they never feed it). *Teams*: every team × matchday with a switch between clean-sheet chance, expected goals for and expected goals against; one colour, more fill = better for a fantasy pick; tap a matchday to sort on it. A match the bookmakers haven't priced yet (they start about a week ahead) is an estimate, drawn dashed and lighter: each club's Elo rating (clubelo.com, saved with the odds) plus every team's attack and defence fitted to all priced matches together (`src/utils/oddsView.js`), so the estimates sharpen as matchdays are priced. *Players*: one matchday shows each sheet player's chances of a goal, an assist, either, and his team's clean sheet, from the odds; several show expected totals, later matchdays estimated from his share of his team's goals — a line above the table says which, all if he plays. Long tables (FDR, Odds, Players) keep a slim copy of their header row under the site header while scrolling. Data: see *Betting odds* below.
+- **Across tabs** — the Odds data shows up where it helps, without extra toolbar rows: the team panel (tap a team anywhere, the Odds grid included) shows its clean-sheet chances and expected goals per matchday and links to that club's players on the Players and Odds tabs; a player's name on the Odds tab opens him on the Players tab, and a player's details there show his goal-or-assist chances with a link back; the side-by-side comparison gets *Bookmaker odds* rows; Best Runs and GK Rotation can rank on clean-sheet odds (and Best Runs on expected goals) from a switch beside the title; the Strength tab shows the rating the odds point to (*Odds ≈*) next to each team's own. Starred players are one shortlist for every tab, and starred players and *My teams* filter the Players and Odds tabs from one small *Show* menu that only appears once you star or pin something. The Odds tab's view, metric, sorted matchday and the searches on Players and Odds ride in the link (`ov`, `om`, `os`, `q`).
 - **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
 
 ## How difficulty is calculated
@@ -103,6 +105,41 @@ match divide by the matchdays played *by today*, so a sheet that lags behind und
 
 Until the file has data the Players tab looks exactly as before; `#/players?demo=1` previews the switch.
 
+## Betting odds (API-Football)
+
+`scripts/build-odds.mjs` saves, for every UCL match bookmakers have priced, each team's expected goals, clean-sheet
+chance and win/draw/loss chances, plus the expected goals and assists of the sheet players they price, to
+`src/data/odds.js`. Same key and same laptop routine as the domestic form: run `node scripts/build-odds.mjs`, then commit
+and push the file.
+
+- **Maths** (`src/utils/odds.js`): every market is de-vigged (implied chances scaled back to 100%) and the median over
+  bookmakers is used. Expected goals come from the team-total over/under lines through a Poisson model (or, without
+  those, are fitted to the 1X2 and over/under 2.5 odds); a clean sheet is priced directly by the Clean Sheet market and
+  the other side's Under 0.5. Players are saved as raw prices (anytime scorer, score or assist); `playerRates` turns
+  them into expected goals and assists **if he plays** (those bets are void for a player who doesn't), after taking a
+  typical margin (`PLAYER_MARGIN`, an estimate) off each price.
+- **When**: bookmakers price a match about two weeks ahead and API-Football drops the odds about a week after it, so
+  the file is an archive: each run adds what's priced now and keeps the rest, and a match that has kicked off keeps the
+  odds saved before kick-off (`--refresh` re-saves those while the API still has them). Run it in the days before every matchday and on the day itself (player markets fill up
+  late).
+- **Cost**: one request for the fixture list plus one per 10 priced matches.
+- **Matching**: clubs by name like the domestic form (`TEAM_NAME_OVERRIDES` for a miss), players by name within their
+  club (`PLAYER_NAME_OVERRIDES`: sheet id → the bookmaker's spelling). The log lists loose matches and likely scorers it
+  couldn't place.
+- **Elo**: every run also saves each club's Elo rating from [clubelo.com](http://clubelo.com) (free, no key) for the
+  estimates; `ELO_NAMES` in the script maps a club the log says it couldn't find. When the machine it runs on can't
+  reach clubelo.com (Cowork's sandbox can't), save `http://api.clubelo.com/<today's date>` from a browser into the repo
+  folder (as `clubelo.csv`, or under the date-name the browser picks; git ignores both) and the script reads the newest
+  one. Neither: the saved Elo is kept. Elo moves slowly, so a download every few weeks is enough.
+- `scripts/probe-odds.mjs` prints which bookmakers and markets exist right now, without changing anything.
+
+## Analytics
+
+Vercel Web Analytics (`@vercel/analytics`) counts each tab as a page of its own — `/table`, `/runs`, `/compare`,
+`/gk`, `/players`, `/odds/teams`, `/odds/players`, `/strength` — although the app lives on one URL with the view in the
+hash (`TrackedAnalytics` in `src/App.jsx`). They show up under *Pages* in the project's Analytics tab; filters and
+searches don't count as pageviews.
+
 ## Assets
 
 Club badges ship as 96px WebP in `src/assets/badges/` (every file under 7 KB, crisp up to a 3× phone). The original
@@ -119,7 +156,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # player sheet parsing, projection and domestic form checks
+npm test          # player sheet parsing, projection, domestic form and odds checks
 ```
 
 ## Deploy

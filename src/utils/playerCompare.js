@@ -83,6 +83,70 @@ function shotRows(group, gamesOf, breakdown) {
   }))
 }
 
+// The bookmakers' view over the matchdays shown (p.odds, a row from the Odds
+// tab: priced matches, later ones estimated), if he plays. Each opens to
+// its matches.
+function oddsRows() {
+  const breakdown = (p, value, hit) =>
+    p.odds?.matches.map((m) => ({
+      key: `odds-md${m.md}`,
+      label: `MD${m.md} ${m.venue === 'H' ? 'v' : '@'} ${m.opp}`,
+      title: `MD${m.md} · ${m.opp} (${m.venue === 'H' ? 'home' : 'away'})${m.estimated ? ' · estimate' : ' · bookmaker odds'}`,
+      sub: m.estimated ? 'estimate' : 'odds',
+      value: value(m),
+      hit: hit(m),
+    })) ?? null
+  const chance = (rate) => `${Math.round((1 - Math.exp(-rate)) * 100)}%`
+  return [
+    {
+      group: 'Bookmaker odds',
+      label: 'Expected goals + assists',
+      hint: 'Over the matchdays shown, if he plays: bookmaker odds, later matchdays estimated',
+      better: 'high',
+      get: (p) => p.odds?.xgi,
+      format: fixed(2),
+      sub: (p) => (p.odds ? `${p.odds.matches.length} match${p.odds.matches.length === 1 ? '' : 'es'}` : null),
+      matches: (p) =>
+        breakdown(
+          p,
+          (m) => `${chance(m.xg + (m.xa ?? 0))} G/A`,
+          (m) => 1 - Math.exp(-(m.xg + (m.xa ?? 0))) >= 0.4,
+        ),
+    },
+    {
+      group: 'Bookmaker odds',
+      label: 'Expected goals',
+      better: 'high',
+      get: (p) => p.odds?.xg,
+      format: fixed(2),
+      matches: (p) => breakdown(p, (m) => `${chance(m.xg)} goal`, (m) => 1 - Math.exp(-m.xg) >= 0.3),
+    },
+    {
+      group: 'Bookmaker odds',
+      label: 'Expected assists',
+      better: 'high',
+      get: (p) => p.odds?.xa,
+      format: fixed(2),
+      matches: (p) =>
+        breakdown(
+          p,
+          (m) => (m.xa == null ? '–' : `${chance(m.xa)} assist`),
+          (m) => m.xa != null && 1 - Math.exp(-m.xa) >= 0.25,
+        ),
+    },
+    {
+      group: 'Bookmaker odds',
+      label: 'Expected clean sheets',
+      hint: "His team's clean-sheet chances added up",
+      better: 'high',
+      get: (p) => (p.odds && keepsCleanSheets(p.position) ? p.odds.cs : null),
+      format: fixed(1),
+      matches: (p) =>
+        keepsCleanSheets(p.position) ? breakdown(p, (m) => `${Math.round(m.cs * 100)}% CS`, (m) => m.cs >= 0.35) : null,
+    },
+  ]
+}
+
 // better: 'high' (most is best), 'low' (least is best) or null (shown, never judged).
 export function compareRows(players, { domesticMatches = 5, scoreLabel = 'Score' } = {}) {
   const stat = (p, field) => p.stats?.[field]
@@ -106,6 +170,8 @@ export function compareRows(players, { domesticMatches = 5, scoreLabel = 'Score'
       format: fixed(1),
       hint: 'Average difficulty of his fixtures in the range, 1 = easiest',
     },
+
+    ...oddsRows(),
 
     {
       group: 'UCL',

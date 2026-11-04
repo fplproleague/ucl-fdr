@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { RotateCcw, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { useOdds } from '../utils/useOdds.js'
+import { impliedRatings } from '../utils/oddsView.js'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
 
@@ -19,6 +21,15 @@ export default function TeamStrengthSettings() {
   // A sub-tab, not two stacked sections — most people never scroll far enough
   // to find Away Difficulty if it just sits below all 36 strength rows.
   const [subTab, setSubTab] = useState('strength')
+  // Where the bookmakers (and Elo) would put each team, as advice next to
+  // its own rating: it never changes one, and doesn't look at them either
+  // (only the seeded ratings' band sizes).
+  const { odds } = useOdds()
+  const implied = useMemo(() => {
+    if (!odds) return {}
+    return impliedRatings(odds, Object.fromEntries(teams.map((t) => [t.abbr, t.baseRating])))
+  }, [odds, teams])
+  const hasImplied = Object.keys(implied).length > 0
 
   // Ordered by the seed rating, never the live one — otherwise a team jumps
   // rows the instant you change it and you lose your place in a 36-row list.
@@ -71,6 +82,13 @@ export default function TeamStrengthSettings() {
       {subTab === 'strength' && (
         <>
           <RatingLegend variant="full" className="mb-3" />
+          {hasImplied && (
+            <p className="mb-3 text-xs text-ucl-muted">
+              <span className="font-semibold text-ucl-star/80">Odds ≈</span> is where the bookmakers&apos; prices (and
+              Elo club ratings) put a team: all 36 ranked, in bands as big as the seeded ones. Highlighted when it differs
+              from yours. Still rough with few matches priced.
+            </p>
+          )}
 
           <div className="relative mb-3">
             <Search
@@ -110,6 +128,9 @@ export default function TeamStrengthSettings() {
                       </button>
                     ) : (
                       <span className="uppercase tracking-wide text-ucl-muted">{team.abbr}</span>
+                    )}
+                    {implied[team.abbr] && (
+                      <OddsHint rating={team.rating} implied={implied[team.abbr]} />
                     )}
                     {team.hidden && (
                       <>
@@ -174,5 +195,21 @@ export default function TeamStrengthSettings() {
         </>
       )}
     </div>
+  )
+}
+
+// "Odds ≈ 4" on its own line, lit up with an arrow when it differs from the
+// rating as set.
+function OddsHint({ rating, implied }) {
+  const gap = implied.rating - rating
+  const far = gap !== 0
+  return (
+    <span
+      className={`w-full ${far ? 'font-semibold text-ucl-accent' : 'text-ucl-muted'}`}
+      title={`From ${implied.matches} priced match${implied.matches === 1 ? '' : 'es'}`}
+    >
+      Odds ≈ {implied.rating}
+      {far && (gap > 0 ? ' ↑' : ' ↓')}
+    </span>
   )
 }
