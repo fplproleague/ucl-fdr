@@ -53,12 +53,32 @@ async function get(endpoint, params) {
   return body
 }
 
+// Which key and plan this is (the status call doesn't count towards the
+// daily quota). No names or e-mail address, only the plan.
+const keySource = process.env.API_FOOTBALL_KEY ? 'API_FOOTBALL_KEY' : keyFile
+try {
+  const status = (await get('status', {})).response ?? {}
+  const sub = status.subscription ?? {}
+  const req = status.requests ?? {}
+  console.log(
+    `Key from ${keySource} (…${key.slice(-4)}): plan ${sub.plan ?? '?'}, active ${sub.active ?? '?'}, ` +
+      `ends ${sub.end ?? '?'}, ${req.current ?? '?'}/${req.limit_day ?? '?'} requests used today`,
+  )
+} catch (err) {
+  console.log(`Key from ${keySource}: status check failed (${err.message})`)
+}
+
 // Every UCL fixture that has odds right now, page by page.
 const entries = []
-for (let page = 1; page <= 15; page++) {
-  const body = await get('odds', { league: UCL_LEAGUE_ID, season, page })
-  entries.push(...(body.response ?? []))
-  if (!body.paging || body.paging.current >= body.paging.total) break
+try {
+  for (let page = 1; page <= 15; page++) {
+    const body = await get('odds', { league: UCL_LEAGUE_ID, season, page })
+    entries.push(...(body.response ?? []))
+    if (!body.paging || body.paging.current >= body.paging.total) break
+  }
+} catch (err) {
+  console.error(`Odds probe: ${err.message}`)
+  process.exit(1)
 }
 
 // Fallback: ask per fixture for the next few UCL matches.
