@@ -2,7 +2,8 @@
 //   #/table?from=1&to=8&va=1
 //   #/table?from=1&to=8&skip=3
 //   #/table?from=1&to=1&md=1&day=TUE
-//   #/compare?from=3&to=6&teams=ARS,INT,BAY
+//   #/table?from=3&to=6&teams=ARS,INT,BAY  (the FDR table comparing three teams;
+//                                           old #/compare links open this)
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/players?demo=1            (Players with made-up players, for previews)
 //   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
@@ -15,7 +16,7 @@
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players', 'odds']
+export const TAB_IDS = ['table', 'runs', 'strength', 'gk', 'players', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
 export const ODDS_VIEWS = ['teams', 'players']
@@ -25,6 +26,8 @@ export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
   const [path, query = ''] = raw.split('?')
   const params = new URLSearchParams(query)
+  // Compare was a tab of its own; it is now a mode of the FDR table, so a
+  // shared #/compare link lands there with its teams.
   const tab = TAB_IDS.includes(path) ? path : 'table'
   const num = (key) => {
     const v = Number(params.get(key))

@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users, Percent } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Repeat, Users, Percent } from 'lucide-react'
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
@@ -8,11 +8,10 @@ import uclLogo from './assets/brand/UCL-icon.png'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 
 // The FDR table is the landing view and ships in the first chunk. The other
-// six load when they are first opened (or straight away when a link lands
+// five load when they are first opened (or straight away when a link lands
 // on one), so a first visit doesn't download all seven views up front.
 const LOADERS = {
   runs: () => import('./components/BestFixtureRuns.jsx'),
-  compare: () => import('./components/CompareTeams.jsx'),
   gk: () => import('./components/GkRotation.jsx'),
   players: () => import('./components/PlayerProjections.jsx'),
   odds: () => import('./components/OddsView.jsx'),
@@ -21,7 +20,6 @@ const LOADERS = {
   teamPanel: () => import('./components/TeamDetailPanel.jsx'),
 }
 const BestFixtureRuns = lazy(LOADERS.runs)
-const CompareTeams = lazy(LOADERS.compare)
 const GkRotation = lazy(LOADERS.gk)
 const PlayerProjections = lazy(LOADERS.players)
 const OddsView = lazy(LOADERS.odds)
@@ -33,7 +31,6 @@ const TABS = [
   { id: 'table', label: 'FDR Table', short: 'FDR', icon: Calendar, Component: FDRTable },
   { id: 'players', label: 'Players', icon: Users, Component: PlayerProjections },
   { id: 'runs', label: 'Best Runs', short: 'Runs', icon: TrendingUp, Component: BestFixtureRuns },
-  { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
   { id: 'gk', label: 'GK Rotation', short: 'GK', icon: Repeat, Component: GkRotation },
   { id: 'odds', label: 'Odds', icon: Percent, Component: OddsView },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },

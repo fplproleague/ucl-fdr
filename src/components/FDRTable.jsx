@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Scale } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { compareRuns } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
@@ -15,10 +16,25 @@ import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 const TeamDetailPanel = lazy(() => import('./TeamDetailPanel.jsx'))
 const HiddenTeamsPanel = lazy(() => import('./HiddenTeamsPanel.jsx'))
 const MatchdayMatches = lazy(() => import('./MatchdayMatches.jsx'))
+// Comparing a few teams (what the Compare tab used to be): see TeamComparison.
+const TeamComparison = lazy(() => import('./TeamComparison.jsx'))
 
 export default function FDRTable() {
-  const { visibleTeams, teamsByAbbr, hiddenCount, hideTeam, togglePin, myTeamsOnly, setMyTeamsOnly, venueAdjust, from, to, skipMd } =
-    useTeams()
+  const {
+    visibleTeams,
+    teamsByAbbr,
+    hiddenCount,
+    hideTeam,
+    togglePin,
+    myTeamsOnly,
+    setMyTeamsOnly,
+    venueAdjust,
+    from,
+    to,
+    skipMd,
+    compare,
+    setCompare,
+  } = useTeams()
   const [sortBy, setSortBy] = useState('avg')
   const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false)
   // Match view only makes sense for a single matchday — force back to Teams
@@ -31,50 +47,86 @@ export default function FDRTable() {
 
   const { detailAbbr, openTeam, closeDetail, compareTeam } = useTeamDetail()
 
-  const shownTeams = myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
+  // Compare mode: the table shows only the teams picked to compare (in the
+  // link as ?teams=), easiest run first. Opened from "Compare teams" here,
+  // from a team's panel, or by an old #/compare link. `comparing` covers the
+  // moment before the first team is picked.
+  const [comparing, setComparing] = useState(false)
+  const inCompare = comparing || compare.length > 0
+  const comparedTeams = compare.map((abbr) => teamsByAbbr[abbr]).filter(Boolean)
+  function stopComparing() {
+    setCompare([])
+    setComparing(false)
+  }
+
+  const shownTeams = inCompare ? comparedTeams : myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
 
   const mds = useVisibleMds(from, to, skipMd)
   const rows = useFixtureRows(shownTeams, teamsByAbbr, mds, venueAdjust)
 
   const sorted = useMemo(() => {
     const copy = [...rows]
-    if (sortBy === 'avg') copy.sort(compareRuns)
+    if (sortBy === 'avg' || inCompare) copy.sort(compareRuns)
     else copy.sort((a, b) => a.team.name.localeCompare(b.team.name))
     return copy
-  }, [rows, sortBy])
+  }, [rows, sortBy, inCompare])
+  const showMatches = viewMode === 'matches' && !inCompare
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`}
+        subtitle={
+          inCompare
+            ? `Comparing ${shownTeams.length} team${shownTeams.length === 1 ? '' : 's'}, ${mdRange(from, to)}${
+                skipMd ? ` (ignoring MD${skipMd})` : ''
+              }, easiest run first.`
+            : `${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`
+        }
         action={
-          viewMode === 'teams' && (
-            <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
-              {[
-                { id: 'avg', label: 'Best fixtures' },
-                { id: 'name', label: 'A–Z' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSortBy(opt.id)}
-                  aria-pressed={sortBy === opt.id}
-                  className={`min-h-[36px] rounded px-3 transition ${
-                    sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          !inCompare &&
+          !showMatches && (
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setComparing(true)}
+                className="flex min-h-[40px] items-center gap-1.5 rounded border border-white/10 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 hover:text-ucl-star"
+              >
+                <Scale size={14} aria-hidden="true" />
+                Compare<span className="hidden sm:inline"> teams</span>
+              </button>
+              <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
+                {[
+                  { id: 'avg', label: 'Best fixtures' },
+                  { id: 'name', label: 'A–Z' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSortBy(opt.id)}
+                    aria-pressed={sortBy === opt.id}
+                    className={`min-h-[36px] rounded px-3 transition ${
+                      sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )
         }
       />
 
-      <ControlBar className="mb-3" showMyTeamsFilter />
+      <ControlBar className="mb-3" showMyTeamsFilter={!inCompare} />
 
-      {singleMd && (
+      {inCompare && (
+        <Suspense fallback={null}>
+          <TeamComparison sorted={sorted} mds={mds} onClose={stopComparing} startOpen={compare.length < 2} />
+        </Suspense>
+      )}
+
+      {singleMd && !inCompare && (
         <div className="mb-3 flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold" role="tablist">
           {[
             { id: 'teams', label: 'Teams' },
@@ -96,7 +148,7 @@ export default function FDRTable() {
         </div>
       )}
 
-      {hiddenCount > 0 && (
+      {hiddenCount > 0 && !inCompare && (
         <p className="mb-3 flex items-center gap-2 text-xs text-ucl-muted">
           {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
           <button
@@ -109,7 +161,14 @@ export default function FDRTable() {
         </p>
       )}
 
-      {visibleTeams.length === 0 ? (
+      {inCompare && shownTeams.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+          <p className="text-sm font-semibold text-ucl-star/80">Nothing to compare yet</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
+            Add two or more teams and their matchdays line up here, easiest run first.
+          </p>
+        </div>
+      ) : visibleTeams.length === 0 ? (
         <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
@@ -134,7 +193,7 @@ export default function FDRTable() {
             Show all teams
           </button>
         </div>
-      ) : viewMode === 'matches' ? (
+      ) : showMatches ? (
         <Suspense fallback={null}>
           <MatchdayMatches md={from} onTeamClick={openTeam} />
         </Suspense>
@@ -142,8 +201,9 @@ export default function FDRTable() {
         <FixtureGrid
           mds={mds}
           rows={sorted}
-          showAvg={false}
-          onRemove={hideTeam}
+          showAvg={inCompare}
+          fullNames={inCompare}
+          onRemove={inCompare ? undefined : hideTeam}
           onTogglePin={togglePin}
           onTeamClick={openTeam}
           caption={`Fixture difficulty for ${shownTeams.length} Champions League teams, ${matchdayRange(from, to)}${

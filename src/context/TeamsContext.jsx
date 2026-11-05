@@ -201,7 +201,7 @@ export function TeamsProvider({ children }) {
         from,
         to,
         skip: skipMd,
-        teams: tab === 'compare' ? compare : [],
+        teams: tab === 'table' ? compare : [],
         venueAdjust,
         showMatchday,
         dayFilter,

@@ -147,7 +147,7 @@ export default function FixtureGrid({
                     </span>
                     {showAvg && (
                       <span
-                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-extrabold leading-tight"
+                        className="mt-0.5 inline-block self-start rounded px-1 py-px text-[10px] font-extrabold leading-tight"
                         style={{ backgroundColor: band.bg, color: band.text }}
                         title="Average fixture difficulty over the selected matchdays"
                       >

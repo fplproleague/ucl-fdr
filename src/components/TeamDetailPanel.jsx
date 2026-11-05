@@ -105,7 +105,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
 
   function openRotationPartner(partnerAbbr) {
     setCompare([team.abbr, partnerAbbr])
-    setTab('compare')
+    setTab('table')
     onClose()
   }
 
