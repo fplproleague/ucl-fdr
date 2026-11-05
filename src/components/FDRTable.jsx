@@ -7,6 +7,7 @@ import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
+import MyTeamsEmpty from './MyTeamsEmpty.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
@@ -28,6 +29,7 @@ export default function FDRTable() {
     togglePin,
     myTeamsOnly,
     setMyTeamsOnly,
+    pinnedCount,
     venueAdjust,
     from,
     to,
@@ -81,7 +83,9 @@ export default function FDRTable() {
             ? `Comparing ${shownTeams.length} team${shownTeams.length === 1 ? '' : 's'}, ${mdRange(from, to)}${
                 skipMd ? ` (ignoring MD${skipMd})` : ''
               }, easiest run first.`
-            : `${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`
+            : myTeamsOnly && shownTeams.length === 0
+              ? `My teams, ${mdRange(from, to)}: nothing to show yet.`
+              : `${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`
         }
         action={
           !inCompare &&
@@ -180,19 +184,7 @@ export default function FDRTable() {
           </button>
         </div>
       ) : myTeamsOnly && shownTeams.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
-            Tap the star on a row (or in a team's detail view) to add it to My teams.
-          </p>
-          <button
-            type="button"
-            onClick={() => setMyTeamsOnly(false)}
-            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
-          >
-            Show all teams
-          </button>
-        </div>
+        <MyTeamsEmpty pinnedCount={pinnedCount} onShowAll={() => setMyTeamsOnly(false)} />
       ) : showMatches ? (
         <Suspense fallback={null}>
           <MatchdayMatches md={from} onTeamClick={openTeam} />

@@ -14,6 +14,7 @@ import FixtureChip from './FixtureChip.jsx'
 import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import StickyHead from './StickyHead.jsx'
+import MyTeamsEmpty from './MyTeamsEmpty.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
@@ -35,6 +36,7 @@ export default function BestFixtureRuns() {
     togglePin,
     myTeamsOnly,
     setMyTeamsOnly,
+    pinnedCount,
     venueAdjust,
     from,
     to,
@@ -158,19 +160,7 @@ export default function BestFixtureRuns() {
           </button>
         </div>
       ) : myTeamsOnly && ranked.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
-            Tap the star on a team's row (or in its detail view) to add it to My teams.
-          </p>
-          <button
-            type="button"
-            onClick={() => setMyTeamsOnly(false)}
-            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
-          >
-            Show all teams
-          </button>
-        </div>
+        <MyTeamsEmpty pinnedCount={pinnedCount} onShowAll={() => setMyTeamsOnly(false)} />
       ) : (
         <RunsTable
           rows={visible}
