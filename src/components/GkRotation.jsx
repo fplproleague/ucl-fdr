@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
@@ -18,6 +18,8 @@ import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
 import { mdRange } from '../utils/mdLabel.js'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'
+// How many pairs the page opens with, before a keeper is picked.
+const PAIRS_SHOWN = 10
 
 function readStoredGkId() {
   try {
@@ -62,12 +64,14 @@ export default function GkRotation() {
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
   // silently change what those other views show. Starts at the same floor
-  // as every other selector (a matchday that's passed is gone here too),
-  // defaulting to MD7 rather than the full MD8: the last matchday plays
-  // entirely on a Wednesday, so it can't show a "different day" rotation
-  // win either way.
+  // as every other selector (a matchday that's passed is gone here too) and
+  // running to the last matchday, like every other view. It used to stop at
+  // MD7 (MD8 is all on one Wednesday, so it can't show a "different day"
+  // win), but the one view with a different default, beside an "All 4"
+  // preset that didn't match it, read as a bug. MD8's clean sheets still
+  // count towards the ranking.
   const [from, setFrom] = useState(() => currentMatchday())
-  const [to, setTo] = useState(() => Math.max(currentMatchday(), Math.min(7, TOTAL_MATCHDAYS)))
+  const [to, setTo] = useState(() => TOTAL_MATCHDAYS)
   const [skipMd, setSkipMd] = useState(null)
   const mds = useVisibleMds(from, to, skipMd)
 
@@ -144,6 +148,41 @@ export default function GkRotation() {
     return new Map(teamOddsRows(teams, mds, index, estimator, 'cs').map((r) => [r.team.abbr, r.cells.map((c) => c?.cs ?? null)]))
   }, [odds, teams, mds, index, estimator])
 
+  // One pairing of two keepers over the range: the fixtures side by side,
+  // the FDR facts, and the clean sheets you'd expect starting the better of
+  // the two each matchday.
+  const pairUp = useCallback(
+    (left, right) => {
+      const rows = compareTeamFixtures(left.team, right.team, mds, teamsByAbbr, venueAdjust)
+      const csA = csByTeam?.get(left.team)
+      const csB = csByTeam?.get(right.team)
+      const withCs = rows.map((r, i) => ({ ...r, csA: csA?.[i] ?? null, csB: csB?.[i] ?? null }))
+      const bestCs = csByTeam ? withCs.reduce((sum, r) => sum + Math.max(r.csA ?? 0, r.csB ?? 0), 0) : null
+      // candidate: the name compareComplementSummaries breaks its last tie on.
+      return { key: `${left.id}+${right.id}`, left, right, candidate: right, rows: withCs, summary: summarizeComparison(rows), bestCs }
+    },
+    [mds, teamsByAbbr, venueAdjust, csByTeam],
+  )
+  const byRotationValue = useCallback(
+    (a, b) => (csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b),
+    [csByTeam],
+  )
+
+  // Before a keeper is picked the page answers a question on arrival: the
+  // best pairs across all clubs, every expected starter against every other
+  // (about 600 pairings, cheap). The price cap applies to both keepers.
+  const pairs = useMemo(() => {
+    if (selectedGk) return []
+    const pool = GOALKEEPERS.filter((gk) => starters.has(gk.id) && (maxPrice == null || gk.price <= maxPrice))
+    const out = []
+    for (let i = 0; i < pool.length; i++) {
+      for (let j = i + 1; j < pool.length; j++) {
+        if (pool[i].team !== pool[j].team) out.push(pairUp(pool[i], pool[j]))
+      }
+    }
+    return out.sort(byRotationValue).slice(0, PAIRS_SHOWN)
+  }, [selectedGk, GOALKEEPERS, starters, maxPrice, pairUp, byRotationValue])
+
   // Each other club's expected starter, ranked on one list. There used to
   // be two (FDR facts, or clean-sheet odds) behind a switch; now the odds
   // lead, since they are the sharper measure of a clean sheet, and the FDR
@@ -155,16 +194,10 @@ export default function GkRotation() {
     return GOALKEEPERS.filter((gk) => starters.has(gk.id))
       .filter((gk) => gk.team !== selectedGk.team)
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
-      .map((gk) => {
-        const rows = compareTeamFixtures(selectedGk.team, gk.team, mds, teamsByAbbr, venueAdjust)
-        const csA = csByTeam?.get(selectedGk.team)
-        const csB = csByTeam?.get(gk.team)
-        const withCs = rows.map((r, i) => ({ ...r, csA: csA?.[i] ?? null, csB: csB?.[i] ?? null }))
-        const bestCs = csByTeam ? withCs.reduce((sum, r) => sum + Math.max(r.csA ?? 0, r.csB ?? 0), 0) : null
-        return { candidate: gk, rows: withCs, summary: summarizeComparison(rows), bestCs }
-      })
-      .sort((a, b) => (csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b))
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS, starters, csByTeam])
+      .map((gk) => pairUp(selectedGk, gk))
+      .sort(byRotationValue)
+  }, [selectedGk, maxPrice, GOALKEEPERS, starters, pairUp, byRotationValue])
+  const list = selectedGk ? complements : pairs
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -210,10 +243,13 @@ export default function GkRotation() {
               placeholder="Search by name or club..."
               aria-label="Search goalkeeper by name or club"
               autoFocus={pickerOpen}
-              className="mb-2 min-h-[40px] w-full rounded border border-white/10 bg-ucl-deep px-2.5 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              className="min-h-[40px] w-full rounded border border-white/10 bg-ucl-deep px-2.5 text-sm text-ucl-star placeholder:text-ucl-star/30"
             />
+            {/* With nobody picked yet the pairs below fill the page, so the
+                full list waits for a search; changing a pick shows it all. */}
+            {(selectedGk || query.trim()) && (
             <div className="max-h-72 overflow-y-auto">
-              <ul className="space-y-1">
+              <ul className="mt-2 space-y-1">
                 {filteredGks.map((gk) => (
                   <li key={gk.id}>
                     <button
@@ -245,14 +281,18 @@ export default function GkRotation() {
                 )}
               </ul>
             </div>
+            )}
           </div>
         )}
       </div>
 
-      {selectedGk && (
+      {GOALKEEPERS.length > 0 && (
         <>
-          <h2 className="mb-1 font-display text-base font-extrabold text-ucl-star sm:text-lg">Best complements for {selectedGk.name}</h2>
+          <h2 className="mb-1 font-display text-base font-extrabold text-ucl-star sm:text-lg">
+            {selectedGk ? `Best complements for ${selectedGk.name}` : `Best rotation pairs, ${mdRange(from, to)}`}
+          </h2>
           <p className="mb-3 text-xs text-ucl-muted">
+            {!selectedGk && 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners. '}
             One keeper per club: the one who played its last UCL match. Ranked on the clean sheets you&rsquo;d
             expect by starting the better of the two every matchday (bookmaker odds, estimates where a match
             isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your current settings.
@@ -260,30 +300,49 @@ export default function GkRotation() {
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
-          {complements.length === 0 && (
+          {list.length === 0 && (
             <p className="rounded-lg border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
               No goalkeeper matches this filter.
             </p>
           )}
 
           <ul className="space-y-2">
-            {complements.map(({ candidate: gk, rows, summary, bestCs }) => {
-              const isOpen = expandedId === gk.id
+            {list.map(({ key, left, right: gk, rows, summary, bestCs }) => {
+              const isOpen = expandedId === key
               return (
-                <li key={gk.id} className="rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
+                <li key={key} className="rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
                   <button
                     type="button"
-                    onClick={() => setExpandedId(isOpen ? null : gk.id)}
+                    onClick={() => setExpandedId(isOpen ? null : key)}
                     aria-expanded={isOpen}
                     className="flex w-full items-center gap-3 p-2.5 text-left sm:p-3"
                   >
-                    <TeamBadge abbr={gk.team} size={28} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold sm:text-base">{gk.name}</p>
-                      <p className="text-[11px] text-ucl-muted">
-                        {clubName(gk)} · {formatPrice(gk.price)} · {sheetFacts(gk)}
-                      </p>
-                    </div>
+                    {selectedGk ? (
+                      <>
+                        <TeamBadge abbr={gk.team} size={28} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold sm:text-base">{gk.name}</p>
+                          <p className="text-[11px] text-ucl-muted">
+                            {clubName(gk)} · {formatPrice(gk.price)} · {sheetFacts(gk)}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex shrink-0 -space-x-2" aria-hidden="true">
+                          <TeamBadge abbr={left.team} size={26} />
+                          <TeamBadge abbr={gk.team} size={26} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold sm:text-base">
+                            {left.name} + {gk.name}
+                          </p>
+                          <p className="truncate text-[11px] text-ucl-muted">
+                            {clubName(left)} + {clubName(gk)} · {formatPrice(left.price + gk.price)} together
+                          </p>
+                        </div>
+                      </>
+                    )}
                     {isOpen ? (
                       <ChevronUp size={18} aria-hidden="true" className="shrink-0 text-ucl-muted" />
                     ) : (
@@ -313,6 +372,20 @@ export default function GkRotation() {
 
                   {isOpen && (
                     <div className="overflow-x-auto border-t border-white/5 p-2.5 sm:p-3">
+                      {!selectedGk && (
+                        <div className="mb-1 flex flex-wrap gap-2">
+                          {[left, gk].map((k) => (
+                            <button
+                              key={k.id}
+                              type="button"
+                              onClick={() => selectGk(k.id)}
+                              className="min-h-[36px] rounded border border-white/15 px-2.5 text-xs font-semibold text-ucl-star/85 transition hover:bg-white/10"
+                            >
+                              I own {k.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <table className="w-full border-separate border-spacing-y-1.5 text-center text-xs">
                         <thead>
                           <tr className="section-label">
@@ -320,7 +393,7 @@ export default function GkRotation() {
                               MD
                             </th>
                             <th scope="col" className="font-semibold">
-                              {selectedGk.team}
+                              {left.team}
                             </th>
                             <th scope="col" className="font-semibold">
                               {gk.team}
