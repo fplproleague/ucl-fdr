@@ -58,16 +58,20 @@ export function homeCount(fixtures) {
   return fixtures.filter((f) => f.venue === 'H').length
 }
 
-// Ranking comparator: easiest average first, then more home games, then fewer
-// very-hard fixtures, then alphabetical. Without this, teams tied on average
-// (three sit on exactly 3.00 over MD1–8) fall back to array order, which is
-// arbitrary and looks like a bug.
+// Ranking comparator: easiest average first, then more home matches, then
+// fewer hard fixtures (band 4 or 5), then alphabetical. Over four
+// matchdays an average takes few distinct values, so ties are the normal
+// case, not a rare one; Best Runs says this order in its subtitle
+// (RUNS_TIEBREAK) so ranks within a tie aren't presented as if they meant
+// more than they do.
 export function compareRuns(a, b) {
   if (a.avg !== b.avg) return a.avg - b.avg
   if (a.homes !== b.homes) return b.homes - a.homes
-  if (a.veryHard !== b.veryHard) return a.veryHard - b.veryHard
+  if ((a.hard ?? 0) !== (b.hard ?? 0)) return (a.hard ?? 0) - (b.hard ?? 0)
   return a.team.name.localeCompare(b.team.name)
 }
+
+export const RUNS_TIEBREAK = 'ties broken by home matches, then by fewest hard fixtures (4–5)'
 
 export function describeFixture(oppName, venue, band) {
   const label = RATING_COLORS[band]?.label ?? 'Average'

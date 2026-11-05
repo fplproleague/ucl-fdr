@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Star, TrendingUp, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
-import { compareRuns, formatAvg } from '../utils/difficulty.js'
+import { RUNS_TIEBREAK, compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useOdds } from '../utils/useOdds.js'
@@ -87,7 +87,11 @@ export default function BestFixtureRuns() {
       <ViewHeading
         title="Best Fixture Runs"
         subtitle={`${shownTeams.length} teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
-          byOdds ? (rankBy === 'cs' ? 'best clean-sheet odds first' : 'most expected goals first') : 'easiest average first'
+          byOdds
+            ? rankBy === 'cs'
+              ? 'best clean-sheet odds first'
+              : 'most expected goals first'
+            : `easiest average first; ${RUNS_TIEBREAK}`
         }.`}
         action={
           <div
