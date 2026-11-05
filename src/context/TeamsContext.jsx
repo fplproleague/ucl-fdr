@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { INITIAL_TEAMS } from '../data/teams.js'
+import { ODDS_RATINGS } from 'virtual:odds-ratings'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
 import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
@@ -17,6 +18,8 @@ const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
 const STARRED_KEY = 'ucl-fdr:starred-players:v1'
 
 const TeamsContext = createContext(null)
+
+const baseOf = (team) => ODDS_RATINGS[team.abbr] ?? team.rating
 
 function readStoredOverrides() {
   try {
@@ -314,11 +317,17 @@ export function TeamsProvider({ children }) {
     () =>
       INITIAL_TEAMS.map((t) => ({
         ...t,
-        rating: overrides[t.id] ?? t.rating,
-        // Seed rating: a stable sort key so editing a team doesn't make its row
-        // jump, and the value behind the "was 4" hint in the Strength tab.
-        baseRating: t.rating,
-        modified: overrides[t.id] != null && overrides[t.id] !== t.rating,
+        rating: overrides[t.id] ?? baseOf(t),
+        // The default: where the bookmakers' odds put the team (see
+        // oddsRatings in vite.config.js), or the seed rating if there are no
+        // odds. A rating someone set themselves is an override and stays as
+        // they set it, whatever the odds do next; Reset goes back to this.
+        // Also a stable sort key, so editing a team doesn't make its row jump.
+        baseRating: baseOf(t),
+        // The hand-set rating from src/data/teams.js, which fixes how many
+        // teams sit in each band when the odds are turned into ratings.
+        seedRating: t.rating,
+        modified: overrides[t.id] != null && overrides[t.id] !== baseOf(t),
         hidden: hiddenSet.has(t.id),
         // "My teams" — a personal shortlist, independent of (and the inverse
         // intent of) hiding: hiding declutters, pinning focuses.
