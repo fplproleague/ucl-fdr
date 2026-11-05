@@ -7,6 +7,7 @@ import { useTeamDetail } from '../utils/useTeamDetail.js'
 import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
 // This view is in the first chunk, so what it only shows after a tap (a
 // team's panel, the hidden-teams dialog, the single-matchday match list)
@@ -46,7 +47,7 @@ export default function FDRTable() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`${shownTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`}
+        subtitle={`${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`}
         action={
           viewMode === 'teams' && (
             <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
@@ -145,7 +146,7 @@ export default function FDRTable() {
           onRemove={hideTeam}
           onTogglePin={togglePin}
           onTeamClick={openTeam}
-          caption={`Fixture difficulty for ${shownTeams.length} Champions League teams, matchday ${from} to ${to}${
+          caption={`Fixture difficulty for ${shownTeams.length} Champions League teams, ${matchdayRange(from, to)}${
             skipMd ? `, matchday ${skipMd} ignored` : ''
           }`}
         />

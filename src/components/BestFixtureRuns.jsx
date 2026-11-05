@@ -15,6 +15,7 @@ import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import StickyHead from './StickyHead.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
 const PREVIEW = 8
 // What the ranking runs on: the FDR (default), or the bookmakers' clean-sheet
@@ -83,7 +84,7 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${shownTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
+        subtitle={`${shownTeams.length} teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
           byOdds ? (rankBy === 'cs' ? 'best clean-sheet odds first' : 'most expected goals first') : 'easiest average first'
         }.`}
         action={
@@ -185,7 +186,7 @@ export default function BestFixtureRuns() {
           onHide={hideTeam}
           caption={`Teams ranked by ${
             byOdds ? (rankBy === 'cs' ? 'clean-sheet odds' : 'expected goals') : 'average fixture difficulty'
-          }, matchday ${from} to ${to}${skipMd ? `, matchday ${skipMd} ignored` : ''}`}
+          }, ${matchdayRange(from, to)}${skipMd ? `, matchday ${skipMd} ignored` : ''}`}
         />
       )}
 

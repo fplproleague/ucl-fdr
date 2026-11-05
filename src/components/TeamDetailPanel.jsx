@@ -13,6 +13,7 @@ import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } 
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
+import { mdRange } from '../utils/mdLabel.js'
 
 // A centred, wide rectangular modal on desktop (the table stays visible and
 // dimmed behind it), a full-screen panel on mobile — one set of responsive
@@ -164,7 +165,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
 
           <div>
             <p className="mb-2 section-label">
-              MD{seasonMds[0]}–MD{seasonMds[seasonMds.length - 1]} fixtures
+              {mdRange(seasonMds[0], seasonMds[seasonMds.length - 1])} fixtures
             </p>
             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
               {row.cells.map((cell, i) => (

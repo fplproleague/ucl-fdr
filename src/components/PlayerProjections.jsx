@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -28,6 +28,7 @@ import ComparePlayers from './ComparePlayers.jsx'
 import ShowFilter from './ShowFilter.jsx'
 import StickyHead from './StickyHead.jsx'
 import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
+import { mdRange } from '../utils/mdLabel.js'
 
 // How many players a phone compares: three fit side by side without
 // scrolling sideways.
@@ -263,7 +264,7 @@ export default function PlayerProjections() {
         Player
       </th>
       <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
-        Fixtures{mds.length > 0 && ` · MD${mds[0]} → MD${mds[mds.length - 1]}`}
+        Fixtures{mds.length > 0 && ` · ${mdRange(mds[0], mds[mds.length - 1])}`}
       </th>
       <th scope="col" className="px-1.5 py-2 text-right font-semibold">
         €m
@@ -290,12 +291,9 @@ export default function PlayerProjections() {
             : 'Form and fixtures, 100 = best player over these matchdays'
         }
       >
-        {/* The caveat lives with the column it qualifies rather than above the
-            whole view, and the explanation opens from here too. */}
+        {/* The explanation opens from here. The caveat sits just above the
+            table instead (see below): in this header it crowded the column. */}
         <span className="inline-flex items-center gap-1">
-          <span className="mr-1 hidden normal-case tracking-normal sm:inline">
-            <NotAPrediction />
-          </span>
           {sortBy === 'value' ? 'Score / €m' : 'Score'}
           <button
             type="button"
@@ -316,7 +314,7 @@ export default function PlayerProjections() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Players"
-        subtitle={`Form and fixtures per player over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
+        subtitle={`Form and fixtures per player over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
       />
 
       {demo && (
@@ -463,9 +461,17 @@ export default function PlayerProjections() {
           {showInfo && (
             <div
               id="players-info"
-              className="mb-3 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-ucl-muted"
+              className="relative mb-3 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-ucl-muted"
             >
-              <p>
+              <button
+                type="button"
+                onClick={() => setShowInfo(false)}
+                aria-label="Close how the score works"
+                className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+              <p className="pr-8">
                 <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
                 matchdays. <NotAPrediction />
               </p>
@@ -495,10 +501,10 @@ export default function PlayerProjections() {
             </div>
           )}
 
-          {/* On a phone the Score column is too narrow to carry the caveat in
-              its header, so it sits just above the column instead. */}
-          <p className="mb-1.5 text-right text-meta text-ucl-muted sm:hidden">
-            Score: <NotAPrediction />
+          {/* The caveat, one line above the table at every width, right over
+              the Score column it qualifies. */}
+          <p className="mb-1.5 text-right text-meta text-ucl-muted">
+            Score: form and fixtures, 100 = best for {mdRange(from, to)}. <NotAPrediction />
           </p>
 
           <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">

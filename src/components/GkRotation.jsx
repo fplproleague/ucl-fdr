@@ -14,6 +14,7 @@ import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
+import { mdRange } from '../utils/mdLabel.js'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'
 
@@ -167,7 +168,7 @@ export default function GkRotation() {
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="GK Rotation"
-        subtitle={`Pick a goalkeeper you own to see who complements their fixtures over MD${from}–MD${to}${
+        subtitle={`Pick a goalkeeper you own to see who complements their fixtures over ${mdRange(from, to)}${
           skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
         action={

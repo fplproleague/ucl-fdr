@@ -11,6 +11,7 @@ import ControlBar from './ControlBar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
 export default function CompareTeams() {
   const { visibleTeams, teamsByAbbr, togglePin, venueAdjust, from, to, skipMd, compare, setCompare } = useTeams()
@@ -83,7 +84,7 @@ export default function CompareTeams() {
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Compare Teams"
-        subtitle={`Put teams side by side over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
+        subtitle={`Put teams side by side over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
       />
 
       <ControlBar className="mb-3" />
@@ -271,7 +272,7 @@ export default function CompareTeams() {
             fullNames
             onTogglePin={togglePin}
             onTeamClick={openTeam}
-            caption={`Fixture comparison for ${sorted.length} teams, matchday ${from} to ${to}${
+            caption={`Fixture comparison for ${sorted.length} teams, ${matchdayRange(from, to)}${
               skipMd ? `, matchday ${skipMd} ignored` : ''
             }`}
           />
