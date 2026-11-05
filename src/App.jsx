@@ -1,5 +1,5 @@
 import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users, Percent } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
@@ -34,6 +34,13 @@ function Shell() {
   // The site header's height as --header-h, for the sticky table headers
   // that sit right under it.
   const headerRef = useRef(null)
+  // Once the page is scrolled the tagline goes, so the sticky bar is just the
+  // mark, the title and the nav. The header's height changes with it, which
+  // the observer below already passes on to the sticky table heads. Two
+  // thresholds, so the line can't flicker: hiding it shortens the page by
+  // its height (~14px), which must not drop scrollY back under the point
+  // where it returns.
+  const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const el = headerRef.current
     if (!el) return undefined
@@ -41,7 +48,13 @@ function Shell() {
     set()
     const observer = new ResizeObserver(set)
     observer.observe(el)
-    return () => observer.disconnect()
+    const onScroll = () => setScrolled((was) => (was ? window.scrollY > 4 : window.scrollY > 40))
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [])
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
   const tabs = TABS.filter((t) => t.id !== 'players' || PLAYERS_OPEN || tab === 'players')
@@ -75,8 +88,15 @@ function Shell() {
             <h1 className="whitespace-nowrap font-display text-sm font-extrabold leading-tight tracking-wide sm:text-base md:text-lg">
               UCL Fantasy FDR
             </h1>
-            <p className="truncate text-[11px] leading-tight text-ucl-muted sm:text-xs">
-              Champions League fixture difficulty, MD1–MD8 — all 36 teams, ratings you control.
+            {/* The og:title's line, which was better than the one here. The
+                old one was clipped at every width tested. This one is short
+                enough to fit beside the full nav, so it isn't truncated: it is
+                left out at 640-767px, where the nav leaves it no room, and
+                once the page scrolls. */}
+            <p
+              className={`whitespace-nowrap text-meta text-ucl-muted sm:hidden md:block ${scrolled ? '!hidden' : ''}`}
+            >
+              Every Champions League fixture, ranked.
             </p>
           </div>
 
