@@ -94,8 +94,9 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
 
   if (!team || !row) return null
 
+  // Both of these change tab, which closes the panel as part of the same
+  // history entry; calling onClose too would step back over it.
   function openPlayers(tab) {
-    onClose()
     if (tab === 'odds') openTab('odds', { oddsView: 'players', oddsQuery: team.name })
     else openTab('players', { playersQuery: team.name })
   }
@@ -106,7 +107,6 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   function openRotationPartner(partnerAbbr) {
     setCompare([team.abbr, partnerAbbr])
     setTab('table')
-    onClose()
   }
 
   return (

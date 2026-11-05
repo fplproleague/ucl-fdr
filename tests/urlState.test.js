@@ -25,3 +25,11 @@ test('unknown values in a link are dropped', () => {
   assert.equal(p.oddsMetric, null)
   assert.equal(p.oddsSortMd, null)
 })
+
+test('an open team panel rides in the link, on the views that have one', () => {
+  assert.equal(buildHash({ tab: 'table', from: 5, to: 8, team: 'VIL' }), '#/table?from=5&to=8&team=VIL')
+  assert.equal(parseHash('#/table?from=5&to=8&team=VIL').team, 'VIL')
+  // Not a club code: dropped. Not a view with a panel: not written.
+  assert.equal(parseHash('#/table?team=<x>').team, null)
+  assert.equal(buildHash({ tab: 'players', team: 'VIL' }), '#/players')
+})

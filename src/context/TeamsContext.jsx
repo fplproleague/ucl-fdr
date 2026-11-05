@@ -3,7 +3,7 @@ import { INITIAL_TEAMS } from '../data/teams.js'
 import { ODDS_RATINGS } from 'virtual:odds-ratings'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
-import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
+import { parseHash, writeHash, TAB_IDS, PANEL_TABS } from '../utils/urlState.js'
 import { availableDays } from '../utils/matchdaySplit.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 
@@ -111,6 +111,9 @@ function initialState() {
     // no longer sits inside the range is dropped rather than silently kept.
     skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
     compare: url.teams,
+    // The team whose panel is open, in the link (&team=VIL) so the back
+    // button closes it and a panel can be shared.
+    detail: validDetail(url),
     overrides: url.ratings ?? readStoredOverrides(),
     venueAdjust: url.venueAdjust ?? readStoredVenueAdjust(),
     // Which teams to leave off the table/rankings — a per-device declutter
@@ -147,6 +150,15 @@ function initialState() {
   }
 }
 
+function validDetail(url) {
+  return url.team && PANEL_TABS.includes(url.tab) && INITIAL_TEAMS.some((t) => t.abbr === url.team) ? url.team : null
+}
+
+// The history entry an opened team panel pushes carries this, so closing
+// the panel knows it can step back to the entry before it (the same view,
+// no panel) instead of adding one more.
+const PANEL_ENTRY = { teamPanel: true }
+
 function linkedViewState(url) {
   return {
     playersQuery: url.tab === 'players' ? url.query : '',
@@ -165,6 +177,7 @@ export function TeamsProvider({ children }) {
     to,
     skipMd,
     compare,
+    detail,
     overrides,
     venueAdjust,
     hidden,
@@ -202,6 +215,7 @@ export function TeamsProvider({ children }) {
         to,
         skip: skipMd,
         teams: tab === 'table' ? compare : [],
+        team: detail,
         venueAdjust,
         showMatchday,
         dayFilter,
@@ -213,7 +227,7 @@ export function TeamsProvider({ children }) {
         oddsMetric,
         oddsSortMd,
       },
-      { push: pushNext.current },
+      { push: Boolean(pushNext.current), state: pushNext.current === 'panel' ? PANEL_ENTRY : null },
     )
     pushNext.current = false
     const id = window.setTimeout(() => {
@@ -226,6 +240,7 @@ export function TeamsProvider({ children }) {
     to,
     skipMd,
     compare,
+    detail,
     overrides,
     venueAdjust,
     showMatchday,
@@ -244,6 +259,11 @@ export function TeamsProvider({ children }) {
       if (selfWrite.current) return
       const url = parseHash()
       setState((prev) => {
+        // Back out of an open panel on the same view: only the panel closes.
+        // The entry behind it still holds the range from before it opened,
+        // and a range changed while the panel was up mustn't be undone by
+        // closing it (the URL is rewritten from this state right after).
+        if (prev.detail && !validDetail(url) && url.tab === prev.tab) return { ...prev, detail: null }
         const floor = currentMatchday()
         const from = Math.max(url.from ?? prev.from, floor)
         const to = Math.max(url.to ?? prev.to, from)
@@ -254,6 +274,8 @@ export function TeamsProvider({ children }) {
           to,
           skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
           compare: url.teams,
+          // Back closes an open panel, forward opens it again.
+          detail: validDetail(url),
           venueAdjust: url.venueAdjust ?? prev.venueAdjust,
           showMatchday: url.showMatchday ?? prev.showMatchday,
           dayFilter: url.dayFilter ?? prev.dayFilter,
@@ -289,6 +311,7 @@ export function TeamsProvider({ children }) {
     }
   }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty, starred])
 
+  // push: true for a new history entry, 'panel' for one that opens a team.
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
     setState((prev) => ({ ...prev, ...next }))
@@ -389,8 +412,23 @@ export function TeamsProvider({ children }) {
       setOddsSortMd: (md) => patch({ oddsSortMd: md }),
       // Another tab, opened as set: e.g. the Odds tab's players searched for
       // one club. A history entry, like any tab change.
-      openTab: (id, next = {}) => patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
-      setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
+      // A tab change leaves any open panel behind (it stays in the entry
+      // before, so back returns to it).
+      openTab: (id, next = {}) =>
+        patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
+      setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
+      detail,
+      // Opening a team is a history entry, so the back button (the way out
+      // of anything full-screen on a phone) closes the panel instead of
+      // leaving the site.
+      openTeam: (abbr) => patch({ detail: abbr }, { push: 'panel' }),
+      // Closing steps back over that entry when there is one, which keeps
+      // forward meaning "open it again"; a panel that came with the link
+      // (no entry of ours behind it) just closes in place.
+      closeTeam: () => {
+        if (window.history.state?.teamPanel) window.history.back()
+        else patch({ detail: null })
+      },
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
       hideTeam: (id) =>
@@ -452,6 +490,7 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      detail,
       demo,
       comparePlayers,
       starredSet,
