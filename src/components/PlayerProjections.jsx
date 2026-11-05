@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star, X } from 'lucide-react'
+import { ArrowDown, ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -391,7 +391,15 @@ export default function PlayerProjections() {
                 ))}
               </div>
             )}
-            <div role="group" aria-label="Sort by" className="flex rounded-lg border border-white/10 p-0.5">
+            {/* The order of the list, not a filter on it, so it doesn't look like
+                one: no rail and no white fill (All and Both already wear that),
+                but a label and an underlined, arrowed choice, the way a sorted
+                column head reads. Three white pills side by side read as one
+                control. */}
+            <div role="group" aria-label="Sort by" className="flex items-center">
+              <span aria-hidden="true" className="px-1.5 section-label">
+                Sort
+              </span>
               {[
                 ['score', 'Score'],
                 ['value', 'Per €m'],
@@ -402,9 +410,14 @@ export default function PlayerProjections() {
                   type="button"
                   aria-pressed={sortBy === id}
                   onClick={() => setSortBy(id)}
-                  className={chip(sortBy === id)}
+                  className={`flex min-h-[36px] items-center gap-0.5 border-b-2 px-2 text-xs font-semibold transition ${
+                    sortBy === id
+                      ? 'border-ucl-star text-ucl-star'
+                      : 'border-transparent text-ucl-star/60 hover:text-ucl-star'
+                  }`}
                 >
                   {label}
+                  {sortBy === id && <ArrowDown size={12} aria-hidden="true" />}
                 </button>
               ))}
             </div>
@@ -627,16 +640,21 @@ export default function PlayerProjections() {
                       </tr>
                       {open && (
                         <tr className="bg-white/[0.04]">
+                          {/* The details sit in a panel of their own (the 8px
+                              container radius), so they read as belonging to
+                              the row above and not as more table. */}
                           <td colSpan={5} className="whitespace-normal px-2 pb-3 pt-1">
-                            <PlayerDetails
-                              player={p}
-                              odds={oddsById.get(p.id)}
-                              onOpenOdds={() => openTab('odds', { oddsView: 'players', oddsQuery: p.name })}
-                              teamsByAbbr={teamsByAbbr}
-                              venueAdjust={venueAdjust}
-                              league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
-                              clubMatches={clubMatches}
-                            />
+                            <div className="rounded-lg border border-white/10 bg-ucl-navy/60 p-3">
+                              <PlayerDetails
+                                player={p}
+                                odds={oddsById.get(p.id)}
+                                onOpenOdds={() => openTab('odds', { oddsView: 'players', oddsQuery: p.name })}
+                                teamsByAbbr={teamsByAbbr}
+                                venueAdjust={venueAdjust}
+                                league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
+                                clubMatches={clubMatches}
+                              />
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -716,12 +734,14 @@ const formatGa90 = (dom) => (dom?.ga90 == null || dom.minutes < dom.matches * 45
 export function ScoreValue({ value, highlight = false }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
-    <span className="ml-auto block w-10 sm:w-16">
+    <span className="ml-auto block w-10 sm:w-20">
       <span className={`block text-right tabular-nums ${highlight ? 'font-extrabold text-ucl-star' : 'font-semibold'}`}>
         {Math.round(pct)}
       </span>
-      <span aria-hidden="true" className="mt-1 block h-0.5 bg-white/15">
-        <span className="block h-full bg-white/70" style={{ width: `${pct}%` }} />
+      {/* 2px at 60% white on a barely-there track: at the old white/70 on
+          white/15 the two were too close to read as a length. */}
+      <span aria-hidden="true" className="mt-1 block h-0.5 bg-white/[0.06]">
+        <span className="block h-full bg-white/60" style={{ width: `${pct}%` }} />
       </span>
     </span>
   )
