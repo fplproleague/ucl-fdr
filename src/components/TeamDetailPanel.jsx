@@ -13,6 +13,7 @@ import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } 
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
+import { useDialogFocus } from '../utils/useDialogFocus.js'
 import { mdRange } from '../utils/mdLabel.js'
 
 // A centred, wide rectangular modal on desktop (the table stays visible and
@@ -29,6 +30,8 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   const { odds, index, estimator } = useOdds()
   const team = teamsByAbbr[abbr]
   const closeButtonRef = useRef(null)
+  const dialogRef = useRef(null)
+  useDialogFocus(dialogRef)
 
   const floor = currentMatchday()
   const seasonMds = useMemo(() => Array.from({ length: TOTAL_MATCHDAYS - floor + 1 }, (_, i) => floor + i), [floor])
@@ -110,13 +113,17 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   }
 
   return (
-    <div className="fixed inset-0 z-40 sm:flex sm:items-center sm:justify-center sm:p-6">
+    // On a phone a sheet from the bottom that stops 3rem short of the top,
+    // so there is backdrop left to tap: full-screen, a tap outside had
+    // nowhere to land. From sm up, a centred dialog over the dimmed table.
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center sm:justify-center sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="team-detail-heading"
-        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-3xl sm:rounded-lg sm:border sm:border-white/10"
+        className="relative flex h-[calc(100%-3rem)] w-full flex-col overflow-y-auto rounded-t-lg border-t border-white/10 bg-ucl-navy pb-[env(safe-area-inset-bottom)] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-3xl sm:rounded-lg sm:border"
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
           <TeamBadge abbr={team.abbr} size={36} />
