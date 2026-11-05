@@ -760,33 +760,21 @@ export function PriceSlider({
 }
 
 // One line in the table (the name column would otherwise squeeze the chips
-// into a stack), wrapping in a row's details on a phone.
-// `showMd` puts the matchday over each chip, where the column header
-// isn't there to say which is which.
-function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true, showMd = false }) {
+// into a stack).
+function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
   return (
     <div className={`flex gap-1 ${wrap ? 'flex-wrap' : ''}`}>
-      {fixtures.map((f) => {
-        const chip = (
-          <FixtureChip
-            key={f.gw}
-            opp={f.opp}
-            oppName={teamsByAbbr[f.opp]?.name}
-            venue={f.venue}
-            rating={teamsByAbbr[f.opp]?.rating ?? 3}
-            venueAdjust={venueAdjust}
-            awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
-          />
-        )
-        return showMd ? (
-          <span key={f.gw} className="flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-semibold text-ucl-muted">MD{f.gw}</span>
-            {chip}
-          </span>
-        ) : (
-          chip
-        )
-      })}
+      {fixtures.map((f) => (
+        <FixtureChip
+          key={f.gw}
+          opp={f.opp}
+          oppName={teamsByAbbr[f.opp]?.name}
+          venue={f.venue}
+          rating={teamsByAbbr[f.opp]?.rating ?? 3}
+          venueAdjust={venueAdjust}
+          awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+        />
+      ))}
     </div>
   )
 }
@@ -815,118 +803,144 @@ function useIsPhone() {
   return phone
 }
 
-// What's behind the numbers: points per matchday (is that average one big
-// haul or steady returns?), the season stats, and — for phones, where the
-// fixtures column is hidden — the fixtures in the range.
+// What's behind the numbers, in three columns that use the row's width
+// (stacked on a phone): what's next, what he has done in the UCL, and his
+// league form. It used to be six stacked blocks down the left edge, with
+// minutes in a block of their own and the fixtures listed twice on a phone
+// (once with odds, once without). Now each match is one line: the fixture
+// and his goal-or-assist chance side by side; minutes sit in the heading of
+// the competition they belong to.
 function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, league, clubMatches }) {
+  // Balls recovered is left out: it's the longest label and the smallest
+  // points source; the Odds and Compare views still have it.
   const stats = STAT_LABELS.filter(
-    ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
+    ([field, , positions]) =>
+      field !== 'ballsRecovered' && player.stats?.[field] != null && (!positions || positions.includes(player.position)),
   )
+  const oddsByMd = new Map((odds?.matches ?? []).map((m) => [m.md, m]))
+  const pct = (part, whole) => (whole > 0 ? ` (${Math.round((part / whole) * 100)}%)` : '')
+  const first = player.fixtures[0]?.gw
+  const last = player.fixtures[player.fixtures.length - 1]?.gw
   return (
-    <div className="space-y-2.5">
-      {odds && (
-        <div>
-          <p className="mb-1 section-label">
-            Goal or assist chance · bookmaker odds, if he plays
-          </p>
-          <div className="flex flex-wrap items-center gap-1">
-            {odds.matches.map((m) => (
-              <span
-                key={m.md}
-                title={`MD${m.md} ${m.venue === 'H' ? 'v' : 'at'} ${m.opp}: xG ${m.xg.toFixed(2)}${
-                  m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
-                }${m.estimated ? ' (estimate)' : ''}`}
-                className={`inline-flex min-w-[52px] flex-col items-center rounded px-1.5 py-1 text-xs ${
-                  m.estimated ? 'border border-dashed border-ucl-star/25' : 'bg-ucl-accent/20'
-                }`}
-              >
-                <span className="text-[10px] text-ucl-muted">
-                  MD{m.md} {m.opp}
-                </span>
-                <span className="font-semibold tabular-nums">{Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%</span>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenOdds()
-              }}
-              className="ml-1 min-h-[32px] rounded px-2 text-xs font-semibold text-ucl-link hover:bg-white/10"
-            >
-              Odds →
-            </button>
-          </div>
-        </div>
+    <div className="grid gap-x-6 gap-y-4 pt-1 md:grid-cols-3">
+      {player.fixtures.length > 0 && (
+        <section>
+          <DetailHeading
+            title={`Next · ${mdRange(first, last)}`}
+            aside={
+              odds && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenOdds()
+                  }}
+                  className="-my-2 min-h-[32px] rounded px-1.5 font-semibold normal-case tracking-normal text-ucl-link hover:bg-white/10"
+                >
+                  Odds →
+                </button>
+              )
+            }
+          />
+          <ul className="space-y-1">
+            {player.fixtures.map((f) => {
+              const m = oddsByMd.get(f.gw)
+              return (
+                <li key={f.gw} className="flex items-center gap-2 text-xs">
+                  <span className="w-8 shrink-0 text-meta text-ucl-muted">MD{f.gw}</span>
+                  <FixtureChip
+                    opp={f.opp}
+                    oppName={teamsByAbbr[f.opp]?.name}
+                    venue={f.venue}
+                    rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                    venueAdjust={venueAdjust}
+                    awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+                  />
+                  {m && (
+                    <span
+                      className="tabular-nums text-ucl-star/80"
+                      title={`Bookmaker odds, if he plays: xG ${m.xg.toFixed(2)}${
+                        m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
+                      }${m.estimated ? ' (estimate until the match is priced)' : ''}`}
+                    >
+                      <span className="font-semibold text-ucl-star">
+                        {Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%
+                      </span>{' '}
+                      goal or assist{m.estimated && <span className="text-ucl-muted"> · est.</span>}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
       )}
-      {player.form?.length > 0 && (
-        <div>
-          <p className="mb-1 section-label">Points per matchday</p>
-          <div className="flex flex-wrap gap-1">
+
+      <section>
+        <DetailHeading
+          title="UCL so far"
+          aside={`${player.minutes}/${clubMatches * 90} min${pct(player.minutes, clubMatches * 90)}`}
+        />
+        {player.form?.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1">
             {player.form.map((f) => (
               <span
                 key={f.md}
-                className="inline-flex min-w-[44px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs"
+                className="inline-flex min-w-[40px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs"
               >
                 <span className="text-[10px] text-ucl-muted">MD{f.md}</span>
                 <span className="font-semibold tabular-nums">{f.points}</span>
               </span>
             ))}
           </div>
-        </div>
-      )}
-      {stats.length > 0 && (
+        )}
         <p className="text-xs text-ucl-star/80">
-          {stats.map(([field, label]) => `${player.stats[field]} ${label}`).join(' · ')}
+          {[player.apps != null && plural(player.apps, 'app'), ...stats.map(([field, label]) => `${player.stats[field]} ${label}`)]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-      )}
-      <div>
-        <p className="mb-1 section-label">Minutes</p>
-        <p className="text-xs text-ucl-star/80">
-          UCL {player.minutes}/{clubMatches * 90}
-          {clubMatches > 0 && ` (${Math.round(player.minutesShare * 100)}%)`}
-          {player.apps != null && `, ${plural(player.apps, 'app')}`}
-          {player.dom &&
-            ` · ${league ?? 'League'} ${player.dom.minutes}/${player.dom.matches * 90} (${Math.round(
-              (player.dom.minutes / (player.dom.matches * 90)) * 100,
-            )}%), ${player.dom.apps}/${player.dom.matches} apps`}
-        </p>
-      </div>
+      </section>
+
       {player.dom && (
-        <div>
-          <p className="mb-1 section-label">
-            Last {player.dom.matches} in {league ?? 'the league'}
-          </p>
-          <div className="flex flex-wrap gap-1">
+        <section>
+          <DetailHeading
+            title={`${league ?? 'League'} · last ${player.dom.matches}`}
+            aside={`${player.dom.minutes}/${player.dom.matches * 90} min`}
+          />
+          <ul className="mb-1.5 space-y-0.5">
             {player.domestic.map((g) => (
-              <span
+              <li
                 key={`${g.d}-${g.opp}`}
-                title={`${g.d} · ${g.opp} (${g.v === 'H' ? 'home' : 'away'})`}
-                className={`inline-flex w-[72px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs ${g.min ? '' : 'opacity-50'}`}
+                title={g.d}
+                className={`flex items-baseline gap-2 text-xs ${g.min ? '' : 'text-ucl-muted'}`}
               >
-                <span className="w-full truncate text-center text-[10px] text-ucl-muted">
+                <span className="min-w-0 flex-1 truncate">
                   {g.v === 'H' ? 'v' : '@'} {g.opp}
                 </span>
-                <span className="font-semibold tabular-nums">{g.min}&prime;</span>
-                <span className="text-[10px] tabular-nums text-ucl-star/70">
+                <span className="w-9 text-right tabular-nums">{g.min}&prime;</span>
+                <span className="w-10 text-right tabular-nums">
                   {g.g || g.a ? [g.g && `${g.g}G`, g.a && `${g.a}A`].filter(Boolean).join(' ') : '–'}
                 </span>
-              </span>
+              </li>
             ))}
-          </div>
-          <p className="mt-1 text-xs text-ucl-star/80">
+          </ul>
+          <p className="text-xs text-ucl-star/80">
             {plural(player.dom.goals, 'goal')} · {plural(player.dom.assists, 'assist')}
             {player.dom.ga90 != null && ` · ${player.dom.ga90.toFixed(2)} G+A per 90`}
           </p>
-        </div>
-      )}
-      {player.fixtures.length > 0 && (
-        <div className="lg:hidden">
-          <p className="mb-1 section-label">Fixtures in range</p>
-          <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} showMd />
-        </div>
+        </section>
       )}
     </div>
+  )
+}
+
+// A column's heading in a player's details, with a figure on the right.
+function DetailHeading({ title, aside }) {
+  return (
+    <p className="mb-1.5 flex items-baseline justify-between gap-2 border-b border-white/10 pb-1 section-label">
+      <span className="truncate">{title}</span>
+      {aside && <span className="shrink-0 normal-case tracking-normal text-ucl-star/70">{aside}</span>}
+    </p>
   )
 }
 
