@@ -14,7 +14,7 @@ import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
-import { PRICE_STEP, PriceSlider } from './PlayerProjections.jsx'
+import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import { mdRange } from '../utils/mdLabel.js'
 
 const GK_SELECTED_KEY = 'ucl-fdr:gk-selected:v1'

@@ -1,4 +1,25 @@
 @tailwind base;
+
+/* Archivo Expanded: the width-118 instance used for titles and section
+   labels, subset to the characters headings need. It replaces loading
+   Archivo's two-axis file (90 kB) for the whole site; body text stays on the
+   35 kB weight-only face (main.jsx). */
+@font-face {
+  font-family: 'Archivo Expanded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600 800;
+  src: url(./assets/fonts/archivo-expanded-latin.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2192, U+2248;
+}
+@font-face {
+  font-family: 'Archivo Expanded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600 800;
+  src: url(./assets/fonts/archivo-expanded-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-017F;
+}
 @tailwind components;
 @tailwind utilities;
 
@@ -72,13 +93,11 @@
 }
 
 @layer utilities {
-  /* The display voice: Archivo's own width axis, the same file the body text
-     uses (wdth.css carries both axes). font-variation-settings rather than
-     font-stretch because Tailwind's preflight passes it on to buttons and
-     inputs, so a sort button in a table head keeps the voice of its label. */
+  /* The display voice: Archivo at width 118, from its own small files (see
+     the @font-face rules below and scripts/build-display-font.py). Until
+     they arrive, headings show in the body face. */
   .font-display {
-    font-family: 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
-    font-variation-settings: 'wdth' 118;
+    font-family: 'Archivo Expanded', 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
 }

@@ -16,8 +16,6 @@ const LOADERS = {
   players: () => import('./components/PlayerProjections.jsx'),
   odds: () => import('./components/OddsView.jsx'),
   strength: () => import('./components/TeamStrengthSettings.jsx'),
-  // Not a view: the team panel, which the FDR table opens on a tap.
-  teamPanel: () => import('./components/TeamDetailPanel.jsx'),
 }
 const BestFixtureRuns = lazy(LOADERS.runs)
 const GkRotation = lazy(LOADERS.gk)
@@ -69,18 +67,12 @@ function Shell() {
       window.removeEventListener('scroll', onScroll)
     }
   }, [])
-  // Once the first view is up and the browser is idle, fetch the rest, so a
-  // tab opened later doesn't wait on the network. It costs the same bytes as
-  // before, just after first paint instead of before it.
-  useEffect(() => {
-    const warm = () => Object.values(LOADERS).forEach((load) => load().catch(() => {}))
-    if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(warm, { timeout: 4000 })
-      return () => window.cancelIdleCallback(id)
-    }
-    const id = setTimeout(warm, 2000)
-    return () => clearTimeout(id)
-  }, [])
+  // A view's code is fetched when someone shows intent to open it (pointer
+  // over its tab, keyboard focus on it, a finger landing on it), a beat
+  // before the click. It used to be fetched for every view once the first
+  // one was idle, which made the first visit download all six views
+  // (PlayerProjections alone is 41 kB) whether or not they were ever opened.
+  const warm = (id) => LOADERS[id]?.().catch(() => {})
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
   const tabs = TABS.filter((t) => t.id !== 'players' || PLAYERS_OPEN || tab === 'players')
 
@@ -136,6 +128,8 @@ function Shell() {
                 aria-selected={tab === id}
                 onClick={(e) => goToTab(e, id)}
                 onKeyDown={(e) => onTabKeyDown(e, id)}
+                onPointerEnter={() => warm(id)}
+                onFocus={() => warm(id)}
                 title={label}
                 className={`flex min-h-[40px] items-center whitespace-nowrap rounded px-1.5 text-table font-semibold transition md:px-2 lg:px-3 lg:text-sm ${
                   tab === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:bg-white/5'
@@ -179,6 +173,8 @@ function Shell() {
               aria-label={label}
               onClick={(e) => goToTab(e, id)}
               onKeyDown={(e) => onTabKeyDown(e, id)}
+              onTouchStart={() => warm(id)}
+              onFocus={() => warm(id)}
               className={`relative flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
                 tab === id ? 'text-ucl-select' : 'text-ucl-star/60'
               }`}
