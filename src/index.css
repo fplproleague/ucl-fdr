@@ -53,11 +53,32 @@
   }
 }
 
+@layer base {
+  /* Three weights on the whole site: 400, 600, 800. Preflight leaves <strong>
+     at `bolder`, which is 700 on body text and 900 inside a semibold line. */
+  b,
+  strong {
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  /* The small-caps label over a section, a panel or a table's columns. It
+     was spelled seven ways (10, 11 or 12px, tracking-wide or -wider). */
+  .section-label {
+    @apply font-display text-meta font-semibold uppercase text-ucl-muted;
+    letter-spacing: 0.14em;
+  }
+}
+
 @layer utilities {
-  /* font-stretch: expanded was a no-op here — the loaded face has no width
-     axis — so it is gone rather than sitting in the stylesheet looking load-bearing. */
+  /* The display voice: Archivo's own width axis, the same file the body text
+     uses (wdth.css carries both axes). font-variation-settings rather than
+     font-stretch because Tailwind's preflight passes it on to buttons and
+     inputs, so a sort button in a table head keeps the voice of its label. */
   .font-display {
     font-family: 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
+    font-variation-settings: 'wdth' 118;
     letter-spacing: -0.01em;
   }
 }

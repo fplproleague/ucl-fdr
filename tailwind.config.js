@@ -18,6 +18,17 @@ export default {
       full: '9999px',
     },
     extend: {
+      // The type scale. Hierarchy used to come from six weights at two sizes
+      // (most of the page was 12 or 14px), which is why it read as one flat
+      // surface. Weights: 400, 600, 800 only.
+      fontSize: {
+        // View title ("FDR Table", "Players"): 800, display width.
+        title: ['30px', { lineHeight: '34px', letterSpacing: '-0.02em' }],
+        // Table body and the line under a title: 400 / 600.
+        table: ['13px', '18px'],
+        // Section labels (see .section-label) and meta lines: 11px.
+        meta: ['11px', '16px'],
+      },
       fontFamily: {
         display: ['"Archivo Variable"', 'Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['"Archivo Variable"', 'Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],

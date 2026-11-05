@@ -169,7 +169,7 @@ export default function TeamStrengthSettings() {
             {byName.map((team) => (
               <li key={team.id} className="flex items-center gap-2.5 px-2.5 py-2 sm:gap-3 sm:px-3">
                 <TeamBadge abbr={team.abbr} size={24} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{team.shortName ?? team.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-normal">{team.shortName ?? team.name}</span>
                 <div className="flex shrink-0 gap-1" role="group" aria-label={`${team.name} away difficulty`}>
                   {AWAY_DIFFICULTY_LEVELS.map((level) => {
                     const active = team.awayDifficulty === level
@@ -180,7 +180,7 @@ export default function TeamStrengthSettings() {
                         aria-pressed={active}
                         aria-label={`${team.name}: ${level === 0 ? 'no away difficulty adjustment' : `+${level} away difficulty`}`}
                         onClick={() => setAwayDifficulty(team.id, level)}
-                        className={`flex h-8 w-9 items-center justify-center rounded text-xs font-bold transition active:scale-90 ${
+                        className={`flex h-8 w-9 items-center justify-center rounded text-xs font-semibold transition active:scale-90 ${
                           active ? 'bg-ucl-select text-ucl-selectInk' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
                         }`}
                       >

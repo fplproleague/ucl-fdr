@@ -21,7 +21,7 @@ export default function TeamBadge({ abbr, size = 24, className = '' }) {
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         />
       ) : (
-        <span className="text-[10px] font-bold text-ucl-star/70">{abbr}</span>
+        <span className="text-[10px] font-semibold text-ucl-star/70">{abbr}</span>
       )}
     </span>
   )

@@ -60,7 +60,7 @@ export default function ComparePlayers({
         className="relative h-full w-full overflow-y-auto bg-ucl-navy pb-[env(safe-area-inset-bottom)] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-lg sm:border sm:border-white/10"
       >
         <div className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-white/10 bg-ucl-navy px-3">
-          <h2 id="compare-heading" className="min-w-0 flex-1 truncate text-sm font-bold">
+          <h2 id="compare-heading" className="min-w-0 flex-1 truncate text-sm font-semibold">
             Compare players{' '}
             <span className="font-normal text-ucl-muted">
               ({players.length}/{max})
@@ -208,7 +208,7 @@ function GroupHeader({ label, cols }) {
       <th
         scope="colgroup"
         colSpan={cols}
-        className="border-t border-white/10 px-2 pb-1 pt-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-ucl-muted sm:px-3"
+        className="border-t border-white/10 px-2 pb-1 pt-2.5 text-left section-label sm:px-3"
       >
         {label}
       </th>
@@ -250,7 +250,7 @@ function StatRow({ row, open, onToggle }) {
           const best = row.best.has(i)
           const cell = (
             <>
-              <span className={best ? 'font-bold text-ucl-star' : 'text-ucl-star/75'}>
+              <span className={best ? 'font-semibold text-ucl-star' : 'text-ucl-star/75'}>
                 {text}
                 {best && <span className="sr-only"> (best)</span>}
               </span>
@@ -296,7 +296,7 @@ function StatRow({ row, open, onToggle }) {
                     >
                       <span className="block truncate text-[10px] text-ucl-muted">{m.label}</span>
                       <span className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-1">
-                        <span className={`truncate ${m.hit ? 'font-bold text-ucl-star' : 'text-ucl-star/70'}`}>
+                        <span className={`truncate ${m.hit ? 'font-semibold text-ucl-star' : 'text-ucl-star/70'}`}>
                           {m.value}
                         </span>
                         {m.sub && <span className="shrink-0 text-[10px] text-ucl-muted">{m.sub}</span>}

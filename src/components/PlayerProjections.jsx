@@ -253,7 +253,7 @@ export default function PlayerProjections() {
   const withoutDomestic = players.length - domestic.size
   // In the table and in the sticky copy under the site header.
   const headRow = (
-    <tr className="bg-ucl-deep text-[10px] uppercase tracking-wider text-ucl-muted">
+    <tr className="section-label bg-ucl-deep">
       {/* w-full + max-w-0 on the name column: it takes whatever the
           number columns leave, and truncates instead of squeezing them. */}
       <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
@@ -404,7 +404,7 @@ export default function PlayerProjections() {
             </div>
             {hasDomestic && (
               <div role="group" aria-label="Form" className="flex items-center rounded-lg border border-white/10 p-0.5">
-                <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Form</span>
+                <span className="px-2 section-label">Form</span>
                 {FORM_LABELS.map(([id, label]) => (
                   <button
                     key={id}
@@ -469,7 +469,7 @@ export default function PlayerProjections() {
             {headRow}
           </StickyHead>
           <div ref={tableScrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
-            <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
+            <table ref={tableRef} className="w-full whitespace-nowrap text-table">
               <thead>
                 {headRow}
               </thead>
@@ -525,7 +525,7 @@ export default function PlayerProjections() {
                             >
                               <span
                                 aria-hidden="true"
-                                className={`rounded border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
+                                className={`rounded border px-1 py-[1px] text-[9px] font-extrabold leading-none tracking-tight ${
                                   inCompare
                                     ? 'border-ucl-select bg-ucl-select text-ucl-selectInk'
                                     : 'border-ucl-star/30 text-ucl-star/55'
@@ -541,7 +541,7 @@ export default function PlayerProjections() {
                             >
                               <TeamBadge abbr={p.team} size={22} />
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-semibold">{p.name}</span>
+                                <span className="block truncate text-table font-semibold">{p.name}</span>
                                 <span className="block truncate text-[11px] text-ucl-muted">
                                   {/* Minutes live in the details: this line stays short. */}
                                   {p.position} · {nameOf(p.team)}
@@ -680,7 +680,7 @@ export function ScoreBar({ value, highlight = false }) {
         className={`absolute inset-y-0 left-0 rounded ${highlight ? 'bg-white/30' : 'bg-white/20'}`}
         style={{ width: `${pct}%` }}
       />
-      <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
+      <span className="relative flex h-full items-center px-1.5 text-xs font-semibold tabular-nums">{Math.round(pct)}</span>
     </div>
   )
 }
@@ -691,7 +691,7 @@ export function PriceSlider({ bounds, value, onChange }) {
   const current = value ?? bounds.max
   return (
     <label className="mb-3 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">Max price</span>
+      <span className="shrink-0 section-label">Max price</span>
       <input
         type="range"
         min={bounds.min}
@@ -705,7 +705,7 @@ export function PriceSlider({ bounds, value, onChange }) {
         aria-valuetext={value == null ? 'Any price' : `€${current.toFixed(1)}m`}
         className="h-10 min-w-0 flex-1 accent-ucl-select"
       />
-      <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">
+      <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums">
         {value == null ? 'Any' : `€${current.toFixed(1)}m`}
       </span>
     </label>
@@ -779,7 +779,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
     <div className="space-y-2.5">
       {odds && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
+          <p className="mb-1 section-label">
             Goal or assist chance · bookmaker odds, if he plays
           </p>
           <div className="flex flex-wrap items-center gap-1">
@@ -796,7 +796,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 <span className="text-[10px] text-ucl-muted">
                   MD{m.md} {m.opp}
                 </span>
-                <span className="font-bold tabular-nums">{Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%</span>
+                <span className="font-semibold tabular-nums">{Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%</span>
               </span>
             ))}
             <button
@@ -814,7 +814,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
       )}
       {player.form?.length > 0 && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Points per matchday</p>
+          <p className="mb-1 section-label">Points per matchday</p>
           <div className="flex flex-wrap gap-1">
             {player.form.map((f) => (
               <span
@@ -822,7 +822,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 className="inline-flex min-w-[44px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs"
               >
                 <span className="text-[10px] text-ucl-muted">MD{f.md}</span>
-                <span className="font-bold tabular-nums">{f.points}</span>
+                <span className="font-semibold tabular-nums">{f.points}</span>
               </span>
             ))}
           </div>
@@ -834,7 +834,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
         </p>
       )}
       <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Minutes</p>
+        <p className="mb-1 section-label">Minutes</p>
         <p className="text-xs text-ucl-star/80">
           UCL {player.minutes}/{clubMatches * 90}
           {clubMatches > 0 && ` (${Math.round(player.minutesShare * 100)}%)`}
@@ -847,7 +847,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
       </div>
       {player.dom && (
         <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
+          <p className="mb-1 section-label">
             Last {player.dom.matches} in {league ?? 'the league'}
           </p>
           <div className="flex flex-wrap gap-1">
@@ -860,7 +860,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 <span className="w-full truncate text-center text-[10px] text-ucl-muted">
                   {g.v === 'H' ? 'v' : '@'} {g.opp}
                 </span>
-                <span className="font-bold tabular-nums">{g.min}&prime;</span>
+                <span className="font-semibold tabular-nums">{g.min}&prime;</span>
                 <span className="text-[10px] tabular-nums text-ucl-star/70">
                   {g.g || g.a ? [g.g && `${g.g}G`, g.a && `${g.a}A`].filter(Boolean).join(' ') : '–'}
                 </span>
@@ -875,7 +875,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
       )}
       {player.fixtures.length > 0 && (
         <div className="lg:hidden">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>
+          <p className="mb-1 section-label">Fixtures in range</p>
           <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} showMd />
         </div>
       )}

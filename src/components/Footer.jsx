@@ -5,7 +5,7 @@ export default function Footer() {
         href="https://x.com/fpl_proleague"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-ucl-star/60 transition hover:text-ucl-star"
+        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-normal text-ucl-star/60 transition hover:text-ucl-star"
       >
         Made by @fpl_proleague
         <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 fill-current">

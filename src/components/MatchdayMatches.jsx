@@ -30,7 +30,7 @@ export default function MatchdayMatches({ md, onTeamClick }) {
     <div className="space-y-4">
       {groups.map(({ day, matches }) => (
         <div key={day}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">{DAY_LABEL[day]}</p>
+          <p className="mb-2 section-label">{DAY_LABEL[day]}</p>
           <div className="space-y-1.5">
             {matches.map((m) => (
               <div

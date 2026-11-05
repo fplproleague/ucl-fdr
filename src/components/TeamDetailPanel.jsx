@@ -144,13 +144,13 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
         <div className="flex-1 space-y-5 px-4 py-4 sm:px-5">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Team Strength</p>
+              <p className="mb-1.5 section-label">Team Strength</p>
               <StrengthPicker team={team} onSetRating={setRating} compact />
             </div>
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Average FDR</p>
+              <p className="section-label">Average FDR</p>
               <span
-                className="mt-1 inline-flex rounded px-2.5 py-1 text-sm font-black"
+                className="mt-1 inline-flex rounded px-2.5 py-1 text-sm font-extrabold"
                 style={{ backgroundColor: avgBand.bg, color: avgBand.text }}
                 title={strengthColor.label}
               >
@@ -160,13 +160,13 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+            <p className="mb-2 section-label">
               MD{seasonMds[0]}–MD{seasonMds[seasonMds.length - 1]} fixtures
             </p>
             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
               {row.cells.map((cell, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
-                  <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                  <span className="section-label leading-none">
                     MD{seasonMds[i]}
                   </span>
                   {cell ? (
@@ -190,14 +190,14 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
           {oddsRow && (
             <div>
-              <p className="mb-2 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+              <p className="mb-2 flex items-baseline justify-between gap-2 section-label">
                 <span>Bookmaker odds</span>
-                <span className="text-[10px] font-medium normal-case tracking-normal">clean sheet · goals for</span>
+                <span className="text-[10px] font-normal normal-case tracking-normal">clean sheet · goals for</span>
               </p>
               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
                 {oddsRow.cells.map((cell, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                    <span className="section-label leading-none">
                       MD{seasonMds[i]}
                     </span>
                     {cell ? (
@@ -251,12 +251,12 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
               const runBand = ratingColor(difficultyBand(run.avg))
               return (
                 <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">{label}</p>
+                  <p className="section-label">{label}</p>
                   <p className="mt-1 text-sm font-semibold text-ucl-star">
                     MD{run.fromMd}–MD{run.toMd}
                   </p>
                   <span
-                    className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-black"
+                    className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-extrabold"
                     style={{ backgroundColor: runBand.bg, color: runBand.text }}
                   >
                     avg {formatAvg(run.avg)}
@@ -283,7 +283,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
           {rotationPartners.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+              <p className="mb-2 section-label">
                 Best rotation partners
               </p>
               <ul className="space-y-1.5">
@@ -313,7 +313,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           <button
             type="button"
             onClick={onCompare}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-bold transition hover:bg-white/90 active:scale-[0.99]"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-extrabold transition hover:bg-white/90 active:scale-[0.99]"
           >
             <Scale size={16} aria-hidden="true" />
             Compare {team.shortName ?? team.name}

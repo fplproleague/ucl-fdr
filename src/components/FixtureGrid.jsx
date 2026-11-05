@@ -91,7 +91,7 @@ export default function FixtureGrid({
     <tr>
       <th
         scope="col"
-        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted transition-[min-width,width] duration-300 ease-out"
+        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left section-label transition-[min-width,width] duration-300 ease-out"
         style={teamColStyle}
       >
         Team
@@ -100,10 +100,10 @@ export default function FixtureGrid({
         <th
           key={md}
           scope="col"
-          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[72px]"
+          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center section-label sm:min-w-[72px]"
         >
           <span className="block leading-tight">MD{md}</span>
-          <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
+          <span className="block text-[9px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
             {MATCHDAY_LABEL[md]}
           </span>
         </th>
@@ -120,7 +120,7 @@ export default function FixtureGrid({
       </StickyHead>
       <div className="relative">
         <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
-          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
+          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-table">
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
               {headRow}
@@ -130,7 +130,7 @@ export default function FixtureGrid({
                 const band = ratingColor(difficultyBand(avg))
                 const identity = (
                   <>
-                    <span className="relative block text-xs font-semibold sm:text-sm">
+                    <span className="relative block text-xs font-semibold sm:text-table">
                       <span
                         className={`block truncate transition-[max-width,opacity] duration-300 ease-out ${
                           compact ? 'max-w-[30px] opacity-0 sm:max-w-[36px]' : 'max-w-[150px]'
@@ -147,7 +147,7 @@ export default function FixtureGrid({
                     </span>
                     {showAvg && (
                       <span
-                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
+                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-extrabold leading-tight"
                         style={{ backgroundColor: band.bg, color: band.text }}
                         title="Average fixture difficulty over the selected matchdays"
                       >
@@ -262,7 +262,7 @@ export default function FixtureGrid({
       </div>
 
       {scrollable && !atEnd && (
-        <p className="mt-2 text-center text-[11px] font-medium text-ucl-muted">Swipe the table for later matchdays →</p>
+        <p className="mt-2 text-center text-[11px] font-normal text-ucl-muted">Swipe the table for later matchdays →</p>
       )}
     </>
   )

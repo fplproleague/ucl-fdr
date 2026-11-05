@@ -202,7 +202,7 @@ export default function GkRotation() {
       )}
 
       <div className="mb-4">
-        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Your goalkeeper</p>
+        <p className="mb-1.5 section-label">Your goalkeeper</p>
 
         {selectedGk && !pickerOpen ? (
           <button
@@ -266,7 +266,7 @@ export default function GkRotation() {
 
       {selectedGk && (
         <>
-          <h2 className="mb-1 text-base font-bold text-ucl-star sm:text-lg">Best complements for {selectedGk.name}</h2>
+          <h2 className="mb-1 font-display text-base font-extrabold text-ucl-star sm:text-lg">Best complements for {selectedGk.name}</h2>
           <p className="mb-3 text-xs text-ucl-muted">
             {rankBy === 'cs'
               ? 'Ranked on the clean sheets you’d expect by starting the better of the two every matchday (bookmaker odds, estimates where not priced yet).'
@@ -330,7 +330,7 @@ export default function GkRotation() {
                     <div className="overflow-x-auto border-t border-white/5 p-2.5 sm:p-3">
                       <table className="w-full border-separate border-spacing-y-1.5 text-center text-xs">
                         <thead>
-                          <tr className="text-[10px] uppercase tracking-wide text-ucl-muted">
+                          <tr className="section-label">
                             <th scope="col" className="text-left font-semibold">
                               MD
                             </th>
@@ -406,7 +406,7 @@ export default function GkRotation() {
 // two that matchday stands out.
 function CsNote({ cs, best }) {
   return (
-    <span className={`mt-0.5 block text-[10px] tabular-nums ${best ? 'font-bold text-ucl-star' : 'text-ucl-muted'}`}>
+    <span className={`mt-0.5 block text-[10px] tabular-nums ${best ? 'font-semibold text-ucl-star' : 'text-ucl-muted'}`}>
       CS {Math.round(cs * 100)}%
     </span>
   )

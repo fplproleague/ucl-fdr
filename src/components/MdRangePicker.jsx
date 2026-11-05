@@ -104,7 +104,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
 
       {skippable.length > 0 && (
         <div className="flex shrink-0 items-center gap-1.5">
-          <label className="text-[11px] font-medium text-ucl-muted" htmlFor="md-skip">
+          <label className="text-[11px] font-normal text-ucl-muted" htmlFor="md-skip">
             Ignore MD
           </label>
           <select

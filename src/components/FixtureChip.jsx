@@ -31,20 +31,20 @@ export default function FixtureChip({
 
   const chip = (
     <div
-      className={`relative inline-flex h-8 w-[58px] shrink-0 align-middle items-center justify-center whitespace-nowrap rounded px-1.5 text-[11px] font-bold sm:w-[72px] sm:text-xs ${showDay ? '' : className}`}
+      className={`relative inline-flex h-8 w-[58px] shrink-0 align-middle items-center justify-center whitespace-nowrap rounded px-1.5 text-[11px] font-extrabold sm:w-[72px] sm:text-xs ${showDay ? '' : className}`}
       style={{ backgroundColor: color.bg, color: color.text }}
       title={fullDescription}
     >
       <span aria-hidden="true">
         {opp} ({venue})
       </span>
-      <span aria-hidden="true" className="absolute right-[3px] top-[1px] text-[9px] font-black leading-none opacity-60">
+      <span aria-hidden="true" className="absolute right-[3px] top-[1px] text-[9px] font-extrabold leading-none opacity-60">
         {band}
       </span>
       {awayBumpApplied && (
         <span
           aria-hidden="true"
-          className="absolute bottom-[1px] left-[3px] text-[8px] font-black leading-none opacity-60"
+          className="absolute bottom-[1px] left-[3px] text-[8px] font-extrabold leading-none opacity-60"
         >
           +{awayDifficulty}
         </span>
@@ -65,7 +65,7 @@ export default function FixtureChip({
     >
       {chip}
       {day && (
-        <span className="rounded bg-white/10 px-1.5 py-px text-[8px] font-bold uppercase leading-none tracking-wide text-ucl-star/70">
+        <span className="rounded bg-white/10 px-1.5 py-px text-[8px] font-extrabold uppercase leading-none tracking-wide text-ucl-star/70">
           {day}
         </span>
       )}

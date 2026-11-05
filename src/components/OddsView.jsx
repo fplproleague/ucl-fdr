@@ -88,7 +88,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
       <th
         scope="col"
         aria-sort={sortMd == null ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
-        className="sticky left-0 z-20 min-w-[92px] bg-ucl-deep px-1 py-1 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted"
+        className="sticky left-0 z-20 min-w-[92px] bg-ucl-deep px-1 py-1 text-left section-label"
       >
         <button
           type="button"
@@ -107,7 +107,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
           key={md}
           scope="col"
           aria-sort={sortMd === md ? (better === 'high' ? 'descending' : 'ascending') : 'none'}
-          className="min-w-[62px] bg-ucl-deep px-0.5 py-1 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[76px]"
+          className="min-w-[62px] bg-ucl-deep px-0.5 py-1 text-center section-label sm:min-w-[76px]"
         >
           <button
             type="button"
@@ -119,7 +119,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
               MD{md}
               {sortMd === md && <ArrowDown size={11} aria-hidden="true" />}
             </span>
-            <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
+            <span className="block text-[9px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
               {MATCHDAY_LABEL[md]}
             </span>
           </button>
@@ -134,7 +134,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
       {headRow}
     </StickyHead>
     <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
-      <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
+      <table ref={tableRef} className="w-full border-separate border-spacing-0 text-table">
         <caption className="sr-only">
           {label} per team, matchday {mds[0]} to {mds[mds.length - 1]}, sorted {sortMd ? `on matchday ${sortMd}` : 'on the average'},{' '}
           {order}; estimates are marked
@@ -161,9 +161,9 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
                 >
                   <TeamBadge abbr={team.abbr} size={20} />
                   <span className="min-w-0">
-                    <span className="block text-xs font-semibold sm:text-sm">{team.abbr}</span>
+                    <span className="block text-xs font-semibold sm:text-table">{team.abbr}</span>
                     {avg != null && (
-                      <span className="block text-[10px] font-bold leading-tight text-ucl-star/60" title={`Average ${label.toLowerCase()} over these matchdays`}>
+                      <span className="block text-[10px] font-semibold leading-tight text-ucl-star/60" title={`Average ${label.toLowerCase()} over these matchdays`}>
                         {format(avg)}
                       </span>
                     )}
@@ -275,7 +275,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
     : { ga: 'xG+xA', goal: 'xG', assist: 'xA', cs: 'CS' }
 
   const headRow = (
-    <tr className="bg-ucl-deep text-[10px] uppercase tracking-wider text-ucl-muted">
+    <tr className="section-label bg-ucl-deep">
       <th scope="col" className="w-full py-2 pl-9 pr-2 text-left font-semibold">
         Player
       </th>
@@ -290,7 +290,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
             type="button"
             onClick={() => setSortBy(id)}
             title={single ? `Chance of ${oneMatch}, if he plays` : `Expected ${total} over these matchdays, if he plays`}
-            className={`inline-flex min-h-[32px] items-center gap-0.5 rounded px-1.5 uppercase tracking-wider ${
+            className={`inline-flex min-h-[32px] items-center gap-0.5 rounded px-1.5 ${
               sortBy === id ? 'bg-white/10 text-ucl-star' : 'hover:text-ucl-star'
             }`}
           >
@@ -364,7 +364,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
         {headRow}
       </StickyHead>
       <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
-        <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
+        <table ref={tableRef} className="w-full whitespace-nowrap text-table">
           <caption className="sr-only">
             {single ? 'Chances of a goal or an assist' : 'Expected goals and assists over the matchdays shown'}, if he plays
           </caption>
@@ -399,7 +399,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                       >
                         <TeamBadge abbr={r.player.team} size={18} />
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-semibold sm:text-sm">{r.player.name}</span>
+                          <span className="block truncate text-xs font-semibold sm:text-table">{r.player.name}</span>
                           <span className="block truncate text-[10px] text-ucl-muted">
                             {/* On a phone the opponent moves in here (no vs column) and the
                                 position, which the chips filter on, steps out. */}
@@ -418,7 +418,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                     </td>
                   )}
                   {PLAYER_SORTS.map(([id]) => (
-                    <td key={id} className={`px-1.5 py-1.5 text-right text-xs tabular-nums sm:px-2 ${tone} ${sortBy === id ? 'font-bold' : ''}`}>
+                    <td key={id} className={`px-1.5 py-1.5 text-right text-xs tabular-nums sm:px-2 ${tone} ${sortBy === id ? 'font-semibold' : ''}`}>
                       {fmt(id === 'ga' ? r.xgi : id === 'goal' ? r.xg : r.xa)}
                     </td>
                   ))}

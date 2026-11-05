@@ -126,7 +126,7 @@ export default function BestFixtureRuns() {
 
       {!byOdds && swings.length > 0 && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+          <p className="mb-2 flex items-center gap-1.5 section-label">
             <TrendingUp size={14} aria-hidden="true" />
             Biggest swing into this window
           </p>
@@ -244,7 +244,7 @@ export default function BestFixtureRuns() {
                   // width and stays correct if a single card gets screenshotted
                   // on its own.
                   <div key={f.gw} className="flex flex-col items-center gap-0.5">
-                    <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                    <span className="section-label leading-none">
                       MD{f.gw}
                     </span>
                     <FixtureChip

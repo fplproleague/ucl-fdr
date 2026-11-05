@@ -151,7 +151,7 @@ export default function CompareTeams() {
                       type="button"
                       onClick={() => toggle(team.abbr)}
                       aria-pressed={active}
-                      className={`flex min-h-[40px] items-center gap-2 rounded px-2 text-left text-xs font-medium transition ${
+                      className={`flex min-h-[40px] items-center gap-2 rounded px-2 text-left text-xs font-normal transition ${
                         active
                           ? 'bg-white/10 text-ucl-star ring-1 ring-white/40'
                           : 'text-ucl-star/80 hover:bg-white/5'
@@ -200,7 +200,7 @@ export default function CompareTeams() {
 
           {headToHead && headToHead.compared > 0 && (
             <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Head-to-head</p>
+              <p className="mb-2 section-label">Head-to-head</p>
               <p className="mb-2 text-xs text-ucl-star/80">
                 {headToHead.avgDelta > 0.05 ? (
                   <>
@@ -226,7 +226,7 @@ export default function CompareTeams() {
                 {headToHead.perMd.map((p) => (
                   <span
                     key={p.md}
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                       p.easier === 'a'
                         ? 'bg-ucl-accent/20 text-ucl-link'
                         : p.easier === 'b'
@@ -239,7 +239,7 @@ export default function CompareTeams() {
                   </span>
                 ))}
               </div>
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">
+              <p className="mb-1.5 section-label">
                 Rotation check over this range
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ucl-star/80">

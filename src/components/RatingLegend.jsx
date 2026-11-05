@@ -8,9 +8,9 @@ export default function RatingLegend({ variant = 'compact', className = '' }) {
     return (
       <div className={`flex flex-wrap gap-x-4 gap-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 ${className}`}>
         {Object.entries(RATING_COLORS).map(([r, c]) => (
-          <div key={r} className="flex items-center gap-2 text-sm font-medium text-ucl-star/80">
+          <div key={r} className="flex items-center gap-2 text-sm font-normal text-ucl-star/80">
             <span
-              className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-black"
+              className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-extrabold"
               style={{ backgroundColor: c.bg, color: c.text }}
             >
               {r}
@@ -24,20 +24,20 @@ export default function RatingLegend({ variant = 'compact', className = '' }) {
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-ucl-muted sm:inline">Easier</span>
+      <span className="hidden section-label sm:inline">Easier</span>
       <div className="flex gap-0.5">
         {Object.entries(RATING_COLORS).map(([r, c]) => (
           <span
             key={r}
             title={c.label}
-            className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-black"
+            className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-extrabold"
             style={{ backgroundColor: c.bg, color: c.text }}
           >
             {r}
           </span>
         ))}
       </div>
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-ucl-muted sm:inline">Harder</span>
+      <span className="hidden section-label sm:inline">Harder</span>
     </div>
   )
 }
