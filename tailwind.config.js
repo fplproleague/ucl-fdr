@@ -9,7 +9,7 @@ export default {
       },
       colors: {
         ucl: {
-          navy: '#050a24',
+          navy: '#040818',
           deep: '#0a1240',
           blue: '#0d2a6b',
           indigo: '#1b2ad9',

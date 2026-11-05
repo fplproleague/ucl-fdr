@@ -7,12 +7,12 @@
     color-scheme: dark;
   }
 
+  /* One flat ground. There used to be two fixed radial glows in brand blue
+     here; with background-attachment: fixed they never moved with the page,
+     so they read as wallpaper behind the tool rather than part of it. The
+     navy was darkened a step instead, so the panels above it still separate. */
   body {
     @apply bg-ucl-navy text-ucl-star font-body antialiased;
-    background-image:
-      radial-gradient(circle at 15% 0%, rgba(67, 97, 255, 0.35), transparent 55%),
-      radial-gradient(circle at 100% 20%, rgba(27, 42, 217, 0.25), transparent 45%);
-    background-attachment: fixed;
   }
 
   /* Buttons had outline:none with nothing put back, so keyboard users had no
