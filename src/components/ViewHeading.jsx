@@ -3,17 +3,19 @@
 // an <h2>, since it names a section of that product rather than the page.
 export default function ViewHeading({ title, subtitle, action }) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    // Below sm the title has the row to itself and the controls go
+    // underneath at full width. Sharing one 390px row, the 30px title wrapped
+    // ("FDR / Table") and was squeezed against the buttons beside it.
+    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
       <div className="min-w-0">
-        {/* 30px from a tablet up, the largest thing on the page. A step smaller
-            on a phone, where the longer titles share a 390px row with their
-            controls and would otherwise take three lines. */}
-        <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] sm:text-title">{title}</h2>
+        {/* The largest thing on the page, at every width now that it doesn't
+            share its row on a phone. */}
+        <h2 className="font-display text-title font-extrabold">{title}</h2>
         {/* Hidden on phones: this line is orientation for a desktop visitor, but
             on a 390px screen it costs a row of actual fixtures above the fold. */}
         {subtitle && <p className="mt-1 hidden text-table text-ucl-star/60 sm:block">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="sm:shrink-0">{action}</div>}
     </div>
   )
 }

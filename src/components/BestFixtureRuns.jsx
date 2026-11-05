@@ -101,7 +101,7 @@ export default function BestFixtureRuns() {
           <div
             role="group"
             aria-label="Rank by"
-            className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
+            className="flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
           >
             {RANK_BY.map(([id, label]) => (
               <button
@@ -110,7 +110,7 @@ export default function BestFixtureRuns() {
                 onClick={() => setRankBy(id)}
                 aria-pressed={rankBy === id}
                 title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
-                className={`min-h-[36px] rounded px-3 transition ${
+                className={`min-h-[36px] flex-1 rounded px-3 transition sm:flex-none ${
                   rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >

@@ -90,16 +90,18 @@ export default function FDRTable() {
         action={
           !inCompare &&
           !showMatches && (
-            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <div className="flex gap-2 sm:justify-end">
               <button
                 type="button"
                 onClick={() => setComparing(true)}
-                className="flex min-h-[40px] items-center gap-1.5 rounded border border-white/10 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 hover:text-ucl-star"
+                className="flex min-h-[40px] shrink-0 items-center gap-1.5 rounded border border-white/10 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 hover:text-ucl-star"
               >
                 <Scale size={14} aria-hidden="true" />
-                Compare<span className="hidden sm:inline"> teams</span>
+                <span>
+                  Compare<span className="hidden sm:inline"> teams</span>
+                </span>
               </button>
-              <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
+              <div className="flex flex-1 rounded-lg border border-white/10 p-0.5 text-xs font-semibold sm:flex-none">
                 {[
                   { id: 'avg', label: 'Best fixtures' },
                   { id: 'name', label: 'A–Z' },
@@ -109,7 +111,7 @@ export default function FDRTable() {
                     type="button"
                     onClick={() => setSortBy(opt.id)}
                     aria-pressed={sortBy === opt.id}
-                    className={`min-h-[36px] rounded px-3 transition ${
+                    className={`min-h-[36px] flex-1 rounded px-3 transition sm:flex-none ${
                       sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                     }`}
                   >
