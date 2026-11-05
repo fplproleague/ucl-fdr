@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -97,6 +97,7 @@ export default function PlayerProjections() {
   const [show, setShow] = useState('all')
   const [openId, setOpenId] = useState(null)
   const [showInfo, setShowInfo] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   // A search arriving from another tab (a player's name, a club) opens
   // that player's details when it finds exactly one.
   const [autoOpened, setAutoOpened] = useState(null)
@@ -226,6 +227,8 @@ export default function PlayerProjections() {
   const starredCount = players.filter((p) => starred.has(p.id)).length
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
+  // How many of the filters behind the Filters button are narrowing the list.
+  const activeFilters = (maxPrice != null ? 1 : 0) + (show !== 'all' ? 1 : 0)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
   const chip = (active) =>
     `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
@@ -287,7 +290,24 @@ export default function PlayerProjections() {
             : 'Form and fixtures, 100 = best player over these matchdays'
         }
       >
-        {sortBy === 'value' ? 'Score / €m' : 'Score'}
+        {/* The caveat lives with the column it qualifies rather than above the
+            whole view, and the explanation opens from here too. */}
+        <span className="inline-flex items-center gap-1">
+          {sortBy === 'value' ? 'Score / €m' : 'Score'}
+          <button
+            type="button"
+            aria-expanded={showInfo}
+            aria-controls="players-info"
+            onClick={() => setShowInfo(!showInfo)}
+            className="-my-2 inline-flex h-8 w-8 items-center justify-center rounded text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
+          >
+            <Info size={13} aria-hidden="true" />
+            <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
+          </button>
+          <span className="hidden normal-case tracking-normal sm:inline">
+            <NotAPrediction />
+          </span>
+        </span>
       </th>
     </tr>
   )
@@ -320,55 +340,6 @@ export default function PlayerProjections() {
             className="mb-3"
           />
 
-          <div className="mb-3 text-xs text-ucl-muted">
-            <p className="flex items-start gap-1.5">
-              <span>
-                <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
-                matchdays.{' '}
-                <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
-                  Not a points prediction
-                </mark>
-              </span>
-              <button
-                type="button"
-                aria-expanded={showInfo}
-                aria-controls="players-info"
-                onClick={() => setShowInfo(!showInfo)}
-                className="-my-1.5 inline-flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
-              >
-                <Info size={15} aria-hidden="true" />
-                <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
-              </button>
-            </p>
-            {showInfo && (
-              <div id="players-info" className="mt-2 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                <p>
-                  <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
-                  matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
-                  samples towards the average for his position. It doesn&rsquo;t know about injuries, team news or
-                  expected goals.
-                </p>
-                {hasDomestic && (
-                  <p>
-                    <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
-                    {domesticMatches} league matches
-                    {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}, scored with UCL
-                    Fantasy&rsquo;s main rules (appearance, goals, assists, clean sheets, cards), without balls
-                    recovered or POTM. <span className="font-semibold text-ucl-star/80">Both</span> counts UCL and
-                    domestic form equally.
-                    {withoutDomestic > 0 &&
-                      ` ${withoutDomestic} players have no domestic data and keep their UCL form.`}
-                  </p>
-                )}
-                <p>
-                  Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
-                  (saved in this browser), or tap VS on up to {maxCompare} players and then Compare to see them side by
-                  side (the comparison is in the link, so you can share it). {dataSource}
-                </p>
-              </div>
-            )}
-          </div>
-
           {compareOpen && compared.length > 0 && (
             <ComparePlayers
               players={compared}
@@ -388,6 +359,10 @@ export default function PlayerProjections() {
             />
           )}
 
+          {/* One toolbar: what to show (position, form), how to order it, and a
+              search. The rest (price cap, shortlists) sits behind Filters,
+              closed by default, with a count on the button while any of it
+              is narrowing the list. These used to be five full-width rows. */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
               {['ALL', ...POSITIONS].map((pos) => (
@@ -435,35 +410,96 @@ export default function PlayerProjections() {
                 </button>
               ))}
             </div>
-            <ShowFilter
-              value={show}
-              onChange={setShow}
-              options={[
-                { id: 'all', label: 'All players' },
-                { id: 'starred', label: 'Starred', count: starredCount },
-                { id: 'mine', label: 'My teams', count: pinnedCount },
-                ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
-              ]}
-            />
+            <div className="relative min-w-[200px] flex-1">
+              <Search
+                size={16}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search player or club"
+                aria-label="Search player or club"
+                className="min-h-[40px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              />
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="players-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className={`flex min-h-[40px] items-center gap-1.5 rounded border px-3 text-xs font-semibold transition ${
+                activeFilters > 0
+                  ? 'border-white/40 bg-white/10 text-ucl-star'
+                  : 'border-white/10 text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star'
+              }`}
+            >
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              Filters{activeFilters > 0 && ` · ${activeFilters}`}
+            </button>
           </div>
 
-          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
+          {filtersOpen && (
+            <div
+              id="players-filters"
+              className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/10 p-2"
+            >
+              <ShowFilter
+                value={show}
+                onChange={setShow}
+                options={[
+                  { id: 'all', label: 'All players' },
+                  { id: 'starred', label: 'Starred', count: starredCount },
+                  { id: 'mine', label: 'My teams', count: pinnedCount },
+                  ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
+                ]}
+              />
+              <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="min-w-[260px] flex-1" />
+            </div>
+          )}
 
-          <div className="relative mb-3">
-            <Search
-              size={16}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search player or club"
-              aria-label="Search player or club"
-              className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
-            />
-          </div>
+          {showInfo && (
+            <div
+              id="players-info"
+              className="mb-3 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-ucl-muted"
+            >
+              <p>
+                <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
+                matchdays. <NotAPrediction />
+              </p>
+              <p>
+                <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
+                matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
+                samples towards the average for his position. It doesn&rsquo;t know about injuries, team news or
+                expected goals.
+              </p>
+              {hasDomestic && (
+                <p>
+                  <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
+                  {domesticMatches} league matches
+                  {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}, scored with UCL
+                  Fantasy&rsquo;s main rules (appearance, goals, assists, clean sheets, cards), without balls
+                  recovered or POTM. <span className="font-semibold text-ucl-star/80">Both</span> counts UCL and
+                  domestic form equally.
+                  {withoutDomestic > 0 &&
+                    ` ${withoutDomestic} players have no domestic data and keep their UCL form.`}
+                </p>
+              )}
+              <p>
+                Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
+                (saved in this browser), or tap VS on up to {maxCompare} players and then Compare to see them side by
+                side (the comparison is in the link, so you can share it). {dataSource}
+              </p>
+            </div>
+          )}
+
+          {/* On a phone the Score column is too narrow to carry the caveat in
+              its header, so it sits just above the column instead. */}
+          <p className="mb-1.5 text-right text-meta text-ucl-muted sm:hidden">
+            Score: <NotAPrediction />
+          </p>
 
           <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">
             {headRow}
@@ -687,10 +723,15 @@ export function ScoreBar({ value, highlight = false }) {
 
 // Max price in €0.5m steps. The top of the slider means no cap. Shared with
 // GK Rotation.
-export function PriceSlider({ bounds, value, onChange }) {
+export function PriceSlider({
+  bounds,
+  value,
+  onChange,
+  className = 'mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2',
+}) {
   const current = value ?? bounds.max
   return (
-    <label className="mb-3 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+    <label className={`flex items-center gap-3 ${className}`}>
       <span className="shrink-0 section-label">Max price</span>
       <input
         type="range"
@@ -880,5 +921,15 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
         </div>
       )}
     </div>
+  )
+}
+
+// "Not a points prediction": kept wherever the score is explained, because
+// a 0-100 number beside fixtures is easy to read as expected points.
+function NotAPrediction() {
+  return (
+    <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
+      Not a points prediction
+    </mark>
   )
 }

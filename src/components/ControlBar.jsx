@@ -46,7 +46,8 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex flex-wrap items-center gap-2">
+      {/* The range and the view toggles share one line from a tablet up. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {showRange && (
           <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
         )}
@@ -162,7 +163,7 @@ function OptionToggle({ on, onChange, children }) {
       role="switch"
       aria-checked={on}
       onClick={() => onChange(!on)}
-      className={`flex min-h-[32px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
+      className={`flex min-h-[36px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
         on
           ? 'border-white/40 bg-white/10 text-ucl-star'
           : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
