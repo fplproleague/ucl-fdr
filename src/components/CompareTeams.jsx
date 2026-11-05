@@ -96,7 +96,7 @@ export default function CompareTeams() {
               type="button"
               onClick={() => toggle(team.abbr)}
               aria-label={`Remove ${team.name}`}
-              className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 text-xs font-semibold text-ucl-star transition hover:bg-white/15"
+              className="flex min-h-[36px] items-center gap-1.5 rounded border border-white/30 bg-white/10 px-2.5 text-xs font-semibold text-ucl-star transition hover:bg-white/15"
             >
               <TeamBadge abbr={team.abbr} size={16} />
               {team.abbr}
@@ -107,7 +107,7 @@ export default function CompareTeams() {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="flex min-h-[36px] items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10"
+            className="flex min-h-[36px] items-center gap-1 rounded border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10"
           >
             {open ? null : <Plus size={13} aria-hidden="true" />}
             {open ? 'Done' : `Add team${selectedTeams.length ? ` (${selectedTeams.length} selected)` : ''}`}
@@ -116,7 +116,7 @@ export default function CompareTeams() {
             <button
               type="button"
               onClick={() => setCompare([])}
-              className="min-h-[36px] rounded-full px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
+              className="min-h-[36px] rounded px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
             >
               Clear
             </button>
@@ -124,7 +124,7 @@ export default function CompareTeams() {
         </div>
 
         {open && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
             <div className="relative mb-2">
               <Search
                 size={14}
@@ -137,7 +137,7 @@ export default function CompareTeams() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search teams"
                 aria-label="Search teams"
-                className="min-h-[40px] w-full rounded-lg border border-white/10 bg-ucl-deep pl-8 pr-2 text-sm text-ucl-star placeholder:text-ucl-star/30"
+                className="min-h-[40px] w-full rounded border border-white/10 bg-ucl-deep pl-8 pr-2 text-sm text-ucl-star placeholder:text-ucl-star/30"
               />
             </div>
 
@@ -151,7 +151,7 @@ export default function CompareTeams() {
                       type="button"
                       onClick={() => toggle(team.abbr)}
                       aria-pressed={active}
-                      className={`flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-left text-xs font-medium transition ${
+                      className={`flex min-h-[40px] items-center gap-2 rounded px-2 text-left text-xs font-medium transition ${
                         active
                           ? 'bg-white/10 text-ucl-star ring-1 ring-white/40'
                           : 'text-ucl-star/80 hover:bg-white/5'
@@ -172,7 +172,7 @@ export default function CompareTeams() {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Nothing to compare yet</p>
           <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
             Add two or more teams and their matchdays line up in one grid, easiest run first.
@@ -199,7 +199,7 @@ export default function CompareTeams() {
           )}
 
           {headToHead && headToHead.compared > 0 && (
-            <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">Head-to-head</p>
               <p className="mb-2 text-xs text-ucl-star/80">
                 {headToHead.avgDelta > 0.05 ? (

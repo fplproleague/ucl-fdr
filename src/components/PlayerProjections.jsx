@@ -228,7 +228,7 @@ export default function PlayerProjections() {
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
   const chip = (active) =>
-    `min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
+    `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
       active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
     }`
 
@@ -300,13 +300,13 @@ export default function PlayerProjections() {
       />
 
       {demo && (
-        <p className="mb-3 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+        <p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
           Demo: these players and their numbers are made up to preview this page.
         </p>
       )}
 
       {!players.length ? (
-        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
+        <p className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
           {live.loading ? 'Loading players…' : 'Players appear here once the player database is connected.'}
         </p>
       ) : (
@@ -334,14 +334,14 @@ export default function PlayerProjections() {
                 aria-expanded={showInfo}
                 aria-controls="players-info"
                 onClick={() => setShowInfo(!showInfo)}
-                className="-my-1.5 inline-flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded-full text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
+                className="-my-1.5 inline-flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
               >
                 <Info size={15} aria-hidden="true" />
                 <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
               </button>
             </p>
             {showInfo && (
-              <div id="players-info" className="mt-2 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div id="players-info" className="mt-2 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3">
                 <p>
                   <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
                   matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
@@ -389,7 +389,7 @@ export default function PlayerProjections() {
           )}
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
+            <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
               {['ALL', ...POSITIONS].map((pos) => (
                 <button
                   key={pos}
@@ -403,7 +403,7 @@ export default function PlayerProjections() {
               ))}
             </div>
             {hasDomestic && (
-              <div role="group" aria-label="Form" className="flex items-center rounded-lg bg-white/5 p-0.5">
+              <div role="group" aria-label="Form" className="flex items-center rounded-lg border border-white/10 p-0.5">
                 <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Form</span>
                 {FORM_LABELS.map(([id, label]) => (
                   <button
@@ -418,7 +418,7 @@ export default function PlayerProjections() {
                 ))}
               </div>
             )}
-            <div role="group" aria-label="Sort by" className="flex rounded-lg bg-white/5 p-0.5">
+            <div role="group" aria-label="Sort by" className="flex rounded-lg border border-white/10 p-0.5">
               {[
                 ['score', 'Score'],
                 ['value', 'Per €m'],
@@ -461,14 +461,14 @@ export default function PlayerProjections() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search player or club"
               aria-label="Search player or club"
-              className="min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
             />
           </div>
 
           <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">
             {headRow}
           </StickyHead>
-          <div ref={tableScrollerRef} className="overflow-x-auto rounded-2xl border border-white/10">
+          <div ref={tableScrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
             <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
               <thead>
                 {headRow}
@@ -499,7 +499,7 @@ export default function PlayerProjections() {
                                 e.stopPropagation()
                                 toggleStar(p.id)
                               }}
-                              className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
+                              className={`flex h-9 w-7 shrink-0 items-center justify-center rounded transition hover:bg-white/10 ${
                                 isStarred ? 'text-ucl-brass' : 'text-ucl-star/25 hover:text-ucl-star/60'
                               }`}
                             >
@@ -521,11 +521,11 @@ export default function PlayerProjections() {
                                 e.stopPropagation()
                                 toggleCompare(p.id)
                               }}
-                              className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                              className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <span
                                 aria-hidden="true"
-                                className={`rounded-[5px] border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
+                                className={`rounded border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
                                   inCompare
                                     ? 'border-ucl-select bg-ucl-select text-ucl-selectInk'
                                     : 'border-ucl-star/30 text-ucl-star/55'
@@ -615,7 +615,7 @@ export default function PlayerProjections() {
             <button
               type="button"
               onClick={() => setShowAll(!showAll)}
-              className="mt-2 min-h-[40px] w-full rounded-xl bg-white/5 text-xs font-semibold text-ucl-star/80 hover:bg-white/10"
+              className="mt-2 min-h-[40px] w-full rounded bg-white/5 text-xs font-semibold text-ucl-star/80 hover:bg-white/10"
             >
               {showAll ? 'Show fewer' : `Show all ${rows.length}`}
             </button>
@@ -624,10 +624,10 @@ export default function PlayerProjections() {
             // Follows the list while scrolling: pick players anywhere in it,
             // then open them side by side from here.
             <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
-              <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
+              <div className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
                 <span className="flex -space-x-1.5" aria-hidden="true">
                   {compared.map((p) => (
-                    <span key={p.id} className="rounded-full bg-ucl-navy p-0.5">
+                    <span key={p.id} className="rounded bg-ucl-navy p-0.5">
                       <TeamBadge abbr={p.team} size={20} />
                     </span>
                   ))}
@@ -639,7 +639,7 @@ export default function PlayerProjections() {
                   type="button"
                   disabled={compared.length < 2}
                   onClick={() => setCompareOpen(true)}
-                  className="min-h-[36px] rounded-full bg-ucl-select text-ucl-selectInk px-3 text-xs font-semibold disabled:bg-white/10 disabled:text-ucl-star/60"
+                  className="min-h-[36px] rounded bg-ucl-select text-ucl-selectInk px-3 text-xs font-semibold disabled:bg-white/10 disabled:text-ucl-star/60"
                 >
                   {compared.length < 2 ? 'Pick 1 more' : 'Compare'}
                 </button>
@@ -647,7 +647,7 @@ export default function PlayerProjections() {
                   type="button"
                   onClick={() => setComparePlayers([])}
                   aria-label="Clear the comparison"
-                  className="min-h-[36px] rounded-full px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
+                  className="min-h-[36px] rounded px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
                 >
                   Clear
                 </button>
@@ -672,12 +672,12 @@ export function ScoreBar({ value, highlight = false }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
     <div
-      className={`relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28 ${
+      className={`relative h-6 w-16 overflow-hidden rounded bg-white/[0.06] sm:w-28 ${
         highlight ? 'ring-1 ring-white/50' : ''
       }`}
     >
       <div
-        className={`absolute inset-y-0 left-0 rounded-md ${highlight ? 'bg-white/30' : 'bg-white/20'}`}
+        className={`absolute inset-y-0 left-0 rounded ${highlight ? 'bg-white/30' : 'bg-white/20'}`}
         style={{ width: `${pct}%` }}
       />
       <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
@@ -690,7 +690,7 @@ export function ScoreBar({ value, highlight = false }) {
 export function PriceSlider({ bounds, value, onChange }) {
   const current = value ?? bounds.max
   return (
-    <label className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+    <label className="mb-3 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
       <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">Max price</span>
       <input
         type="range"
@@ -789,7 +789,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 title={`MD${m.md} ${m.venue === 'H' ? 'v' : 'at'} ${m.opp}: xG ${m.xg.toFixed(2)}${
                   m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
                 }${m.estimated ? ' (estimate)' : ''}`}
-                className={`inline-flex min-w-[52px] flex-col items-center rounded-md px-1.5 py-1 text-xs ${
+                className={`inline-flex min-w-[52px] flex-col items-center rounded px-1.5 py-1 text-xs ${
                   m.estimated ? 'border border-dashed border-ucl-star/25' : 'bg-ucl-accent/20'
                 }`}
               >
@@ -805,7 +805,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 e.stopPropagation()
                 onOpenOdds()
               }}
-              className="ml-1 min-h-[32px] rounded-md px-2 text-xs font-semibold text-ucl-link hover:bg-white/10"
+              className="ml-1 min-h-[32px] rounded px-2 text-xs font-semibold text-ucl-link hover:bg-white/10"
             >
               Odds →
             </button>
@@ -819,7 +819,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
             {player.form.map((f) => (
               <span
                 key={f.md}
-                className="inline-flex min-w-[44px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs"
+                className="inline-flex min-w-[44px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs"
               >
                 <span className="text-[10px] text-ucl-muted">MD{f.md}</span>
                 <span className="font-bold tabular-nums">{f.points}</span>
@@ -855,7 +855,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
               <span
                 key={`${g.d}-${g.opp}`}
                 title={`${g.d} · ${g.opp} (${g.v === 'H' ? 'home' : 'away'})`}
-                className={`inline-flex w-[72px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs ${g.min ? '' : 'opacity-50'}`}
+                className={`inline-flex w-[72px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs ${g.min ? '' : 'opacity-50'}`}
               >
                 <span className="w-full truncate text-center text-[10px] text-ucl-muted">
                   {g.v === 'H' ? 'v' : '@'} {g.opp}

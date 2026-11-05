@@ -119,7 +119,7 @@ export default function FixtureGrid({
         {headRow}
       </StickyHead>
       <div className="relative">
-        <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
+        <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
           <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
@@ -256,7 +256,7 @@ export default function FixtureGrid({
         {scrollable && !atEnd && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-ucl-navy to-transparent"
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-ucl-navy to-transparent"
           />
         )}
       </div>

@@ -56,14 +56,14 @@ function formatUpdated(iso) {
 
 function Segmented({ options, value, onChange, label, className = '' }) {
   return (
-    <div role="group" aria-label={label} className={`flex rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold ${className}`}>
+    <div role="group" aria-label={label} className={`flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold ${className}`}>
       {options.map(([id, text]) => (
         <button
           key={id}
           type="button"
           aria-pressed={value === id}
           onClick={() => onChange(id)}
-          className={`min-h-[36px] flex-1 whitespace-nowrap rounded-full px-3 transition ${
+          className={`min-h-[36px] flex-1 whitespace-nowrap rounded px-3 transition ${
             value === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
           }`}
         >
@@ -80,7 +80,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
   const { format, label, better } = METRICS[metric]
   const order = better === 'high' ? 'highest first' : 'lowest first'
   const headerButton = (active) =>
-    `inline-flex min-h-[36px] w-full flex-col items-center justify-center rounded-md px-1 transition ${
+    `inline-flex min-h-[36px] w-full flex-col items-center justify-center rounded px-1 transition ${
       active ? 'bg-white/10 text-ucl-star' : 'hover:bg-white/5 hover:text-ucl-star'
     }`
   const headRow = (
@@ -133,7 +133,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
     <StickyHead scrollerRef={scrollerRef} tableRef={tableRef}>
       {headRow}
     </StickyHead>
-    <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
+    <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
       <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
         <caption className="sr-only">
           {label} per team, matchday {mds[0]} to {mds[mds.length - 1]}, sorted {sortMd ? `on matchday ${sortMd}` : 'on the average'},{' '}
@@ -175,7 +175,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
                 <td key={i} className="border-t border-white/5 px-1 py-1.5 text-center">
                   {cell ? (
                     <div
-                      className="mx-auto flex h-9 w-[58px] flex-col items-center justify-center rounded-md sm:w-[72px]"
+                      className="mx-auto flex h-9 w-[58px] flex-col items-center justify-center rounded sm:w-[72px]"
                       style={cellStyle(metric, cell[metric], cell.estimated)}
                       title={`${team.name} ${cell.venue === 'H' ? 'v' : 'at'} ${teamsByAbbr[cell.opp]?.name ?? cell.opp}: ${
                         cell.estimated ? 'estimate' : `odds from ${cell.bookmakers} bookmakers`
@@ -254,7 +254,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
 
   if (!rows.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+      <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
         <p className="text-sm font-semibold text-ucl-star/80">No player prices yet</p>
         <p className="mx-auto mt-1 max-w-sm text-xs text-ucl-muted">
           Bookmakers price players in the last days before a matchday; they show up here then.
@@ -264,7 +264,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
   }
 
   const chip = (active) =>
-    `min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
+    `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
       active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
     }`
   // One matchday: chances. Several: expected totals over them.
@@ -312,7 +312,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
   return (
     <>
       {/* What the numbers are, up front: one matchday and several read differently. */}
-      <p className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ucl-muted">
+      <p className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ucl-muted">
         {single ? (
           <>
             <strong className="text-ucl-star/90">1 matchday</strong>: each player&apos;s chances from the bookmakers&apos;
@@ -328,7 +328,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
+        <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
           {['ALL', ...POSITIONS].map((pos) => (
             <button key={pos} type="button" aria-pressed={position === pos} onClick={() => setPosition(pos)} className={chip(position === pos)}>
               {pos === 'ALL' ? 'All' : pos}
@@ -356,14 +356,14 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search player or club"
           aria-label="Search player or club"
-          className="min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+          className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
         />
       </div>
 
       <StickyHead scrollerRef={scrollerRef} tableRef={tableRef} className="rounded-t-lg">
         {headRow}
       </StickyHead>
-      <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10">
+      <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
         <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
           <caption className="sr-only">
             {single ? 'Chances of a goal or an assist' : 'Expected goals and assists over the matchdays shown'}, if he plays
@@ -384,7 +384,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                         aria-pressed={starred.has(r.player.id)}
                         aria-label={starred.has(r.player.id) ? `Unstar ${r.player.name}` : `Star ${r.player.name}`}
                         onClick={() => toggleStar(r.player.id)}
-                        className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
+                        className={`flex h-9 w-7 shrink-0 items-center justify-center rounded transition hover:bg-white/10 ${
                           starred.has(r.player.id) ? 'text-ucl-brass' : 'text-ucl-star/25 hover:text-ucl-star/60'
                         }`}
                       >
@@ -435,7 +435,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-3 w-full rounded-full border border-white/10 py-2 text-xs font-semibold text-ucl-star/80 hover:bg-white/5"
+          className="mt-3 w-full rounded border border-white/10 py-2 text-xs font-semibold text-ucl-star/80 hover:bg-white/5"
         >
           {showAll ? 'Show fewer' : `Show all ${filtered.length}`}
         </button>
@@ -534,11 +534,11 @@ export default function OddsView() {
           />
           <div className="mt-3 space-y-1 text-xs text-ucl-muted">
             <p>
-              <span className="mr-1 inline-block h-3 w-4 rounded-sm bg-ucl-accent/70 align-middle" aria-hidden="true" />
+              <span className="mr-1 inline-block h-3 w-4 rounded bg-ucl-accent/70 align-middle" aria-hidden="true" />
               Bookmaker odds
               {pricedMds.length ? ` (MD${pricedMds.join(', MD')}${updated ? `, updated ${updated}` : ''})` : ' — none for these matchdays yet'}.
               <span
-                className="ml-3 mr-1 inline-block h-3 w-4 rounded-sm border border-dashed border-ucl-star/40 bg-ucl-accent/40 align-middle"
+                className="ml-3 mr-1 inline-block h-3 w-4 rounded border border-dashed border-ucl-star/40 bg-ucl-accent/40 align-middle"
                 aria-hidden="true"
               />
               Estimate, until bookmakers price the match (about a week before).

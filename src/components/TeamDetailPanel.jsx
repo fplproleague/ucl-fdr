@@ -112,7 +112,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="team-detail-heading"
-        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10"
+        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-3xl sm:rounded-lg sm:border sm:border-white/10"
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
           <TeamBadge abbr={team.abbr} size={36} />
@@ -135,7 +135,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -143,14 +143,14 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
         <div className="flex-1 space-y-5 px-4 py-4 sm:px-5">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Team Strength</p>
               <StrengthPicker team={team} onSetRating={setRating} compact />
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Average FDR</p>
               <span
-                className="mt-1 inline-flex rounded-lg px-2.5 py-1 text-sm font-black"
+                className="mt-1 inline-flex rounded px-2.5 py-1 text-sm font-black"
                 style={{ backgroundColor: avgBand.bg, color: avgBand.text }}
                 title={strengthColor.label}
               >
@@ -202,7 +202,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
                     </span>
                     {cell ? (
                       <div
-                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded-md text-center sm:w-[64px] ${
+                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded text-center sm:w-[64px] ${
                           cell.estimated ? 'border border-dashed border-ucl-star/30 bg-ucl-accent/10' : 'bg-ucl-accent/25'
                         }`}
                         title={`${cell.estimated ? 'Estimate' : 'Bookmaker odds'}: clean sheet ${Math.round(cell.cs * 100)}%, xG ${cell.xgFor.toFixed(
@@ -227,7 +227,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             <button
               type="button"
               onClick={() => openPlayers('players')}
-              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
             >
               <Users size={14} aria-hidden="true" />
               {team.shortName ?? team.name} players
@@ -235,7 +235,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             <button
               type="button"
               onClick={() => openPlayers('odds')}
-              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
             >
               <Percent size={14} aria-hidden="true" />
               Player odds
@@ -250,7 +250,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
               if (!run) return null
               const runBand = ratingColor(difficultyBand(run.avg))
               return (
-                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">{label}</p>
                   <p className="mt-1 text-sm font-semibold text-ucl-star">
                     MD{run.fromMd}–MD{run.toMd}
@@ -292,7 +292,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
                     <button
                       type="button"
                       onClick={() => openRotationPartner(candidate.abbr)}
-                      className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-left transition hover:bg-white/[0.06]"
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-2 text-left transition hover:bg-white/[0.06]"
                     >
                       <TeamBadge abbr={candidate.abbr} size={24} />
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
@@ -313,7 +313,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           <button
             type="button"
             onClick={onCompare}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-ucl-select text-ucl-selectInk text-sm font-bold transition hover:bg-white/90 active:scale-[0.99]"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-bold transition hover:bg-white/90 active:scale-[0.99]"
           >
             <Scale size={16} aria-hidden="true" />
             Compare {team.shortName ?? team.name}

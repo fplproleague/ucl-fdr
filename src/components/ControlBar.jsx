@@ -69,14 +69,14 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
       </div>
 
       {showMatchday && (
-        <div className="flex w-fit rounded-lg bg-white/5 p-0.5" role="group" aria-label="Filter fixtures by day">
+        <div className="flex w-fit rounded-lg border border-white/10 p-0.5" role="group" aria-label="Filter fixtures by day">
           {['ALL', ...availableDayOptions].map((d) => (
             <button
               key={d}
               type="button"
               aria-pressed={dayFilter === d}
               onClick={() => setDayFilter(d)}
-              className={`min-h-[32px] rounded-[6px] px-3 text-[11px] font-semibold transition ${
+              className={`min-h-[32px] rounded px-3 text-[11px] font-semibold transition ${
                 dayFilter === d ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
               }`}
             >
@@ -95,7 +95,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
               type="button"
               onClick={() => setTab('strength')}
               title="Ratings you changed on the Strength tab"
-              className="min-h-[32px] rounded-full bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
+              className="min-h-[32px] rounded bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
             >
               {modifiedCount} custom rating{modifiedCount === 1 ? '' : 's'}
             </button>
@@ -105,7 +105,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
             type="button"
             onClick={() => setOpenMethod((v) => !v)}
             aria-expanded={openMethod}
-            className="flex min-h-[32px] items-center gap-1.5 rounded-full px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
+            className="flex min-h-[32px] items-center gap-1.5 rounded px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
           >
             <Info size={14} aria-hidden="true" />
             <span className="sm:hidden">How it works</span>
@@ -115,7 +115,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
           <button
             type="button"
             onClick={handleCopyLink}
-            className="flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
+            className="flex min-h-[32px] items-center gap-1.5 rounded border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
           >
             {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
             {copied ? 'Copied!' : 'Copy link'}
@@ -124,7 +124,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
       </div>
 
       {openMethod && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
           <ul className="space-y-1.5">
             {RATING_METHOD.map((line, i) => (
               <li key={line} className="flex gap-2">
@@ -162,7 +162,7 @@ function OptionToggle({ on, onChange, children }) {
       role="switch"
       aria-checked={on}
       onClick={() => onChange(!on)}
-      className={`flex min-h-[32px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition ${
+      className={`flex min-h-[32px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
         on
           ? 'border-white/40 bg-white/10 text-ucl-star'
           : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
@@ -170,7 +170,7 @@ function OptionToggle({ on, onChange, children }) {
     >
       <span
         aria-hidden="true"
-        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full transition ${
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded transition ${
           on ? 'bg-ucl-select text-ucl-selectInk' : 'border border-white/30'
         }`}
       >

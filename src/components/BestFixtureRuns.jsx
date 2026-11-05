@@ -89,7 +89,7 @@ export default function BestFixtureRuns() {
           <div
             role="group"
             aria-label="Rank by"
-            className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold"
+            className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
           >
             {RANK_BY.map(([id, label]) => (
               <button
@@ -98,7 +98,7 @@ export default function BestFixtureRuns() {
                 onClick={() => setRankBy(id)}
                 aria-pressed={rankBy === id}
                 title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
-                className={`min-h-[36px] rounded-full px-3 transition ${
+                className={`min-h-[36px] rounded px-3 transition ${
                   rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >
@@ -125,7 +125,7 @@ export default function BestFixtureRuns() {
       )}
 
       {!byOdds && swings.length > 0 && (
-        <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
             <TrendingUp size={14} aria-hidden="true" />
             Biggest swing into this window
@@ -145,7 +145,7 @@ export default function BestFixtureRuns() {
       )}
 
       {visibleTeams.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
             type="button"
@@ -156,7 +156,7 @@ export default function BestFixtureRuns() {
           </button>
         </div>
       ) : myTeamsOnly && ranked.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
           <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
             Tap the star on a team's card (or in its detail view) to add it to My teams.
@@ -175,11 +175,11 @@ export default function BestFixtureRuns() {
             <li
               key={row.team.id}
               onClick={() => openTeam(row.team)}
-              className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card transition hover:bg-white/[0.06]"
+              className="cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] p-3 shadow-card transition hover:bg-white/[0.06]"
             >
               <div className="flex items-center gap-3">
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-sm font-extrabold ${
                     idx === 0 ? 'bg-ucl-brass text-ucl-navy' : 'bg-white/[0.06] text-ucl-muted'
                   }`}
                 >
@@ -270,7 +270,7 @@ export default function BestFixtureRuns() {
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-3 min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
+          className="mt-3 min-h-[44px] w-full rounded border border-white/10 bg-white/5 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
         >
           {showAll ? 'Show top 8 only' : `Show all ${ranked.length} teams`}
         </button>

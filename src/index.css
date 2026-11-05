@@ -21,7 +21,7 @@
   :focus-visible {
     outline: 2px solid #7f95ff;
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 4px;
   }
 
   /* Horizontal scrollers keep their momentum feel on iOS and snap to columns
@@ -46,7 +46,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;

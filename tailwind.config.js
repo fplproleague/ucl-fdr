@@ -2,6 +2,21 @@
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
+    // Two radii, set here rather than as arbitrary values: 4px for anything
+    // you operate (fixture chips, inputs, selects, buttons, badges) and 8px
+    // for anything that holds other things (panels, table wrappers, the
+    // segmented-control rails). There were five tokens plus three arbitrary
+    // values, and pills for everything; squarer corners read as the dense,
+    // editorial table this is. Replacing the scale (not extending it) means a
+    // stray rounded-2xl generates nothing instead of quietly coming back.
+    // full survives for two circles only: the crest in the header and the
+    // star button in a team's detail panel.
+    borderRadius: {
+      none: '0',
+      DEFAULT: '4px',
+      lg: '8px',
+      full: '9999px',
+    },
     extend: {
       fontFamily: {
         display: ['"Archivo Variable"', 'Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],

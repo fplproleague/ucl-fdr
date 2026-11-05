@@ -45,7 +45,7 @@ export default function FDRTable() {
         subtitle={`${shownTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, the × to drop it.`}
         action={
           viewMode === 'teams' && (
-            <div className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold">
+            <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
               {[
                 { id: 'avg', label: 'Best fixtures' },
                 { id: 'name', label: 'A–Z' },
@@ -55,7 +55,7 @@ export default function FDRTable() {
                   type="button"
                   onClick={() => setSortBy(opt.id)}
                   aria-pressed={sortBy === opt.id}
-                  className={`min-h-[36px] rounded-full px-3 transition ${
+                  className={`min-h-[36px] rounded px-3 transition ${
                     sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                   }`}
                 >
@@ -70,7 +70,7 @@ export default function FDRTable() {
       <ControlBar className="mb-3" showMyTeamsFilter />
 
       {singleMd && (
-        <div className="mb-3 flex rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold" role="tablist">
+        <div className="mb-3 flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold" role="tablist">
           {[
             { id: 'teams', label: 'Teams' },
             { id: 'matches', label: 'Matches' },
@@ -81,7 +81,7 @@ export default function FDRTable() {
               role="tab"
               aria-selected={viewMode === opt.id}
               onClick={() => setViewMode(opt.id)}
-              className={`min-h-[36px] flex-1 rounded-full px-3 transition ${
+              className={`min-h-[36px] flex-1 rounded px-3 transition ${
                 viewMode === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
               }`}
             >
@@ -105,7 +105,7 @@ export default function FDRTable() {
       )}
 
       {visibleTeams.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
             type="button"
@@ -116,7 +116,7 @@ export default function FDRTable() {
           </button>
         </div>
       ) : myTeamsOnly && shownTeams.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
           <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
             Tap the star on a row (or in a team's detail view) to add it to My teams.

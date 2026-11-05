@@ -38,7 +38,7 @@ export default function HiddenTeamsPanel({ onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="hidden-teams-heading"
-        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-2xl sm:border sm:border-white/10"
+        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-lg sm:border sm:border-white/10"
       >
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
           <h2 id="hidden-teams-heading" className="font-display text-lg font-extrabold">
@@ -48,7 +48,7 @@ export default function HiddenTeamsPanel({ onClose }) {
             type="button"
             ref={doneButtonRef}
             onClick={onClose}
-            className="min-h-[40px] shrink-0 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-ucl-star transition hover:bg-white/10"
+            className="min-h-[40px] shrink-0 rounded border border-white/10 bg-white/5 px-4 text-sm font-semibold text-ucl-star transition hover:bg-white/10"
           >
             Done
           </button>
@@ -65,7 +65,7 @@ export default function HiddenTeamsPanel({ onClose }) {
                 type="button"
                 onClick={() => showTeam(team.id)}
                 aria-label={`Add ${team.name} back`}
-                className="flex min-h-[40px] items-center gap-1.5 rounded-full border border-white/10 bg-white/5 py-1.5 pl-3 pr-2.5 text-sm font-bold text-ucl-star transition hover:bg-white/10"
+                className="flex min-h-[40px] items-center gap-1.5 rounded border border-white/10 bg-white/5 py-1.5 pl-3 pr-2.5 text-sm font-bold text-ucl-star transition hover:bg-white/10"
               >
                 {team.abbr}
                 <Plus size={16} aria-hidden="true" className="text-ucl-link" />
@@ -78,7 +78,7 @@ export default function HiddenTeamsPanel({ onClose }) {
           <button
             type="button"
             onClick={resetHidden}
-            className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-bold text-ucl-star transition hover:bg-white/10"
+            className="flex min-h-[48px] w-full items-center justify-center rounded border border-white/10 bg-white/5 text-sm font-bold text-ucl-star transition hover:bg-white/10"
           >
             Add everything back
           </button>

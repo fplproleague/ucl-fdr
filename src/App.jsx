@@ -90,7 +90,7 @@ function Shell() {
                 onClick={(e) => goToTab(e, id)}
                 onKeyDown={(e) => onTabKeyDown(e, id)}
                 title={label}
-                className={`flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold transition ${
+                className={`flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded px-3 text-sm font-semibold transition ${
                   tab === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >

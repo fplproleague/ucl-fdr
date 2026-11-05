@@ -41,7 +41,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
   // row of their own, the same shape every time.
   return (
     <div
-      className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-2xl border border-white/10 bg-white/[0.03] px-2.5 py-2 sm:w-fit ${className}`}
+      className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2 sm:w-fit ${className}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none">
         <label className="sr-only" htmlFor="md-from">
@@ -51,7 +51,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-from"
           value={from}
           onChange={(e) => handleFrom(Number(e.target.value))}
-          className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
+          className="min-h-[40px] min-w-0 flex-1 rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
         >
           {all.map((md) => (
             <option key={md} value={md}>
@@ -69,7 +69,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-to"
           value={to}
           onChange={(e) => onChange(from, Number(e.target.value))}
-          className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
+          className="min-h-[40px] min-w-0 flex-1 rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star sm:flex-none"
         >
           {all
             .filter((md) => md >= from)
@@ -82,7 +82,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
       </div>
 
       {remaining > 1 && (
-        <div className="order-last flex w-full rounded-lg bg-white/5 p-0.5 sm:order-none sm:w-auto">
+        <div className="order-last flex w-full rounded-lg border border-white/10 p-0.5 sm:order-none sm:w-auto">
           {presets.map((p) => {
             const active = from === p.from && to === p.to
             return (
@@ -91,7 +91,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
                 type="button"
                 onClick={() => onChange(p.from, p.to)}
                 aria-pressed={active}
-                className={`min-h-[36px] flex-1 rounded-[6px] px-2 text-[11px] font-semibold transition sm:flex-none ${
+                className={`min-h-[36px] flex-1 rounded px-2 text-[11px] font-semibold transition sm:flex-none ${
                   active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
                 }`}
               >
@@ -112,7 +112,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
             value={skipMd ?? ''}
             onChange={(e) => onSkipChange(e.target.value ? Number(e.target.value) : null)}
             title="Leave one matchday out of the table and every average — handy for a Limitless/wildcard matchday you're building a separate team for"
-            className={`min-h-[40px] rounded-lg border px-2 text-xs font-semibold sm:min-h-[36px] ${
+            className={`min-h-[40px] rounded border px-2 text-xs font-semibold sm:min-h-[36px] ${
               skipMd
                 ? 'border-white/40 bg-white/10 text-ucl-star'
                 : 'border-white/10 bg-ucl-deep text-ucl-star/80'

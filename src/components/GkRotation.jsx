@@ -174,7 +174,7 @@ export default function GkRotation() {
           <div
             role="group"
             aria-label="Rank by"
-            className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold"
+            className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
           >
             {RANK_BY.map(([id, label]) => (
               <button
@@ -182,7 +182,7 @@ export default function GkRotation() {
                 type="button"
                 onClick={() => setRankBy(id)}
                 aria-pressed={rankBy === id}
-                className={`min-h-[36px] whitespace-nowrap rounded-full px-3 transition ${
+                className={`min-h-[36px] whitespace-nowrap rounded px-3 transition ${
                   rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >
@@ -208,7 +208,7 @@ export default function GkRotation() {
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 text-left shadow-card transition hover:bg-white/[0.06] sm:p-3"
+            className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left shadow-card transition hover:bg-white/[0.06] sm:p-3"
           >
             <TeamBadge abbr={selectedGk.team} size={32} />
             <div className="min-w-0 flex-1">
@@ -220,7 +220,7 @@ export default function GkRotation() {
             <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
           </button>
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
             <input
               type="search"
               value={query}
@@ -228,7 +228,7 @@ export default function GkRotation() {
               placeholder="Search by name or club..."
               aria-label="Search goalkeeper by name or club"
               autoFocus={pickerOpen}
-              className="mb-2 min-h-[40px] w-full rounded-lg border border-white/10 bg-ucl-deep px-2.5 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              className="mb-2 min-h-[40px] w-full rounded border border-white/10 bg-ucl-deep px-2.5 text-sm text-ucl-star placeholder:text-ucl-star/30"
             />
             <div className="max-h-72 overflow-y-auto">
               <ul className="space-y-1">
@@ -237,7 +237,7 @@ export default function GkRotation() {
                     <button
                       type="button"
                       onClick={() => selectGk(gk.id)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition hover:bg-white/5"
+                      className="flex w-full items-center gap-2.5 rounded px-2 py-2 text-left text-sm transition hover:bg-white/5"
                     >
                       <TeamBadge abbr={gk.team} size={22} />
                       <span className="min-w-0 flex-1">
@@ -276,7 +276,7 @@ export default function GkRotation() {
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
           {complements.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
+            <p className="rounded-lg border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
               No goalkeeper matches this filter.
             </p>
           )}
@@ -285,7 +285,7 @@ export default function GkRotation() {
             {complements.map(({ candidate: gk, rows, summary, bestCs }) => {
               const isOpen = expandedId === gk.id
               return (
-                <li key={gk.id} className="rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
+                <li key={gk.id} className="rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
                   <button
                     type="button"
                     onClick={() => setExpandedId(isOpen ? null : gk.id)}

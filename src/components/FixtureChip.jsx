@@ -31,7 +31,7 @@ export default function FixtureChip({
 
   const chip = (
     <div
-      className={`relative inline-flex h-8 w-[58px] shrink-0 align-middle items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[11px] font-bold sm:w-[72px] sm:text-xs ${showDay ? '' : className}`}
+      className={`relative inline-flex h-8 w-[58px] shrink-0 align-middle items-center justify-center whitespace-nowrap rounded px-1.5 text-[11px] font-bold sm:w-[72px] sm:text-xs ${showDay ? '' : className}`}
       style={{ backgroundColor: color.bg, color: color.text }}
       title={fullDescription}
     >
@@ -65,7 +65,7 @@ export default function FixtureChip({
     >
       {chip}
       {day && (
-        <span className="rounded-full bg-white/10 px-1.5 py-px text-[8px] font-bold uppercase leading-none tracking-wide text-ucl-star/70">
+        <span className="rounded bg-white/10 px-1.5 py-px text-[8px] font-bold uppercase leading-none tracking-wide text-ucl-star/70">
           {day}
         </span>
       )}
