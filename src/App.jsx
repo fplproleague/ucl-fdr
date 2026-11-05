@@ -72,7 +72,7 @@ function Shell() {
             {/* No text-transform here: it would only change how this renders, but
                 keeping the DOM's actual text ("UCL Fantasy FDR") is what a crawler
                 (or an automated check for that exact string) reads either way. */}
-            <h1 className="font-display text-sm font-extrabold leading-tight tracking-wide sm:text-lg">
+            <h1 className="whitespace-nowrap font-display text-sm font-extrabold leading-tight tracking-wide sm:text-base md:text-lg">
               UCL Fantasy FDR
             </h1>
             <p className="truncate text-[11px] leading-tight text-ucl-muted sm:text-xs">
@@ -81,7 +81,9 @@ function Shell() {
           </div>
 
           <nav aria-label="Views" className="ml-auto hidden gap-1 sm:flex" role="tablist">
-            {tabs.map(({ id, label, icon: Icon }) => (
+            {/* Text only. Seven unambiguous words don't need a glyph each; the
+                icons stay in the phone bar below, where they do replace text. */}
+            {tabs.map(({ id, label, short }) => (
               <a
                 key={id}
                 href={`#/${id}`}
@@ -90,17 +92,17 @@ function Shell() {
                 onClick={(e) => goToTab(e, id)}
                 onKeyDown={(e) => onTabKeyDown(e, id)}
                 title={label}
-                className={`flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded px-3 text-sm font-semibold transition ${
+                className={`flex min-h-[40px] items-center whitespace-nowrap rounded px-1.5 text-table font-semibold transition md:px-2 lg:px-3 lg:text-sm ${
                   tab === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >
-                <Icon size={16} aria-hidden="true" />
-                {/* The labelled tabs don't fit beside the title on a tablet (the
-                    title was wrapping onto three lines at 768px), so between the
-                    phone layout and a full desktop only the active tab keeps its
-                    label; the rest show it on hover via title. not-sr-only resets
-                    white-space, hence the explicit lg:whitespace-nowrap. */}
-                <span className={tab === id ? '' : 'sr-only lg:not-sr-only lg:whitespace-nowrap'}>{label}</span>
+                {/* The full labels don't fit beside the title on a tablet (the
+                    title was wrapping onto three lines at 768px), so up to lg
+                    the tabs use the short forms the phone bar uses. The hidden
+                    span is display:none, so the accessible name is whichever
+                    one shows. */}
+                <span className="lg:hidden">{short ?? label}</span>
+                <span className="hidden lg:inline">{label}</span>
               </a>
             ))}
           </nav>
