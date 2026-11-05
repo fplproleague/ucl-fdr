@@ -190,13 +190,16 @@ export default function FixtureGrid({
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
                         )}
-                        {/* 16px targets: fine for a mouse, not for a finger. On a
-                            touch screen they're left out and the row's tap opens
-                            the team panel, which has the pin and the remove at
-                            full size. */}
+                        {/* 16px targets: fine for a mouse, not for a finger. Below
+                            sm, and on any touch screen, they're left out and the
+                            row's tap opens the team panel, which has the pin and
+                            the remove at full size. (At 390px they sat right
+                            beside the full-height name button, in a row that is
+                            itself a tap target; the narrow team column is better
+                            spent on the name.) */}
                         {(onTogglePin || onRemove) && (
                           <span
-                            className={`flex shrink-0 items-center gap-1.5 overflow-hidden coarse:hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
+                            className={`hidden shrink-0 items-center gap-1.5 overflow-hidden sm:flex coarse:hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
                               compact ? 'invisible -ml-1.5 max-w-0 opacity-0' : 'max-w-[48px]'
                             }`}
                           >

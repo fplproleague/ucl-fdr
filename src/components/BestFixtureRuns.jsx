@@ -223,8 +223,9 @@ export default function BestFixtureRuns() {
 //
 // On a phone the table scrolls sideways like the FDR table, with the team
 // column held at the left; the average and home count move under the name
-// there, so the chips start as early as they can. On a touch screen the star
-// and x are left out of the row (see TeamDetailPanel's onHide): the row
+// there, so the chips start as early as they can. On a touch screen and below sm
+// the star and x are left out of the row (hidden, then sm:block, then
+// coarse:hidden: the `coarse` screen means max-sm: isn't available) (see TeamDetailPanel's onHide): the row
 // opens the panel, which has both at full size.
 function RunsTable({
   rows,
@@ -326,7 +327,7 @@ function RunsTable({
                         }}
                         aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
                         aria-pressed={team.pinned}
-                        className={`shrink-0 rounded p-1 transition hover:bg-white/10 coarse:hidden ${
+                        className={`hidden shrink-0 rounded p-1 transition hover:bg-white/10 sm:block coarse:hidden ${
                           team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
                         }`}
                       >
@@ -339,7 +340,7 @@ function RunsTable({
                           onHide(team.id)
                         }}
                         aria-label={`Remove ${team.name} from this ranking`}
-                        className="shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star coarse:hidden"
+                        className="hidden shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star sm:block coarse:hidden"
                       >
                         <X size={14} aria-hidden="true" />
                       </button>
