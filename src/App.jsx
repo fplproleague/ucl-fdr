@@ -1,17 +1,31 @@
 import { SlidersHorizontal, Calendar, TrendingUp, Scale, Repeat, Users, Percent } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
-import TeamStrengthSettings from './components/TeamStrengthSettings.jsx'
 import FDRTable from './components/FDRTable.jsx'
-import BestFixtureRuns from './components/BestFixtureRuns.jsx'
-import CompareTeams from './components/CompareTeams.jsx'
-import GkRotation from './components/GkRotation.jsx'
-import PlayerProjections from './components/PlayerProjections.jsx'
-import OddsView from './components/OddsView.jsx'
 import Footer from './components/Footer.jsx'
 import uclLogo from './assets/brand/UCL-icon.png'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
+
+// The FDR table is the landing view and ships in the first chunk. The other
+// six load when they are first opened (or straight away when a link lands
+// on one), so a first visit doesn't download all seven views up front.
+const LOADERS = {
+  runs: () => import('./components/BestFixtureRuns.jsx'),
+  compare: () => import('./components/CompareTeams.jsx'),
+  gk: () => import('./components/GkRotation.jsx'),
+  players: () => import('./components/PlayerProjections.jsx'),
+  odds: () => import('./components/OddsView.jsx'),
+  strength: () => import('./components/TeamStrengthSettings.jsx'),
+  // Not a view: the team panel, which the FDR table opens on a tap.
+  teamPanel: () => import('./components/TeamDetailPanel.jsx'),
+}
+const BestFixtureRuns = lazy(LOADERS.runs)
+const CompareTeams = lazy(LOADERS.compare)
+const GkRotation = lazy(LOADERS.gk)
+const PlayerProjections = lazy(LOADERS.players)
+const OddsView = lazy(LOADERS.odds)
+const TeamStrengthSettings = lazy(LOADERS.strength)
 
 const TABS = [
   { id: 'table', label: 'FDR Table', short: 'FDR', icon: Calendar, Component: FDRTable },
@@ -55,6 +69,18 @@ function Shell() {
       observer.disconnect()
       window.removeEventListener('scroll', onScroll)
     }
+  }, [])
+  // Once the first view is up and the browser is idle, fetch the rest, so a
+  // tab opened later doesn't wait on the network. It costs the same bytes as
+  // before, just after first paint instead of before it.
+  useEffect(() => {
+    const warm = () => Object.values(LOADERS).forEach((load) => load().catch(() => {}))
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(warm, { timeout: 4000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = setTimeout(warm, 2000)
+    return () => clearTimeout(id)
   }, [])
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
   const tabs = TABS.filter((t) => t.id !== 'players' || PLAYERS_OPEN || tab === 'players')
@@ -130,7 +156,9 @@ function Shell() {
       </header>
 
       <main className="flex-1">
-        <Active />
+        <Suspense fallback={<ViewLoading />}>
+          <Active />
+        </Suspense>
       </main>
 
       <Footer />
@@ -167,6 +195,16 @@ function Shell() {
         </div>
       </nav>
     </div>
+  )
+}
+
+// Shown for the moment a view's code is on its way. Min-height keeps the
+// footer from jumping up and back while it loads.
+function ViewLoading() {
+  return (
+    <p role="status" className="mx-auto min-h-[60vh] max-w-6xl px-4 pt-10 text-center text-sm text-ucl-muted">
+      Loading…
+    </p>
   )
 }
 
