@@ -57,7 +57,7 @@ node scripts/build-fixtures.mjs
 ```
 
 The script cross-checks every fixture against its reciprocal and refuses to write the file if anything doesn't line up.
-Bump `DATA_UPDATED` in the same file when the data changes — the footer reads it.
+Bump `DATA_UPDATED` in the same file when the data changes.
 
 Matchday dates live in `src/data/matchdays.js`.
 
@@ -139,6 +139,48 @@ Vercel Web Analytics (`@vercel/analytics`) counts each tab as a page of its own 
 `/gk`, `/players`, `/odds/teams`, `/odds/players`, `/strength` — although the app lives on one URL with the view in the
 hash (`TrackedAnalytics` in `src/App.jsx`). They show up under *Pages* in the project's Analytics tab; filters and
 searches don't count as pageviews.
+
+Vercel Speed Insights (`@vercel/speed-insights`, `<SpeedInsights />` next to `<Analytics />`) reports Core Web Vitals
+from real visits. It only collects once it is enabled in the project's *Speed Insights* tab on Vercel.
+
+**Bounce rate before 4 Nov 2026 isn't comparable with after.** Per-tab pageviews started on 4 Nov, so every tab switch
+now counts as a pageview; that lowers the bounce rate on its own, without any change in how people use the site.
+
+## Sharing links
+
+Add UTM parameters to every link you post, so it shows up in the *UTM Parameters* panel of Vercel Analytics instead of
+under "no referrer" (about half of all visitors today). Put them **before** the `#`, and the view after it:
+
+```
+https://ucl-fdr.vercel.app/?utm_source=x&utm_medium=social&utm_campaign=md5#/table
+https://ucl-fdr.vercel.app/?utm_source=reddit&utm_medium=social&utm_campaign=md5#/runs
+https://ucl-fdr.vercel.app/?utm_source=youtube&utm_medium=video&utm_campaign=md5#/compare?teams=ARS,INT
+https://ucl-fdr.vercel.app/?utm_source=discord&utm_medium=social&utm_campaign=md5#/table
+https://ucl-fdr.vercel.app/md/5/?utm_source=x&utm_medium=social&utm_campaign=md5
+```
+
+| Where | `utm_source` | `utm_medium` |
+| --- | --- | --- |
+| X | `x` | `social` |
+| Reddit | `reddit` | `social` |
+| YouTube (description, pinned comment) | `youtube` | `video` |
+| Discord | `discord` | `social` |
+
+`utm_campaign` is the matchday (`md5`, `md6`, …) or the occasion. Lower case, always the same spelling. The query string
+survives every tab switch and setting change (`writeHash` in `src/utils/urlState.js` only rewrites the hash), and
+`src/utils/utm.js` copies the `utm_*` parameters onto each per-tab pageview.
+
+## Matchday pages and sitemap
+
+`npm run build` also writes plain static pages for every matchday, `dist/md/1/index.html` … `dist/md/8/index.html`
+(served at `/md/1/` … `/md/8/`), from the fixture data and the **default** ratings: all 18 matches with each side's
+difficulty, the five easiest fixtures, and a link into the fixture ticker for that matchday
+(`scripts/build-md-pages.mjs`, run from `vite.config.js`). The hash views are invisible to search engines, so these are
+the only pages that can rank for matchday queries ("ucl md5 fixtures").
+
+The same build writes `dist/sitemap.xml` (`/` plus the eight matchday pages, `lastmod` = build date) and stamps the
+upcoming matchday ("Next up: MD5, 24–25 Nov 2026") into `index.html`'s meta description and `<noscript>`. That line
+is only as fresh as the last deploy: redeploy after each matchday (refreshing the odds does that anyway).
 
 ## Assets
 

@@ -42,7 +42,7 @@ export default function FDRTable() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`${shownTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, the × to drop it.`}
+        subtitle={`Fixture ticker for MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${shownTeams.length} of 36 teams. Tap a row, or × to drop it.`}
         action={
           viewMode === 'teams' && (
             <div className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold">
