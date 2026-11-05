@@ -27,12 +27,14 @@ const PlayerProjections = lazy(LOADERS.players)
 const OddsView = lazy(LOADERS.odds)
 const TeamStrengthSettings = lazy(LOADERS.strength)
 
+// Players comes second: fixtures joined to form, price and ownership is the
+// thing no other free UCL tool does well, so it sits right after the table.
 const TABS = [
   { id: 'table', label: 'FDR Table', short: 'FDR', icon: Calendar, Component: FDRTable },
+  { id: 'players', label: 'Players', icon: Users, Component: PlayerProjections },
   { id: 'runs', label: 'Best Runs', short: 'Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'compare', label: 'Compare', icon: Scale, Component: CompareTeams },
   { id: 'gk', label: 'GK Rotation', short: 'GK', icon: Repeat, Component: GkRotation },
-  { id: 'players', label: 'Players', icon: Users, Component: PlayerProjections },
   { id: 'odds', label: 'Odds', icon: Percent, Component: OddsView },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
