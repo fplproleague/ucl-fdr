@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import Footer from './components/Footer.jsx'
-import uclLogo from './assets/brand/UCL-icon.png'
+import BrandMark from './components/BrandMark.jsx'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 
 // The FDR table is the landing view and ships in the first chunk. The other
@@ -95,8 +95,10 @@ function Shell() {
     <div className="flex min-h-screen flex-col pb-[4.5rem] sm:pb-0">
       <header ref={headerRef} className="sticky top-0 z-30 border-b border-white/10 bg-ucl-navy/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-3 py-2 sm:px-4 sm:py-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white p-1 shadow-card sm:h-11 sm:w-11 sm:p-1.5">
-            <img src={uclLogo} alt="" width="44" height="44" className="h-full w-full object-contain" />
+          {/* The owner's mark, white on a faint tile; inline, so it costs no
+              request (the starball PNG it replaces was 30.5 kB). */}
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04] text-ucl-select sm:h-11 sm:w-11">
+            <BrandMark className="h-6 w-6 sm:h-7 sm:w-7" />
           </span>
           <div className="min-w-0">
             {/* No text-transform here: it would only change how this renders, but

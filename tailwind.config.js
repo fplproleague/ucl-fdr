@@ -9,8 +9,8 @@ export default {
     // values, and pills for everything; squarer corners read as the dense,
     // editorial table this is. Replacing the scale (not extending it) means a
     // stray rounded-2xl generates nothing instead of quietly coming back.
-    // full survives for two circles only: the crest in the header and the
-    // star button in a team's detail panel.
+    // full survives for one circle: the star button in a team's detail panel
+    // (the header's round crest wrapper went with the UEFA starball).
     borderRadius: {
       none: '0',
       DEFAULT: '4px',
