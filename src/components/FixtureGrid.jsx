@@ -84,7 +84,13 @@ export default function FixtureGrid({
   // frame. Compact, the floor drops away and the column is badge + code.
   const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
 
-  const spacer = mds.length < 4
+  // The empty last column (in both rows below) takes the spare width. It used to be there
+  // only under four matchdays; at four on a desktop the matchday columns
+  // shared out ~1,000px between them, each chip centred in a ~245px column,
+  // which left ~110px of nothing between the team names and the MD5 chips
+  // that read as a rendering fault. Now the chips sit right after the names
+  // and the slack goes to the far end. In a table wider than its box (a
+  // phone) the spacer simply gets no width.
   // Rendered twice: in the table, and in the sticky copy that stays under
   // the site header on long tables.
   const headRow = (
@@ -108,9 +114,7 @@ export default function FixtureGrid({
           </span>
         </th>
       ))}
-      {/* With only a few matchdays, an empty last column takes the spare width so the
-          chips stay next to the team names instead of floating in wide columns. */}
-      {spacer && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
+      <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />
     </tr>
   )
   return (
@@ -249,7 +253,7 @@ export default function FixtureGrid({
                         )}
                       </td>
                     ))}
-                    {spacer && <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />}
+                    <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />
                   </tr>
                 )
               })}

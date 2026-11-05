@@ -125,7 +125,10 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
           </button>
         </th>
       ))}
-      {mds.length < 4 && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
+      {/* Spare width goes to an empty last column, at any number of
+          matchdays, so the cells sit right after the team column (see
+          FixtureGrid). */}
+      <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />
     </tr>
   )
   return (
@@ -194,7 +197,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
                   )}
                 </td>
               ))}
-              {mds.length < 4 && <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />}
+              <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />
             </tr>
           ))}
         </tbody>
