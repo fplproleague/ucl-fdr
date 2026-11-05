@@ -7,7 +7,8 @@ import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useLivePlayers } from '../utils/useLivePlayers.js'
 import { useOdds } from '../utils/useOdds.js'
 import { teamOddsRows } from '../utils/oddsView.js'
-import { findStoredGoalkeeper, rankGoalkeepers } from '../utils/gkPool.js'
+import { expectedStarters, findStoredGoalkeeper, rankGoalkeepers } from '../utils/gkPool.js'
+import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
@@ -42,22 +43,21 @@ function sheetFacts(gk) {
     .join(' · ')
 }
 
-// What the complements are ranked on: the FDR facts (default) or the
-// bookmakers' clean-sheet chances — the clean sheets you'd expect by
-// starting the better of the two keepers every matchday.
-const RANK_BY = [
-  ['fdr', 'FDR'],
-  ['cs', 'CS odds'],
-]
-
 export default function GkRotation() {
   const { teams, teamsByAbbr, venueAdjust } = useTeams()
-  const [rankBy, setRankBy] = useState('fdr')
   const { odds, index, estimator } = useOdds()
   // Every goalkeeper in the player sheet (live, or its saved copy if Google
   // can't be reached — see useLivePlayers.js), most minutes first.
   const { players, loading: gkLoading, live: gkLive } = useLivePlayers()
   const GOALKEEPERS = useMemo(() => rankGoalkeepers(players), [players])
+  // One keeper per club in the recommendations: whoever played its last UCL
+  // match (see expectedStarters). The match-by-match minutes come with the
+  // saved domestic form; until that has loaded, the most UCL minutes decide.
+  const domesticForm = useDomesticForm()
+  const starters = useMemo(
+    () => expectedStarters(GOALKEEPERS, domesticForm?.uclPlayers),
+    [GOALKEEPERS, domesticForm],
+  )
 
   // Its own range, deliberately not the FDR Table/Best Runs/Compare one in
   // TeamsContext — narrowing this to plan around one cup week shouldn't
@@ -144,13 +144,15 @@ export default function GkRotation() {
     return new Map(teamOddsRows(teams, mds, index, estimator, 'cs').map((r) => [r.team.abbr, r.cells.map((c) => c?.cs ?? null)]))
   }, [odds, teams, mds, index, estimator])
 
-  // Every other goalkeeper in the database, ranked by the transparent
-  // priority order from the spec — never a combined score.
+  // Each other club's expected starter, ranked on one list. There used to
+  // be two (FDR facts, or clean-sheet odds) behind a switch; now the odds
+  // lead, since they are the sharper measure of a clean sheet, and the FDR
+  // facts break ties and stay on every row. Without odds (not loaded yet,
+  // or none at all) the FDR order is all there is.
   const complements = useMemo(() => {
     if (!selectedGk) return []
-    // Every keeper who has played, back-ups at rotating clubs included —
-    // except the selected keeper's own club: same fixtures, nothing to rotate.
-    return GOALKEEPERS.filter((gk) => gk.minutes > 0)
+    // Not the selected keeper's own club: same fixtures, nothing to rotate.
+    return GOALKEEPERS.filter((gk) => starters.has(gk.id))
       .filter((gk) => gk.team !== selectedGk.team)
       .filter((gk) => maxPrice == null || gk.price <= maxPrice)
       .map((gk) => {
@@ -161,8 +163,8 @@ export default function GkRotation() {
         const bestCs = csByTeam ? withCs.reduce((sum, r) => sum + Math.max(r.csA ?? 0, r.csB ?? 0), 0) : null
         return { candidate: gk, rows: withCs, summary: summarizeComparison(rows), bestCs }
       })
-      .sort((a, b) => (rankBy === 'cs' && csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b))
-  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS, csByTeam, rankBy])
+      .sort((a, b) => (csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b))
+  }, [selectedGk, mds, teamsByAbbr, venueAdjust, maxPrice, GOALKEEPERS, starters, csByTeam])
 
   return (
     <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
@@ -171,27 +173,6 @@ export default function GkRotation() {
         subtitle={`Pick a goalkeeper you own to see who complements their fixtures over ${mdRange(from, to)}${
           skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
-        action={
-          <div
-            role="group"
-            aria-label="Rank by"
-            className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
-          >
-            {RANK_BY.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setRankBy(id)}
-                aria-pressed={rankBy === id}
-                className={`min-h-[36px] whitespace-nowrap rounded px-3 transition ${
-                  rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        }
       />
 
       <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
@@ -249,7 +230,10 @@ export default function GkRotation() {
                             · {clubName(gk)} · {formatPrice(gk.price)}
                           </span>
                         </span>
-                        <span className="block truncate text-[11px] text-ucl-muted">{sheetFacts(gk)}</span>
+                        <span className="block truncate text-[11px] text-ucl-muted">
+                          {sheetFacts(gk)}
+                          {!starters.has(gk.id) && ' · back-up'}
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -269,9 +253,9 @@ export default function GkRotation() {
         <>
           <h2 className="mb-1 font-display text-base font-extrabold text-ucl-star sm:text-lg">Best complements for {selectedGk.name}</h2>
           <p className="mb-3 text-xs text-ucl-muted">
-            {rankBy === 'cs'
-              ? 'Ranked on the clean sheets you’d expect by starting the better of the two every matchday (bookmaker odds, estimates where not priced yet).'
-              : 'A favourable fixture is band 1–2 (green), under your current FDR settings.'}
+            One keeper per club: the one who played its last UCL match. Ranked on the clean sheets you&rsquo;d
+            expect by starting the better of the two every matchday (bookmaker odds, estimates where a match
+            isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your current settings.
           </p>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
@@ -308,6 +292,11 @@ export default function GkRotation() {
                   </button>
 
                   <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-white/5 px-2.5 py-2 text-[11px] text-ucl-star/80 sm:px-3">
+                    {bestCs != null && (
+                      <span title="Clean sheets expected when you start the better of the two every matchday">
+                        Best-of CS: <strong className="text-ucl-star">{bestCs.toFixed(1)}</strong>
+                      </span>
+                    )}
                     <span>
                       Different days: <strong className="text-ucl-star">{summary.differentDays}/{summary.total}</strong>
                     </span>
@@ -320,11 +309,6 @@ export default function GkRotation() {
                     <span>
                       Both favourable: <strong className="text-ucl-star">{summary.bothFavourable}/{summary.total}</strong>
                     </span>
-                    {bestCs != null && (
-                      <span title="Clean sheets expected when you start the better of the two every matchday">
-                        Best-of CS: <strong className="text-ucl-star">{bestCs.toFixed(1)}</strong>
-                      </span>
-                    )}
                   </div>
 
                   {isOpen && (
