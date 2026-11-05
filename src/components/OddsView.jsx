@@ -8,6 +8,7 @@ import { useOdds } from '../utils/useOdds.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { METRICS, compareRows, playerOddsRows, teamOddsRows } from '../utils/oddsView.js'
+import { RAMP_INK, goodness, rampDomain, rampFill } from '../utils/oddsRamp.js'
 import MdRangePicker from './MdRangePicker.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
@@ -25,24 +26,16 @@ const PREVIEW = 60
 const pct = (x) => `${Math.round(x * 100)}%`
 const chance = (rate) => 1 - Math.exp(-rate)
 
-// One hue for every value, so this never reads like the green-to-red FDR
-// colours: more fill = better for a fantasy pick.
-function intensity(metric, value) {
-  const t =
-    metric === 'cs'
-      ? (value - 0.05) / 0.45
-      : metric === 'xgFor'
-        ? (value - 0.6) / 2
-        : (1.9 - value) / 1.4
-  return Math.min(1, Math.max(0, t))
-}
-function cellStyle(metric, value, estimated) {
-  const t = intensity(metric, value)
-  const alpha = (0.08 + 0.72 * t) * (estimated ? 0.75 : 1)
+// Each cell's fill: see src/utils/oddsRamp.js. The ramp is stretched over
+// the values on screen, never over less than these spans (a clean-sheet
+// column all between 30% and 33% shouldn't look like 0% vs 100%).
+const MIN_SPAN = { cs: 0.15, xgFor: 0.6, xgAgainst: 0.6 }
+function cellStyle(t, estimated) {
   return {
-    backgroundColor: `rgba(67, 97, 255, ${alpha.toFixed(3)})`,
-    border: estimated ? '1px dashed rgba(230, 233, 255, 0.35)' : '1px solid transparent',
-    color: alpha > 0.35 ? '#ffffff' : 'rgba(230, 233, 255, 0.85)',
+    backgroundColor: rampFill(t),
+    color: RAMP_INK,
+    // The dashed edge marks an estimate, as everywhere on the site.
+    border: estimated ? '1px dashed rgba(230, 233, 255, 0.55)' : '1px solid transparent',
   }
 }
 
@@ -78,6 +71,10 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
   const scrollerRef = useRef(null)
   const tableRef = useRef(null)
   const { format, label, better } = METRICS[metric]
+  const domain = useMemo(
+    () => rampDomain(rows.flatMap((r) => r.cells.map((c) => c?.[metric])), MIN_SPAN[metric]),
+    [rows, metric],
+  )
   const order = better === 'high' ? 'highest first' : 'lowest first'
   const headerButton = (active) =>
     `inline-flex min-h-[36px] w-full flex-col items-center justify-center rounded px-1 transition ${
@@ -96,7 +93,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
           title={`Sort on the average over these matchdays, ${order}`}
           className={`${headerButton(sortMd == null)} !items-start px-1`}
         >
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 whitespace-nowrap">
             Team avg
             {sortMd == null && <ArrowDown size={11} aria-hidden="true" />}
           </span>
@@ -179,7 +176,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
                   {cell ? (
                     <div
                       className="mx-auto flex h-9 w-[58px] flex-col items-center justify-center rounded sm:w-[72px]"
-                      style={cellStyle(metric, cell[metric], cell.estimated)}
+                      style={cellStyle(goodness(cell[metric], domain, better), cell.estimated)}
                       title={`${team.name} ${cell.venue === 'H' ? 'v' : 'at'} ${teamsByAbbr[cell.opp]?.name ?? cell.opp}: ${
                         cell.estimated ? 'estimate' : `odds from ${cell.bookmakers} bookmakers`
                       } — xG ${cell.xgFor.toFixed(2)} for, ${cell.xgAgainst.toFixed(2)} against, clean sheet ${pct(cell.cs)}`}
@@ -490,11 +487,13 @@ export default function OddsView() {
         subtitle="What the bookmakers expect: goals and clean sheets per match, and each player's chance of a goal or an assist. Independent of the 1–5 ratings."
       />
 
-      <div className="mb-3 flex flex-col gap-2">
-        <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
+      <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
+
+      {/* One row of controls: which view, and on Teams which number and which
+          teams. These were two stacked full-width segmented rows. */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <Segmented
           label="Odds view"
-          className="sm:max-w-xs"
           value={view}
           onChange={setView}
           options={[
@@ -502,16 +501,10 @@ export default function OddsView() {
             ['players', 'Players'],
           ]}
         />
-      </div>
-
-      {!odds ? (
-        <p className="py-10 text-center text-sm text-ucl-muted">Loading odds…</p>
-      ) : view === 'teams' ? (
-        <>
-          <div className="mb-3 flex items-center gap-2">
+        {view === 'teams' && odds && (
+          <>
             <Segmented
               label="Show"
-              className="flex-1 sm:max-w-md sm:flex-none"
               value={metric}
               onChange={setMetric}
               options={Object.entries(METRICS).map(([id, m]) => [id, m.label])}
@@ -525,7 +518,41 @@ export default function OddsView() {
                 { id: 'mine', label: 'My teams', count: pinnedCount },
               ]}
             />
-          </div>
+          </>
+        )}
+      </div>
+
+      {/* The key, above the numbers it explains (it used to sit under all
+          36 rows). The estimate convention is the site's: dashed edge
+          here, as in the team panel. */}
+      {odds && (
+        <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-ucl-muted">
+          {view === 'teams' && (
+            <span className="inline-flex items-center gap-1.5">
+              worse
+              <span
+                aria-hidden="true"
+                className="inline-block h-2.5 w-16 rounded"
+                style={{ background: `linear-gradient(to right, ${rampFill(0)}, ${rampFill(0.5)}, ${rampFill(1)})` }}
+              />
+              better for a pick
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            {view === 'teams' ? (
+              <span aria-hidden="true" className="inline-block h-3 w-4 rounded border border-dashed border-ucl-star/55" />
+            ) : (
+              <span aria-hidden="true" className="text-ucl-star/60">0.42</span>
+            )}
+            {view === 'teams' ? 'Dashed' : 'Dimmed'}: estimate until bookmakers price the match (about a week before).
+          </span>
+        </p>
+      )}
+
+      {!odds ? (
+        <p className="py-10 text-center text-sm text-ucl-muted">Loading odds…</p>
+      ) : view === 'teams' ? (
+        <>
           <OddsGrid
             mds={mds}
             rows={rows}
@@ -537,19 +564,13 @@ export default function OddsView() {
           />
           <div className="mt-3 space-y-1 text-xs text-ucl-muted">
             <p>
-              <span className="mr-1 inline-block h-3 w-4 rounded bg-ucl-accent/70 align-middle" aria-hidden="true" />
               Bookmaker odds
-              {pricedMds.length ? ` (MD${pricedMds.join(', MD')}${updated ? `, updated ${updated}` : ''})` : ' — none for these matchdays yet'}.
-              <span
-                className="ml-3 mr-1 inline-block h-3 w-4 rounded border border-dashed border-ucl-star/40 bg-ucl-accent/40 align-middle"
-                aria-hidden="true"
-              />
-              Estimate, until bookmakers price the match (about a week before).
+              {pricedMds.length ? ` for MD${pricedMds.join(', MD')}${updated ? `, updated ${updated}` : ''}` : ': none for these matchdays yet'}.
             </p>
             <p>
               Estimates come from {estimator.usesElo ? 'Elo club ratings (clubelo.com) and ' : ''}
               {estimator.matches} priced match{estimator.matches === 1 ? '' : 'es'}, never from the 1–5 ratings, and sharpen
-              as more matchdays are priced. More fill = better for a fantasy pick. Tap a matchday to sort on it, a team for
+              as more matchdays are priced. Lighter = better for a fantasy pick. Tap a matchday to sort on it, a team for
               its details.
             </p>
           </div>

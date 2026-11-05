@@ -14,6 +14,7 @@ import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
 import { useDialogFocus } from '../utils/useDialogFocus.js'
+import { RAMP_INK, goodness, rampFill } from '../utils/oddsRamp.js'
 import { mdRange } from '../utils/mdLabel.js'
 
 // A centred, wide rectangular modal on desktop (the table stays visible and
@@ -213,9 +214,13 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
                     </span>
                     {cell ? (
                       <div
-                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded text-center sm:w-[64px] ${
-                          cell.estimated ? 'border border-dashed border-ucl-star/30 bg-ucl-accent/10' : 'bg-ucl-accent/25'
+                        // The Odds tab's ramp (lighter = likelier clean sheet), on
+                        // a fixed 5–50% scale so one team's cells compare with
+                        // another's; dashed = estimate, as there.
+                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded border text-center sm:w-[64px] ${
+                          cell.estimated ? 'border-dashed border-ucl-star/55' : 'border-transparent'
                         }`}
+                        style={{ backgroundColor: rampFill(goodness(cell.cs, [0.05, 0.5])), color: RAMP_INK }}
                         title={`${cell.estimated ? 'Estimate' : 'Bookmaker odds'}: clean sheet ${Math.round(cell.cs * 100)}%, xG ${cell.xgFor.toFixed(
                           2,
                         )} for, ${cell.xgAgainst.toFixed(2)} against`}
