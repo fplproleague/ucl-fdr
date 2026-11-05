@@ -283,7 +283,7 @@ export default function PlayerProjections() {
       </th>
       <th
         scope="col"
-        className="px-2 py-2 text-left font-semibold"
+        className="px-2 py-2 text-right font-semibold"
         title={
           sortBy === 'value'
             ? 'Score per €1m, 100 = best value over these matchdays'
@@ -293,6 +293,9 @@ export default function PlayerProjections() {
         {/* The caveat lives with the column it qualifies rather than above the
             whole view, and the explanation opens from here too. */}
         <span className="inline-flex items-center gap-1">
+          <span className="mr-1 hidden normal-case tracking-normal sm:inline">
+            <NotAPrediction />
+          </span>
           {sortBy === 'value' ? 'Score / €m' : 'Score'}
           <button
             type="button"
@@ -304,9 +307,6 @@ export default function PlayerProjections() {
             <Info size={13} aria-hidden="true" />
             <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
           </button>
-          <span className="hidden normal-case tracking-normal sm:inline">
-            <NotAPrediction />
-          </span>
         </span>
       </th>
     </tr>
@@ -513,7 +513,7 @@ export default function PlayerProjections() {
                 {visible.map((p) => {
                   const open = openId === p.id
                   const shown = sortBy === 'value' ? p.valueScore : p.score
-                  // The player on 100: a faint tint and a ring on his bar.
+                  // The player on 100: his score in the heaviest weight.
                   const top = shown >= 99.95
                   const isStarred = starred.has(p.id)
                   const inCompare = compareSet.has(p.id)
@@ -616,7 +616,7 @@ export default function PlayerProjections() {
                           )}
                         </td>
                         <td className="px-2 py-1.5">
-                          <ScoreBar value={shown} highlight={top} />
+                          <ScoreValue value={shown} highlight={top} />
                         </td>
                       </tr>
                       {open && (
@@ -702,22 +702,22 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 // minutes he could have played (a cameo goal isn't a rate worth showing).
 const formatGa90 = (dom) => (dom?.ga90 == null || dom.minutes < dom.matches * 45 ? '–' : dom.ga90.toFixed(2))
 
-// The score as a bar with the number on it, so the column reads at a glance
-// instead of as one more figure next to price and form.
-export function ScoreBar({ value, highlight = false }) {
+// The score as a number, right-aligned like the price and form beside it,
+// with a 2px rule under it as long as the score. It used to be a filled bar
+// with the number printed on it as well: the same value twice, and a column
+// that read as a row of progress bars. The rule keeps the glance; the
+// number is the reading. The player on 100 gets his number in 800.
+export function ScoreValue({ value, highlight = false }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
-    <div
-      className={`relative h-6 w-16 overflow-hidden rounded bg-white/[0.06] sm:w-28 ${
-        highlight ? 'ring-1 ring-white/50' : ''
-      }`}
-    >
-      <div
-        className={`absolute inset-y-0 left-0 rounded ${highlight ? 'bg-white/30' : 'bg-white/20'}`}
-        style={{ width: `${pct}%` }}
-      />
-      <span className="relative flex h-full items-center px-1.5 text-xs font-semibold tabular-nums">{Math.round(pct)}</span>
-    </div>
+    <span className="ml-auto block w-10 sm:w-16">
+      <span className={`block text-right tabular-nums ${highlight ? 'font-extrabold text-ucl-star' : 'font-semibold'}`}>
+        {Math.round(pct)}
+      </span>
+      <span aria-hidden="true" className="mt-1 block h-0.5 bg-white/15">
+        <span className="block h-full bg-white/70" style={{ width: `${pct}%` }} />
+      </span>
+    </span>
   )
 }
 
