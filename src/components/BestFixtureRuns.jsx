@@ -86,7 +86,11 @@ export default function BestFixtureRuns() {
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${shownTeams.length} teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
+        subtitle={`${
+          // Say what the table shows: "36 teams" above a table of eight read
+          // as if rows were missing.
+          ranked.length > PREVIEW && !showAll ? `Top ${PREVIEW} of ${ranked.length}` : `All ${ranked.length}`
+        } teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
           byOdds
             ? rankBy === 'cs'
               ? 'best clean-sheet odds first'
@@ -185,12 +189,15 @@ export default function BestFixtureRuns() {
       )}
 
       {ranked.length > PREVIEW && (
+        // A plain link under the table, not a bar as wide as it: showing more
+        // rows is a footnote to the ranking, not its main action. The
+        // min-height keeps it a full-size touch target.
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-3 min-h-[44px] w-full rounded border border-white/10 bg-white/5 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
+          className="mt-2 inline-flex min-h-[44px] items-center text-sm text-ucl-link underline underline-offset-2 hover:text-ucl-star"
         >
-          {showAll ? 'Show top 8 only' : `Show all ${ranked.length} teams`}
+          {showAll ? `Show the top ${PREVIEW} only` : `Show all ${ranked.length} teams`}
         </button>
       )}
 
