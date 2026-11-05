@@ -179,16 +179,20 @@ export default function FixtureGrid({
                               onTeamClick(team)
                             }}
                             aria-label={`View ${team.name} details`}
-                            className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
+                            className="-my-1.5 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
                           >
                             {identity}
                           </button>
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
                         )}
+                        {/* 16px targets: fine for a mouse, not for a finger. On a
+                            touch screen they're left out and the row's tap opens
+                            the team panel, which has the pin and the remove at
+                            full size. */}
                         {(onTogglePin || onRemove) && (
                           <span
-                            className={`flex shrink-0 items-center gap-1.5 overflow-hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
+                            className={`flex shrink-0 items-center gap-1.5 overflow-hidden coarse:hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
                               compact ? 'invisible -ml-1.5 max-w-0 opacity-0' : 'max-w-[48px]'
                             }`}
                           >

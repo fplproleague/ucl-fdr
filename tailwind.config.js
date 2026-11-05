@@ -18,6 +18,11 @@ export default {
       full: '9999px',
     },
     extend: {
+      // coarse: a touch screen, at any width. Used where a control is fine for
+      // a mouse but too small for a finger, so it moves somewhere larger.
+      screens: {
+        coarse: { raw: '(pointer: coarse)' },
+      },
       // The type scale. Hierarchy used to come from six weights at two sizes
       // (most of the page was 12 or 14px), which is why it read as one flat
       // surface. Weights: 400, 600, 800 only.

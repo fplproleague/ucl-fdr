@@ -200,7 +200,12 @@ export default function BestFixtureRuns() {
       )}
 
       {detailAbbr && (
-        <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
+        <TeamDetailPanel
+          abbr={detailAbbr}
+          onClose={closeDetail}
+          onCompare={() => compareTeam(detailAbbr)}
+          onHide={hideTeam}
+        />
       )}
 
       {hiddenPanelOpen && <HiddenTeamsPanel onClose={() => setHiddenPanelOpen(false)} />}
@@ -216,7 +221,9 @@ export default function BestFixtureRuns() {
 //
 // On a phone the table scrolls sideways like the FDR table, with the team
 // column held at the left; the average and home count move under the name
-// there, so the chips start as early as they can.
+// there, so the chips start as early as they can. On a touch screen the star
+// and x are left out of the row (see TeamDetailPanel's onHide): the row
+// opens the panel, which has both at full size.
 function RunsTable({
   rows,
   mds,
@@ -302,7 +309,7 @@ function RunsTable({
                           onOpen(team)
                         }}
                         aria-label={`View ${team.name} details`}
-                        className="min-w-0 flex-1 rounded text-left"
+                        className="-my-1.5 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center rounded text-left"
                       >
                         <span className="block truncate font-semibold">{team.name}</span>
                         <span className="block text-meta text-ucl-muted sm:hidden">
@@ -317,7 +324,7 @@ function RunsTable({
                         }}
                         aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
                         aria-pressed={team.pinned}
-                        className={`shrink-0 rounded p-1 transition hover:bg-white/10 ${
+                        className={`shrink-0 rounded p-1 transition hover:bg-white/10 coarse:hidden ${
                           team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
                         }`}
                       >
@@ -330,7 +337,7 @@ function RunsTable({
                           onHide(team.id)
                         }}
                         aria-label={`Remove ${team.name} from this ranking`}
-                        className="shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
+                        className="shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star coarse:hidden"
                       >
                         <X size={14} aria-hidden="true" />
                       </button>

@@ -46,7 +46,7 @@ export default function FDRTable() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={`${shownTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, the × to drop it.`}
+        subtitle={`${shownTeams.length} of 36 teams, MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`}
         action={
           viewMode === 'teams' && (
             <div className="flex shrink-0 rounded-lg border border-white/10 p-0.5 text-xs font-semibold">
@@ -153,7 +153,12 @@ export default function FDRTable() {
 
       <Suspense fallback={null}>
         {detailAbbr && (
-          <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
+          <TeamDetailPanel
+            abbr={detailAbbr}
+            onClose={closeDetail}
+            onCompare={() => compareTeam(detailAbbr)}
+            onHide={hideTeam}
+          />
         )}
         {hiddenPanelOpen && <HiddenTeamsPanel onClose={() => setHiddenPanelOpen(false)} />}
       </Suspense>

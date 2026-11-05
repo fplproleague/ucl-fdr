@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Percent, Scale, Star, Users, X } from 'lucide-react'
+import { EyeOff, Percent, Scale, Star, Users, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES, TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
@@ -20,7 +20,10 @@ import StrengthPicker from './StrengthPicker.jsx'
 // league phase (a matchday that's already passed is gone from the whole
 // site, not just this panel), independent of whatever MD range the table
 // itself is currently showing.
-export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
+// onHide, when given, adds a "Hide from table" button: on a touch screen the
+// rows' own 16px star and x are hidden (too small for a finger), so the pin
+// and the remove both live here, at full size.
+export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   const { teamsByAbbr, venueAdjust, setRating, togglePin, setCompare, setTab, openTab } = useTeams()
   const { odds, index, estimator } = useOdds()
   const team = teamsByAbbr[abbr]
@@ -124,7 +127,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             onClick={() => togglePin(team.id)}
             aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
             aria-pressed={team.pinned}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 ${
               team.pinned ? 'text-ucl-brass' : 'text-ucl-muted hover:text-ucl-star'
             }`}
           >
@@ -135,7 +138,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -309,11 +312,24 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           )}
         </div>
 
-        <div className="border-t border-white/10 px-4 py-3 sm:px-5">
+        <div className="flex gap-2 border-t border-white/10 px-4 py-3 sm:px-5">
+          {onHide && (
+            <button
+              type="button"
+              onClick={() => {
+                onHide(team.id)
+                onClose()
+              }}
+              className="flex min-h-[48px] shrink-0 items-center justify-center gap-1.5 rounded border border-white/10 px-3 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
+            >
+              <EyeOff size={16} aria-hidden="true" />
+              Hide from table
+            </button>
+          )}
           <button
             type="button"
             onClick={onCompare}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-extrabold transition hover:bg-white/90 active:scale-[0.99]"
+            className="flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-extrabold transition hover:bg-white/90 active:scale-[0.99]"
           >
             <Scale size={16} aria-hidden="true" />
             Compare {team.shortName ?? team.name}
