@@ -131,7 +131,7 @@ export default function ComparePlayers({
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                           wins[i] === mostWins && mostWins > 0
-                            ? 'bg-ucl-accent/30 text-ucl-star'
+                            ? 'bg-white/15 text-ucl-star'
                             : 'bg-white/5 text-ucl-muted'
                         }`}
                       >
@@ -258,7 +258,7 @@ function StatRow({ row, open, onToggle }) {
               {row.bars && row.values[i] != null && (
                 <span className="mx-auto mt-0.5 block h-1 w-full max-w-[72px] overflow-hidden rounded-full bg-white/[0.06]">
                   <span
-                    className={`block h-full rounded-full ${best ? 'bg-ucl-accent' : 'bg-ucl-accent/35'}`}
+                    className={`block h-full rounded-full ${best ? 'bg-white/70' : 'bg-white/25'}`}
                     style={{ width: `${row.bars[i]}%` }}
                   />
                 </span>
@@ -268,7 +268,7 @@ function StatRow({ row, open, onToggle }) {
           return (
             <td
               key={i}
-              className={`px-1 py-1 text-center align-top tabular-nums ${best ? 'rounded-md bg-ucl-accent/[0.1]' : ''}`}
+              className={`px-1 py-1 text-center align-top tabular-nums ${best ? 'rounded-md bg-white/[0.05]' : ''}`}
             >
               {row.breakdown?.[i] ? (
                 <button type="button" onClick={onToggle} aria-expanded={open} className="block w-full">

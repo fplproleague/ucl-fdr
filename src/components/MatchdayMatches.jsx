@@ -36,7 +36,7 @@ export default function MatchdayMatches({ md, onTeamClick }) {
               <div
                 key={`${m.home.abbr}-${m.away.abbr}`}
                 className={`flex items-center gap-2 rounded-xl border bg-white/[0.03] p-2 sm:gap-3 sm:p-2.5 ${
-                  m.home.pinned || m.away.pinned ? 'border-ucl-accent/40' : 'border-white/10'
+                  m.home.pinned || m.away.pinned ? 'border-ucl-brass/40' : 'border-white/10'
                 }`}
               >
                 <TeamSide team={m.home} onTeamClick={onTeamClick} />
@@ -76,7 +76,7 @@ function TeamSide({ team, onTeamClick }) {
       <span className="min-w-0 flex-1 truncate text-xs font-semibold sm:text-sm">{team.shortName ?? team.name}</span>
     </>
   )
-  const className = `flex min-w-0 flex-1 items-center gap-1.5 ${team.pinned ? 'text-ucl-accent' : ''}`
+  const className = `flex min-w-0 flex-1 items-center gap-1.5 ${team.pinned ? 'text-ucl-brass' : ''}`
   if (!onTeamClick) return <div className={className}>{content}</div>
   return (
     <button

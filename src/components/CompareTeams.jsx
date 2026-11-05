@@ -96,7 +96,7 @@ export default function CompareTeams() {
               type="button"
               onClick={() => toggle(team.abbr)}
               aria-label={`Remove ${team.name}`}
-              className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-ucl-accent/40 bg-ucl-accent/15 px-2.5 text-xs font-semibold text-ucl-star transition hover:bg-ucl-accent/25"
+              className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 text-xs font-semibold text-ucl-star transition hover:bg-white/15"
             >
               <TeamBadge abbr={team.abbr} size={16} />
               {team.abbr}
@@ -153,7 +153,7 @@ export default function CompareTeams() {
                       aria-pressed={active}
                       className={`flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-left text-xs font-medium transition ${
                         active
-                          ? 'bg-ucl-accent/25 text-ucl-star ring-1 ring-ucl-accent/50'
+                          ? 'bg-white/10 text-ucl-star ring-1 ring-white/40'
                           : 'text-ucl-star/80 hover:bg-white/5'
                       }`}
                     >
@@ -228,7 +228,7 @@ export default function CompareTeams() {
                     key={p.md}
                     className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
                       p.easier === 'a'
-                        ? 'bg-ucl-accent/20 text-ucl-accent'
+                        ? 'bg-ucl-accent/20 text-ucl-link'
                         : p.easier === 'b'
                           ? 'bg-white/10 text-ucl-star/70'
                           : 'bg-white/5 text-ucl-muted'

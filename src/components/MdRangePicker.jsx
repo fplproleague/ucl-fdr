@@ -92,7 +92,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
                 onClick={() => onChange(p.from, p.to)}
                 aria-pressed={active}
                 className={`min-h-[36px] flex-1 rounded-[6px] px-2 text-[11px] font-semibold transition sm:flex-none ${
-                  active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+                  active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
                 }`}
               >
                 {p.label}
@@ -114,7 +114,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
             title="Leave one matchday out of the table and every average — handy for a Limitless/wildcard matchday you're building a separate team for"
             className={`min-h-[40px] rounded-lg border px-2 text-xs font-semibold sm:min-h-[36px] ${
               skipMd
-                ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+                ? 'border-white/40 bg-white/10 text-ucl-star'
                 : 'border-white/10 bg-ucl-deep text-ucl-star/80'
             }`}
           >

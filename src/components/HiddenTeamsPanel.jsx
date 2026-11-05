@@ -68,7 +68,7 @@ export default function HiddenTeamsPanel({ onClose }) {
                 className="flex min-h-[40px] items-center gap-1.5 rounded-full border border-white/10 bg-white/5 py-1.5 pl-3 pr-2.5 text-sm font-bold text-ucl-star transition hover:bg-white/10"
               >
                 {team.abbr}
-                <Plus size={16} aria-hidden="true" className="text-ucl-accent" />
+                <Plus size={16} aria-hidden="true" className="text-ucl-link" />
               </button>
             ))}
           </div>

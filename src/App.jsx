@@ -91,7 +91,7 @@ function Shell() {
                 onKeyDown={(e) => onTabKeyDown(e, id)}
                 title={label}
                 className={`flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold transition ${
-                  tab === id ? 'bg-ucl-accent text-white shadow-card' : 'text-ucl-star/60 hover:bg-white/5'
+                  tab === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:bg-white/5'
                 }`}
               >
                 <Icon size={16} aria-hidden="true" />
@@ -130,10 +130,14 @@ function Shell() {
               aria-label={label}
               onClick={(e) => goToTab(e, id)}
               onKeyDown={(e) => onTabKeyDown(e, id)}
-              className={`flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
-                tab === id ? 'text-ucl-accent' : 'text-ucl-star/60'
+              className={`relative flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition ${
+                tab === id ? 'text-ucl-select' : 'text-ucl-star/60'
               }`}
             >
+              {/* The active tab is marked by a white rule along the bar's top
+                  edge as well as its colour: white against the inactive
+                  tabs' 60% white is too small a step to carry it alone. */}
+              {tab === id && <span aria-hidden="true" className="absolute inset-x-3 top-0 h-0.5 bg-ucl-select" />}
               <Icon size={20} aria-hidden="true" />
               <span aria-hidden="true">{short ?? label}</span>
             </a>

@@ -183,7 +183,7 @@ export default function GkRotation() {
                 onClick={() => setRankBy(id)}
                 aria-pressed={rankBy === id}
                 className={`min-h-[36px] whitespace-nowrap rounded-full px-3 transition ${
-                  rankBy === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                  rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >
                 {label}
@@ -217,7 +217,7 @@ export default function GkRotation() {
                 {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
               </p>
             </div>
-            <span className="shrink-0 text-xs font-semibold text-ucl-accent">Change</span>
+            <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
           </button>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">

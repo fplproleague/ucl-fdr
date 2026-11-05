@@ -64,7 +64,7 @@ function Segmented({ options, value, onChange, label, className = '' }) {
           aria-pressed={value === id}
           onClick={() => onChange(id)}
           className={`min-h-[36px] flex-1 whitespace-nowrap rounded-full px-3 transition ${
-            value === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+            value === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
           }`}
         >
           {text}
@@ -81,7 +81,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
   const order = better === 'high' ? 'highest first' : 'lowest first'
   const headerButton = (active) =>
     `inline-flex min-h-[36px] w-full flex-col items-center justify-center rounded-md px-1 transition ${
-      active ? 'bg-ucl-accent/20 text-ucl-star' : 'hover:bg-white/5 hover:text-ucl-star'
+      active ? 'bg-white/10 text-ucl-star' : 'hover:bg-white/5 hover:text-ucl-star'
     }`
   const headRow = (
     <tr>
@@ -168,7 +168,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
                       </span>
                     )}
                   </span>
-                  {team.pinned && <Star size={10} className="shrink-0 text-ucl-accent" fill="currentColor" aria-label="My team" />}
+                  {team.pinned && <Star size={10} className="shrink-0 text-ucl-brass" fill="currentColor" aria-label="My team" />}
                 </button>
               </th>
               {cells.map((cell, i) => (
@@ -265,7 +265,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
 
   const chip = (active) =>
     `min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
-      active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+      active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
     }`
   // One matchday: chances. Several: expected totals over them.
   const fmt = (rate) => (rate == null ? '–' : single ? pct(chance(rate)) : rate.toFixed(2))
@@ -291,7 +291,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
             onClick={() => setSortBy(id)}
             title={single ? `Chance of ${oneMatch}, if he plays` : `Expected ${total} over these matchdays, if he plays`}
             className={`inline-flex min-h-[32px] items-center gap-0.5 rounded px-1.5 uppercase tracking-wider ${
-              sortBy === id ? 'bg-ucl-accent/20 text-ucl-star' : 'hover:text-ucl-star'
+              sortBy === id ? 'bg-white/10 text-ucl-star' : 'hover:text-ucl-star'
             }`}
           >
             {head[id]}
@@ -385,7 +385,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                         aria-label={starred.has(r.player.id) ? `Unstar ${r.player.name}` : `Star ${r.player.name}`}
                         onClick={() => toggleStar(r.player.id)}
                         className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
-                          starred.has(r.player.id) ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
+                          starred.has(r.player.id) ? 'text-ucl-brass' : 'text-ucl-star/25 hover:text-ucl-star/60'
                         }`}
                       >
                         <Star size={14} aria-hidden="true" fill={starred.has(r.player.id) ? 'currentColor' : 'none'} />
@@ -395,7 +395,7 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                         type="button"
                         onClick={() => openTab('players', { playersQuery: r.player.name })}
                         title={`${r.player.name} on the Players tab`}
-                        className="flex min-w-0 items-center gap-1.5 rounded text-left hover:text-ucl-accent"
+                        className="flex min-w-0 items-center gap-1.5 rounded text-left hover:text-ucl-link"
                       >
                         <TeamBadge abbr={r.player.team} size={18} />
                         <span className="min-w-0">

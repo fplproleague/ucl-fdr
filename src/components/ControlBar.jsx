@@ -77,7 +77,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
               aria-pressed={dayFilter === d}
               onClick={() => setDayFilter(d)}
               className={`min-h-[32px] rounded-[6px] px-3 text-[11px] font-semibold transition ${
-                dayFilter === d ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+                dayFilter === d ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
               }`}
             >
               {d === 'ALL' ? 'All days' : DAY_LABEL[d]}
@@ -128,7 +128,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
           <ul className="space-y-1.5">
             {RATING_METHOD.map((line, i) => (
               <li key={line} className="flex gap-2">
-                <span aria-hidden="true" className="text-ucl-accent">
+                <span aria-hidden="true" className="text-ucl-muted">
                   •
                 </span>
                 <span>
@@ -139,7 +139,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
                       <button
                         type="button"
                         onClick={() => setTab('strength')}
-                        className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+                        className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
                       >
                         Go to Strength tab
                       </button>
@@ -164,14 +164,14 @@ function OptionToggle({ on, onChange, children }) {
       onClick={() => onChange(!on)}
       className={`flex min-h-[32px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition ${
         on
-          ? 'border-ucl-accent/50 bg-ucl-accent/20 text-ucl-star'
+          ? 'border-white/40 bg-white/10 text-ucl-star'
           : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
       }`}
     >
       <span
         aria-hidden="true"
         className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full transition ${
-          on ? 'bg-ucl-accent text-white' : 'border border-white/30'
+          on ? 'bg-ucl-select text-ucl-selectInk' : 'border border-white/30'
         }`}
       >
         {on && <Check size={10} strokeWidth={3.5} />}

@@ -10,10 +10,26 @@ export default {
       colors: {
         ucl: {
           navy: '#040818',
-          deep: '#0a1240',
+          // Raised surfaces: table heads, selects. Less saturated than the old
+          // #0a1240, which read as a blue band across every table.
+          deep: '#0C1330',
           blue: '#0d2a6b',
           indigo: '#1b2ad9',
+          // Selection is white-on-navy, the way UEFA's own graphics mark state:
+          // active tab, chosen segment, checked toggle, the one primary button.
+          select: '#FFFFFF',
+          selectInk: '#0C1330',
+          // One warm accent, reserved for genuine emphasis: starred teams and
+          // players, and the team ranked first in Best Runs. Champions League
+          // broadcast gold. Never as text on a white pill (1.99:1).
+          brass: '#D7B45A',
+          // Kept for the few places that still need a blue tint (hover washes,
+          // the odds cells, the focus ring), never for a filled selected state.
           accent: '#4361ff',
+          // Text links. #4361ff as text on the navy measured 4.17:1, under AA
+          // at the 12-14px the links are set in; this is the focus-ring blue
+          // from index.css, 7.26:1.
+          link: '#7f95ff',
           star: '#e6e9ff',
           // Secondary text. The old star/50 measured 4.48:1 on the navy
           // background — a hair under AA at the 10–11px sizes it was used at.

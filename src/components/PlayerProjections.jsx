@@ -229,7 +229,7 @@ export default function PlayerProjections() {
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
   const chip = (active) =>
     `min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
-      active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+      active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
     }`
 
   const dataSource = demo
@@ -485,7 +485,7 @@ export default function PlayerProjections() {
                     <Fragment key={p.id}>
                       <tr
                         className={`cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04] ${
-                          open ? 'bg-white/[0.04]' : top ? 'bg-ucl-accent/[0.07]' : ''
+                          open ? 'bg-white/[0.04]' : ''
                         }`}
                         onClick={() => setOpenId(open ? null : p.id)}
                       >
@@ -500,7 +500,7 @@ export default function PlayerProjections() {
                                 toggleStar(p.id)
                               }}
                               className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
-                                isStarred ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
+                                isStarred ? 'text-ucl-brass' : 'text-ucl-star/25 hover:text-ucl-star/60'
                               }`}
                             >
                               <Star size={15} aria-hidden="true" fill={isStarred ? 'currentColor' : 'none'} />
@@ -527,7 +527,7 @@ export default function PlayerProjections() {
                                 aria-hidden="true"
                                 className={`rounded-[5px] border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
                                   inCompare
-                                    ? 'border-ucl-accent bg-ucl-accent text-white'
+                                    ? 'border-ucl-select bg-ucl-select text-ucl-selectInk'
                                     : 'border-ucl-star/30 text-ucl-star/55'
                                 }`}
                               >
@@ -624,7 +624,7 @@ export default function PlayerProjections() {
             // Follows the list while scrolling: pick players anywhere in it,
             // then open them side by side from here.
             <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
-              <div className="flex items-center gap-1.5 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
+              <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
                 <span className="flex -space-x-1.5" aria-hidden="true">
                   {compared.map((p) => (
                     <span key={p.id} className="rounded-full bg-ucl-navy p-0.5">
@@ -639,7 +639,7 @@ export default function PlayerProjections() {
                   type="button"
                   disabled={compared.length < 2}
                   onClick={() => setCompareOpen(true)}
-                  className="min-h-[36px] rounded-full bg-ucl-accent px-3 text-xs font-semibold text-white disabled:bg-white/10 disabled:text-ucl-star/60"
+                  className="min-h-[36px] rounded-full bg-ucl-select text-ucl-selectInk px-3 text-xs font-semibold disabled:bg-white/10 disabled:text-ucl-star/60"
                 >
                   {compared.length < 2 ? 'Pick 1 more' : 'Compare'}
                 </button>
@@ -673,11 +673,11 @@ export function ScoreBar({ value, highlight = false }) {
   return (
     <div
       className={`relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28 ${
-        highlight ? 'shadow-[0_0_10px_-2px_rgba(67,97,255,0.7)] ring-1 ring-ucl-accent/70' : ''
+        highlight ? 'ring-1 ring-white/50' : ''
       }`}
     >
       <div
-        className={`absolute inset-y-0 left-0 rounded-md ${highlight ? 'bg-ucl-accent/80' : 'bg-ucl-accent/60'}`}
+        className={`absolute inset-y-0 left-0 rounded-md ${highlight ? 'bg-white/30' : 'bg-white/20'}`}
         style={{ width: `${pct}%` }}
       />
       <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
@@ -703,7 +703,7 @@ export function PriceSlider({ bounds, value, onChange }) {
           onChange(v >= bounds.max ? null : v)
         }}
         aria-valuetext={value == null ? 'Any price' : `€${current.toFixed(1)}m`}
-        className="h-10 min-w-0 flex-1 accent-ucl-accent"
+        className="h-10 min-w-0 flex-1 accent-ucl-select"
       />
       <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">
         {value == null ? 'Any' : `€${current.toFixed(1)}m`}
@@ -805,7 +805,7 @@ function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, lea
                 e.stopPropagation()
                 onOpenOdds()
               }}
-              className="ml-1 min-h-[32px] rounded-md px-2 text-xs font-semibold text-ucl-accent hover:bg-white/10"
+              className="ml-1 min-h-[32px] rounded-md px-2 text-xs font-semibold text-ucl-link hover:bg-white/10"
             >
               Odds →
             </button>

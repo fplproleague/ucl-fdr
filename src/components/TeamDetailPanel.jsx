@@ -125,7 +125,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
             aria-pressed={team.pinned}
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 ${
-              team.pinned ? 'text-ucl-accent' : 'text-ucl-muted hover:text-ucl-star'
+              team.pinned ? 'text-ucl-brass' : 'text-ucl-muted hover:text-ucl-star'
             }`}
           >
             <Star size={20} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
@@ -313,7 +313,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           <button
             type="button"
             onClick={onCompare}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-ucl-accent text-sm font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-ucl-select text-ucl-selectInk text-sm font-bold transition hover:bg-white/90 active:scale-[0.99]"
           >
             <Scale size={16} aria-hidden="true" />
             Compare {team.shortName ?? team.name}

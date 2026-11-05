@@ -71,7 +71,7 @@ export default function TeamStrengthSettings() {
             aria-selected={subTab === t.id}
             onClick={() => setSubTab(t.id)}
             className={`min-h-[36px] flex-1 rounded-full text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
-              subTab === t.id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+              subTab === t.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
             }`}
           >
             {t.label}
@@ -122,7 +122,7 @@ export default function TeamStrengthSettings() {
                       <button
                         type="button"
                         onClick={() => resetTeam(team.id)}
-                        className="font-semibold text-ucl-accent transition hover:underline"
+                        className="font-semibold text-ucl-link transition hover:underline"
                       >
                         was {team.baseRating} · reset
                       </button>
@@ -138,7 +138,7 @@ export default function TeamStrengthSettings() {
                         <button
                           type="button"
                           onClick={() => showTeam(team.id)}
-                          className="font-semibold text-ucl-accent transition hover:underline"
+                          className="font-semibold text-ucl-link transition hover:underline"
                         >
                           show
                         </button>
@@ -181,7 +181,7 @@ export default function TeamStrengthSettings() {
                         aria-label={`${team.name}: ${level === 0 ? 'no away difficulty adjustment' : `+${level} away difficulty`}`}
                         onClick={() => setAwayDifficulty(team.id, level)}
                         className={`flex h-8 w-9 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90 ${
-                          active ? 'bg-ucl-accent text-white' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
+                          active ? 'bg-ucl-select text-ucl-selectInk' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
                         }`}
                       >
                         {level === 0 ? '0' : `+${level}`}
@@ -205,7 +205,7 @@ function OddsHint({ rating, implied }) {
   const far = gap !== 0
   return (
     <span
-      className={`w-full ${far ? 'font-semibold text-ucl-accent' : 'text-ucl-muted'}`}
+      className={`w-full ${far ? 'font-semibold text-ucl-link' : 'text-ucl-muted'}`}
       title={`From ${implied.matches} priced match${implied.matches === 1 ? '' : 'es'}`}
     >
       Odds ≈ {implied.rating}

@@ -202,7 +202,7 @@ export default function FixtureGrid({
                                 aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
                                 aria-pressed={team.pinned}
                                 className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
-                                  team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                                  team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
                                 }`}
                               >
                                 <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />

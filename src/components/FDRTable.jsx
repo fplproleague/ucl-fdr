@@ -56,7 +56,7 @@ export default function FDRTable() {
                   onClick={() => setSortBy(opt.id)}
                   aria-pressed={sortBy === opt.id}
                   className={`min-h-[36px] rounded-full px-3 transition ${
-                    sortBy === opt.id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                    sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                   }`}
                 >
                   {opt.label}
@@ -82,7 +82,7 @@ export default function FDRTable() {
               aria-selected={viewMode === opt.id}
               onClick={() => setViewMode(opt.id)}
               className={`min-h-[36px] flex-1 rounded-full px-3 transition ${
-                viewMode === opt.id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                viewMode === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
               }`}
             >
               {opt.label}
@@ -97,7 +97,7 @@ export default function FDRTable() {
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
@@ -110,7 +110,7 @@ export default function FDRTable() {
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
@@ -124,7 +124,7 @@ export default function FDRTable() {
           <button
             type="button"
             onClick={() => setMyTeamsOnly(false)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show all teams
           </button>

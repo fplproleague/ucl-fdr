@@ -99,7 +99,7 @@ export default function BestFixtureRuns() {
                 aria-pressed={rankBy === id}
                 title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
                 className={`min-h-[36px] rounded-full px-3 transition ${
-                  rankBy === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                  rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >
                 {label}
@@ -117,7 +117,7 @@ export default function BestFixtureRuns() {
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
@@ -150,7 +150,7 @@ export default function BestFixtureRuns() {
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
@@ -164,7 +164,7 @@ export default function BestFixtureRuns() {
           <button
             type="button"
             onClick={() => setMyTeamsOnly(false)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show all teams
           </button>
@@ -178,7 +178,11 @@ export default function BestFixtureRuns() {
               className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card transition hover:bg-white/[0.06]"
             >
               <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ucl-accent/20 text-sm font-extrabold text-ucl-accent">
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${
+                    idx === 0 ? 'bg-ucl-brass text-ucl-navy' : 'bg-white/[0.06] text-ucl-muted'
+                  }`}
+                >
                   {idx + 1}
                 </span>
                 <TeamBadge abbr={row.team.abbr} size={30} />
@@ -216,7 +220,7 @@ export default function BestFixtureRuns() {
                   aria-label={row.team.pinned ? `Unpin ${row.team.name} from My teams` : `Pin ${row.team.name} to My teams`}
                   aria-pressed={row.team.pinned}
                   className={`shrink-0 rounded p-1 transition hover:bg-white/10 ${
-                    row.team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                    row.team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
                   }`}
                 >
                   <Star size={16} aria-hidden="true" fill={row.team.pinned ? 'currentColor' : 'none'} />
