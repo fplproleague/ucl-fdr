@@ -65,8 +65,8 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   const easyCount = cellBands.filter((b) => b != null && b <= 2).length
   const hardCount = cellBands.filter((b) => b != null && b >= 4).length
 
-  const { best, worst } = useMemo(() => {
-    if (!team) return { best: null, worst: null }
+  const { best, worst, length: runLength } = useMemo(() => {
+    if (!team) return { best: null, worst: null, length: 0 }
     const remaining = (FIXTURES[abbr] ?? []).filter((f) => f.gw >= floor)
     return findBestWorstRuns(remaining, teamsByAbbr, venueAdjust)
   }, [abbr, team, teamsByAbbr, venueAdjust, floor])
@@ -246,18 +246,20 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
             </button>
           </div>
 
+          {/* Only when there are two different runs to show: see
+              findBestWorstRuns. Each says which matchdays it covers. */}
+          {best && worst && (
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Best run', run: best },
-              { label: 'Worst run', run: worst },
+              { label: `Best ${runLength} matchdays`, run: best },
+              { label: `Worst ${runLength} matchdays`, run: worst },
             ].map(({ label, run }) => {
-              if (!run) return null
               const runBand = ratingColor(difficultyBand(run.avg))
               return (
                 <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
                   <p className="section-label">{label}</p>
                   <p className="mt-1 text-sm font-semibold text-ucl-star">
-                    MD{run.fromMd}–MD{run.toMd}
+                    {mdRange(run.fromMd, run.toMd)}
                   </p>
                   <span
                     className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-extrabold"
@@ -269,6 +271,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
               )
             })}
           </div>
+          )}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ucl-star/80">
             <span>
