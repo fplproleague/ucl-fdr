@@ -541,7 +541,7 @@ export default function OddsView() {
                 className="ml-3 mr-1 inline-block h-3 w-4 rounded-sm border border-dashed border-ucl-star/40 bg-ucl-accent/40 align-middle"
                 aria-hidden="true"
               />
-              Estimate, until bookmakers price the match (about a week before).
+              Estimate, until bookmakers price the match (about three weeks before).
             </p>
             <p>
               Estimates come from {estimator.usesElo ? 'Elo club ratings (clubelo.com) and ' : ''}

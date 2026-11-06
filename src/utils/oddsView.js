@@ -107,6 +107,10 @@ export function fitEstimator(odds) {
     if (!(m.xg?.[0] > 0 && m.xg?.[1] > 0)) continue
     obs.push({ team: m.home, opp: m.away, v: 1, y: Math.log(m.xg[0]), e: eloGap(m.home, m.away) })
     obs.push({ team: m.away, opp: m.home, v: -1, y: Math.log(m.xg[1]), e: eloGap(m.away, m.home) })
+    // The lift is read from matches whose clean sheets the bookmakers
+    // priced directly; a 'result' match's clean sheet is Poisson × CS_LIFT
+    // already and would only echo it.
+    if (m.source === 'result') continue
     if (m.cs?.[0] > 0) lifts.push(m.cs[0] / Math.exp(-m.xg[1]))
     if (m.cs?.[1] > 0) lifts.push(m.cs[1] / Math.exp(-m.xg[0]))
   }

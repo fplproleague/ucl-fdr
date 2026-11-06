@@ -2,8 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   BET,
+  CS_LIFT,
   devig,
+  DRAW_EXCESS,
   fitFromResult,
+  fromTheOddsApi,
   lambdaFromOver,
   PLAYER_MARGIN,
   playerOdds,
@@ -77,9 +80,34 @@ test('fitting goals from 1X2 recovers the means that made it', () => {
       if (i > j) win += p
       else if (i === j) draw += p
     }
-  const [h, a] = fitFromResult([win, draw, 1 - win - draw], poissonOver(2.5, 2.5))
+  const [h, a] = fitFromResult([win, draw, 1 - win - draw], poissonOver(2.5, 2.5), 0)
   near(h, 1.6, 0.05, 'home')
   near(a, 0.9, 0.05, 'away')
+  // Bookmakers put the draw DRAW_EXCESS above Poisson: the fit takes it off.
+  const r = (1 - draw - DRAW_EXCESS) / (1 - draw)
+  const [h2, a2] = fitFromResult([win * r, draw + DRAW_EXCESS, (1 - win - draw) * r], null)
+  near(h2, 1.6, 0.05, 'home, 1X2 only')
+  near(a2, 0.9, 0.05, 'away, 1X2 only')
+})
+
+test('1X2 alone gives the goals the team-total markets give (MD4)', async () => {
+  // Without the draw correction the total came out ~0.45 goals short.
+  const { ODDS } = await import('../src/data/odds.js')
+  const ms = Object.values(ODDS.matches).filter((m) => m.source === 'totals' && m.win)
+  assert.ok(ms.length >= 10)
+  let priced = 0
+  let fitted = 0
+  for (const m of ms) {
+    const [h, a] = fitFromResult(m.win, null)
+    priced += m.xg[0] + m.xg[1]
+    fitted += h + a
+  }
+  near(fitted / ms.length, priced / ms.length, 0.15, 'mean total')
+})
+
+test('a 90% favourite is not cut off at 4.5 goals', () => {
+  const [h, a] = fitFromResult([0.04, 0.07, 0.89], null)
+  assert.ok(a > h + 2.5, `${h} ${a}`)
 })
 
 test('team numbers from a real match: underdog at home to Real Madrid', () => {
@@ -99,7 +127,31 @@ test('team numbers fall back to 1X2 + over/under without team totals', () => {
   const t = teamNumbers({ bookmakers: [plain] })
   assert.equal(t.source, 'result')
   assert.ok(t.xg[1] > t.xg[0] + 1, `${t.xg}`)
-  near(t.cs[1], Math.exp(-t.xg[0]), 0.011, 'CS from Poisson')
+  near(t.cs[1], Math.exp(-t.xg[0]) * CS_LIFT, 0.011, 'CS from Poisson, lifted')
+})
+
+test('The Odds API events read like API-Football entries', () => {
+  const event = {
+    home_team: 'Atlético Madrid',
+    away_team: 'Viking FK',
+    bookmakers: [
+      {
+        title: 'Pinnacle',
+        last_update: '2026-11-06T08:00:00Z',
+        markets: [
+          { key: 'h2h', outcomes: [{ name: 'Atlético Madrid', price: 1.14 }, { name: 'Viking FK', price: 21 }, { name: 'Draw', price: 9.5 }] },
+          { key: 'totals', outcomes: [{ name: 'Over', price: 1.36, point: 2.5 }, { name: 'Under', price: 3.2, point: 2.5 }] },
+        ],
+      },
+    ],
+  }
+  const entry = fromTheOddsApi(event)
+  assert.equal(entry.update, '2026-11-06T08:00:00Z')
+  const t = teamNumbers(entry)
+  assert.equal(t.source, 'result')
+  near(t.win[0], 0.851, 0.005, 'home win')
+  assert.ok(t.xg[0] > 2.8 && t.xg[1] < 1, `${t.xg}`)
+  assert.ok(t.cs[0] > 0.45 && t.cs[0] <= 0.9, `${t.cs}`)
 })
 
 test('the median over bookmakers ignores one odd price', () => {
