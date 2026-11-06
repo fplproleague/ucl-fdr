@@ -10,9 +10,8 @@ export const TOTAL_MATCHDAYS = 8
 
 // Bumped whenever the fixture data changes, so the UI can show visitors how
 // fresh the numbers are without anyone hand-editing a date string in a
-// component. Also stamped onto public/sitemap.xml's <lastmod> at build time
-// (see the stampSitemapLastmod plugin in vite.config.js) — that's automatic,
-// nothing else to update here.
+// component. The sitemap no longer reads it: its <lastmod> is the build
+// date (see sitemapAndMatchdayPages in vite.config.js).
 export const DATA_UPDATED = '2026-09-05'
 
 export const FIXTURES = {

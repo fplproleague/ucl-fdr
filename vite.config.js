@@ -1,33 +1,42 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { buildSitemap, stampNextMatchday } from './scripts/seo.mjs'
+import { writeMatchdayPages } from './scripts/build-md-pages.mjs'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-// Keeps public/sitemap.xml's <lastmod> from drifting: it's derived from
-// DATA_UPDATED (src/data/fixtures.js) at build time instead of being a second
-// date someone has to remember to bump by hand alongside the fixture data.
-function stampSitemapLastmod() {
+// Stamps the upcoming matchday ("Next up: MD5, 24–25 Nov 2026") into
+// index.html's meta description and <noscript> at build time, from
+// src/data/matchdays.js, so the static HTML a crawler reads is never a
+// matchday behind. The <title> is deliberately left stable.
+function stampNextMatchdayHtml() {
+  return {
+    name: 'stamp-next-matchday',
+    transformIndexHtml(html) {
+      return stampNextMatchday(html, new Date())
+    },
+  }
+}
+
+// Writes dist/sitemap.xml (the home page plus the eight matchday pages,
+// lastmod = build date) and the static matchday pages themselves
+// (dist/md/<n>/index.html, see scripts/build-md-pages.mjs). Generated, not
+// hand-kept, so nobody has to remember to bump a date.
+function sitemapAndMatchdayPages() {
   let outDir = 'dist'
   return {
-    name: 'stamp-sitemap-lastmod',
+    name: 'sitemap-and-matchday-pages',
     apply: 'build',
     configResolved(config) {
-      outDir = config.build.outDir
+      outDir = resolve(__dirname, config.build.outDir)
     },
     closeBundle() {
-      const fixturesSrc = readFileSync(resolve(__dirname, 'src/data/fixtures.js'), 'utf-8')
-      const match = fixturesSrc.match(/DATA_UPDATED\s*=\s*['"]([^'"]+)['"]/)
-      if (!match) return
-
-      const sitemapPath = resolve(__dirname, outDir, 'sitemap.xml')
-      if (!existsSync(sitemapPath)) return
-
-      const sitemap = readFileSync(sitemapPath, 'utf-8')
-      const stamped = sitemap.replace(/<lastmod>[^<]*<\/lastmod>/, `<lastmod>${match[1]}</lastmod>`)
-      writeFileSync(sitemapPath, stamped)
+      const now = new Date()
+      writeMatchdayPages(outDir, { today: now })
+      writeFileSync(resolve(outDir, 'sitemap.xml'), buildSitemap(now))
     },
   }
 }
@@ -65,7 +74,7 @@ function oddsRatings() {
 }
 
 export default defineConfig({
-  plugins: [react(), stampSitemapLastmod(), oddsRatings()],
+  plugins: [react(), stampNextMatchdayHtml(), sitemapAndMatchdayPages(), oddsRatings()],
   build: {
     // Most club badges are under Vite's 4 KB inline threshold, so they were
     // being base64'd into the main bundle — 33% bigger than the binary and

@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#040818" />
 
-    <title>UCL FDR — Champions League Fixture Difficulty, MD1–MD8</title>
+    <!-- Stable on purpose: no matchday number, so the title Google shows doesn't churn every fortnight.
+         The upcoming matchday goes in the description and <noscript> instead: their placeholders are
+         filled in at build time by stampNextMatchdayHtml in vite.config.js. -->
+    <title>UCL FDR &amp; Fixture Ticker – Champions League Fixture Difficulty</title>
     <meta
       name="description"
-      content="Fixture difficulty for all 36 Champions League teams across the full 2026/27 league phase. Adjust every team's strength yourself, spot the best fixture runs, and compare any five sides side by side. Free UCL Fantasy planning tool."
+      content="UCL Fantasy fixture ticker and Champions League fixture difficulty for all 36 teams, MD1–MD8: best fixture runs and teams' fixtures side by side.__NEXT_UP__"
     />
     <link rel="canonical" href="https://ucl-fdr.vercel.app/" />
 
@@ -17,10 +20,10 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="UCL FDR" />
     <meta property="og:url" content="https://ucl-fdr.vercel.app/" />
-    <meta property="og:title" content="UCL FDR — Every Champions League fixture, ranked" />
+    <meta property="og:title" content="UCL FDR &amp; Fixture Ticker — every Champions League fixture, rated" />
     <meta
       property="og:description"
-      content="All 36 teams, MD1–MD8, difficulty you control. Best fixture runs, team comparison and custom strength ratings for UCL Fantasy."
+      content="Fixture difficulty for all 36 Champions League teams, MD1–MD8: a fixture ticker, the best fixture runs and teams' fixtures side by side. Free for UCL Fantasy."
     />
     <meta property="og:image" content="https://ucl-fdr.vercel.app/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -31,10 +34,10 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@fpl_proleague" />
     <meta name="twitter:creator" content="@fpl_proleague" />
-    <meta name="twitter:title" content="UCL FDR — Every Champions League fixture, ranked" />
+    <meta name="twitter:title" content="UCL FDR &amp; Fixture Ticker — every Champions League fixture, rated" />
     <meta
       name="twitter:description"
-      content="All 36 teams, MD1–MD8, difficulty you control. Free UCL Fantasy fixture planner."
+      content="Fixture ticker and fixture difficulty for all 36 UCL teams, MD1–MD8. Best fixture runs and side-by-side comparison. Free UCL Fantasy planner."
     />
     <meta name="twitter:image" content="https://ucl-fdr.vercel.app/og-image.jpg" />
 
@@ -51,7 +54,7 @@
         "url": "https://ucl-fdr.vercel.app/",
         "applicationCategory": "SportsApplication",
         "operatingSystem": "Any",
-        "description": "Fixture difficulty ratings for all 36 UEFA Champions League league-phase teams, MD1-MD8, with user-adjustable team strength.",
+        "description": "Champions League fixture difficulty ratings and fixture ticker for all 36 UEFA Champions League league-phase teams, MD1–MD8: the best fixture runs, teams' fixtures compared side by side, and team strength you can adjust. Built for UCL Fantasy.",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
       }
     </script>
@@ -59,14 +62,20 @@
   <body>
     <div id="root"></div>
     <noscript>
-      <h1>UCL FDR — Champions League Fixture Difficulty</h1>
+      <h1>UCL FDR &amp; Fixture Ticker — Champions League Fixture Difficulty</h1>
       <p>
-        Fixture difficulty ratings for all 36 teams in the 2026/27 UEFA Champions League league phase, matchday 1 to
-        matchday 8. Set your own 1–5 strength rating for every team, find the best fixture runs, and compare up to five
-        sides side by side. Built for UCL Fantasy managers by
+        A fixture ticker and fixture difficulty ratings for all 36 teams in the 2026/27 UEFA Champions League league
+        phase, matchday 1 to matchday 8 (MD1–MD8). Set your own 1–5 strength rating for every team, find the best
+        fixture runs, and compare teams' fixtures side by side. Built for UCL Fantasy managers by
         <a href="https://x.com/fpl_proleague">@fpl_proleague</a>.
       </p>
-      <p>This tool needs JavaScript enabled.</p>
+      <!--next-up-->
+      <p>
+        Matchday pages: <a href="/md/1/">MD1</a> · <a href="/md/2/">MD2</a> · <a href="/md/3/">MD3</a> ·
+        <a href="/md/4/">MD4</a> · <a href="/md/5/">MD5</a> · <a href="/md/6/">MD6</a> · <a href="/md/7/">MD7</a> ·
+        <a href="/md/8/">MD8</a>
+      </p>
+      <p>The interactive fixture ticker needs JavaScript enabled.</p>
     </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>

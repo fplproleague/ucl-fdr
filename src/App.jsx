@@ -1,11 +1,13 @@
 import { SlidersHorizontal, Calendar, TrendingUp, Repeat, Users, Percent } from 'lucide-react'
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import Footer from './components/Footer.jsx'
 import BrandMark from './components/BrandMark.jsx'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
+import { keepUtmParams } from './utils/utm.js'
 
 // The FDR table is the landing view and ships in the first chunk. The other
 // five load when they are first opened (or straight away when a link lands
@@ -111,11 +113,13 @@ function Shell() {
                 old one was clipped at every width tested. This one is short
                 enough to fit beside the full nav, so it isn't truncated: it is
                 left out at 640-767px, where the nav leaves it no room, and
-                once the page scrolls. */}
+                once the page scrolls. It says "fixture ticker" because that is
+                what people search for ("ucl fixture ticker") and the word
+                wasn't anywhere on the page. */}
             <p
               className={`whitespace-nowrap text-meta text-ucl-muted sm:hidden md:block ${scrolled ? '!hidden' : ''}`}
             >
-              Every Champions League fixture, ranked.
+              The Champions League fixture ticker, ranked.
             </p>
           </div>
 
@@ -209,10 +213,18 @@ function ViewLoading() {
 // the view in the hash — so every tab (and the Odds tab's Teams/Players
 // view) is reported as a page of its own: /table, /odds/players, … A
 // pageview goes out whenever that changes, never for a filter or a search.
+//
+// Because each pageview reports that virtual path instead of the real URL,
+// the visit's utm_* parameters (?utm_source=x on a shared link) are copied
+// onto every event, so the UTM report still sees them.
+function withUtm(event) {
+  return { ...event, url: keepUtmParams(event.url, window.location.search, window.location.origin) }
+}
+
 function TrackedAnalytics() {
   const { tab, oddsView } = useTeams()
   const page = tab === 'odds' ? `/odds/${oddsView}` : `/${tab}`
-  return <Analytics route={page} path={page} />
+  return <Analytics route={page} path={page} beforeSend={withUtm} />
 }
 
 export default function App() {
@@ -220,6 +232,8 @@ export default function App() {
     <TeamsProvider>
       <Shell />
       <TrackedAnalytics />
+      {/* Core Web Vitals from real visits (Vercel Speed Insights). */}
+      <SpeedInsights />
     </TeamsProvider>
   )
 }

@@ -85,7 +85,7 @@ export default function FDRTable() {
               }, easiest run first.`
             : myTeamsOnly && shownTeams.length === 0
               ? `My teams, ${mdRange(from, to)}: nothing to show yet.`
-              : `${shownTeams.length} of 36 teams, ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}. Tap a row to see that team, or to drop it.`
+              : `Fixture ticker for ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${shownTeams.length} of 36 teams. Tap a row to see or drop a team.`
         }
         action={
           !inCompare &&
