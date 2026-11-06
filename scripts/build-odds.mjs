@@ -1,4 +1,5 @@
-// Regenerates src/data/odds.js from API-Football's betting odds: for every
+// Regenerates src/data/odds.js from API-Football's betting odds (and, for
+// matches API-Football hasn't priced yet, The Odds API's): for every
 // UCL match that bookmakers have priced, each team's expected goals,
 // clean-sheet chance and win/draw/loss chances, and the prices of the sheet
 // players the bookmakers price (anytime scorer, score or assist) (see src/utils/odds.js for the
@@ -12,13 +13,24 @@
 //   … --refresh   also re-save matches that have kicked off (the API keeps
 //                 their pre-match odds for about a week)
 //
-// Bookmakers price a match from about two weeks before it, and API-Football
-// drops the odds about a week after it. So the file is an archive: every
+// Bookmakers price a match's 1X2 and over/under from about three weeks
+// before it (team totals, clean sheets and players come later), and
+// API-Football drops the odds about a week after it. So the file is an archive: every
 // run adds or updates the matches priced right now and keeps the rest, and
 // a match that has kicked off keeps the last odds saved before kick-off
 // (its closing odds). Run it at least once in the days before every
 // matchday — and again on the day itself, when the player markets are
-// fullest.
+// fullest. .github/workflows/odds.yml runs it every morning on GitHub.
+//
+// Second source (optional): The Odds API (the-odds-api.com, free tier 500
+// credits a month; one run costs 4). Key in ODDS_API_KEY, odds-api-key.local
+// in the repo folder or ~/.ucl-fdr/odds-api-key. Used only for matches
+// API-Football has no odds for this run, so a match is priced as soon as any
+// bookmaker lists it; API-Football's richer markets take over once it has them.
+//
+// Every match saved for the first time also keeps `est`: what the Odds tab
+// estimated for it just before the odds came in, so
+// scripts/odds-backtest.mjs can tell how close the estimates get.
 //
 // Cost: one request for the fixture list plus one per 10 priced matches
 // (two or three a matchday).
@@ -36,7 +48,8 @@ import { fileURLToPath } from 'node:url'
 import { buildClubLookup } from '../src/utils/parseGoalkeepersCsv.js'
 import { parsePlayerRows } from '../src/utils/parsePlayersCsv.js'
 import { matchApiTeam, matchSquadPlayer, uclMatchday } from '../src/utils/domesticForm.js'
-import { playerOdds, playerRates, teamNumbers } from '../src/utils/odds.js'
+import { fromTheOddsApi, playerOdds, playerRates, teamNumbers } from '../src/utils/odds.js'
+import { fitEstimator } from '../src/utils/oddsView.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(__dirname, '../src/data/odds.js')
@@ -99,6 +112,11 @@ const keyFiles = process.env.API_FOOTBALL_KEY_FILE
   : [path.join(__dirname, '../api-football-key.local'), path.join(os.homedir(), '.ucl-fdr', 'api-football-key')]
 const keyFile = keyFiles.find((f) => existsSync(f))
 const key = process.env.API_FOOTBALL_KEY || (keyFile ? readFileSync(keyFile, 'utf8').trim() : '')
+const oddsApiKeyFiles = [path.join(__dirname, '../odds-api-key.local'), path.join(os.homedir(), '.ucl-fdr', 'odds-api-key')]
+const oddsApiKeyFile = oddsApiKeyFiles.find((f) => existsSync(f))
+const oddsApiKey = process.env.ODDS_API_KEY || (oddsApiKeyFile ? readFileSync(oddsApiKeyFile, 'utf8').trim() : '')
+const ODDS_API_SPORT = process.env.ODDS_API_SPORT ?? 'soccer_uefa_champs_league'
+const ODDS_API_BASE = process.env.ODDS_API_BASE ?? 'https://api.the-odds-api.com'
 const now = new Date()
 const refresh = process.argv.includes('--refresh')
 const season = Number(
@@ -259,8 +277,46 @@ async function fetchElo() {
   return Object.keys(teams).length ? { date, source, teams } : null
 }
 
+// The Odds API's UCL events with 1X2 and totals (one request, 4 credits),
+// or [] without a key or when it fails: it's the second source, never a
+// reason for the run to fail.
+async function theOddsApiEvents() {
+  if (!oddsApiKey) {
+    console.log('Odds: no ODDS_API_KEY, only API-Football (see the README for the second source)')
+    return []
+  }
+  const params = new URLSearchParams({ apiKey: oddsApiKey, regions: 'eu,uk', markets: 'h2h,totals', oddsFormat: 'decimal', dateFormat: 'iso' })
+  try {
+    const res = await fetch(`${ODDS_API_BASE}/v4/sports/${ODDS_API_SPORT}/odds?${params}`, { signal: AbortSignal.timeout(20000) })
+    if (!res.ok) {
+      console.log(`Odds: The Odds API HTTP ${res.status} (${(await res.text()).slice(0, 200)})`)
+      return []
+    }
+    const left = res.headers.get('x-requests-remaining')
+    const events = await res.json()
+    console.log(`Odds: The Odds API lists ${events.length} UCL matches` + (left != null ? ` (${left} credits left this month)` : ''))
+    return Array.isArray(events) ? events : []
+  } catch (err) {
+    console.log(`Odds: The Odds API not reached — ${err.cause?.code ?? err.message}`)
+    return []
+  }
+}
+
+// What the Odds tab showed for a match before it was priced: the estimate
+// fitted to the archive as it was, from the home side.
+const estimator = fitEstimator(SAVED)
+function estimateBefore(home, away) {
+  const h = estimator.estimate(home, away, 'H')
+  const a = estimator.estimate(away, home, 'A')
+  const r = (x) => Math.round(x * 100) / 100
+  return { xg: [r(h.xgFor), r(h.xgAgainst)], cs: [r(h.cs), r(a.cs)] }
+}
+// A match keeps the estimate from the first time it was saved.
+const estFor = (id, home, away) => SAVED?.matches?.[id]?.est ?? (SAVED?.matches?.[id] ? undefined : estimateBefore(home, away))
+
 async function run() {
   const players = await sheetPlayers()
+  const place = (name) => TEAM_NAME_OVERRIDES[name] ?? matchApiTeam(name, INITIAL_TEAMS)
 
   // Every UCL fixture this season (one request): id → teams, date, round.
   const fixtures = new Map(
@@ -287,7 +343,6 @@ async function run() {
     const id = String(entry.fixture?.id)
     const fixture = fixtures.get(entry.fixture?.id)
     if (!fixture) continue
-    const place = (name) => TEAM_NAME_OVERRIDES[name] ?? matchApiTeam(name, INITIAL_TEAMS)
     const home = place(fixture.teams.home.name)
     const away = place(fixture.teams.away.name)
     if (!home) unplacedTeams.add(fixture.teams.home.name)
@@ -338,6 +393,7 @@ async function run() {
     }
 
     const md = uclMatchday(fixture)
+    const est = estFor(id, home, away)
     matches[id] = {
       ...(md != null ? { md } : {}),
       round: fixture.league?.round ?? '',
@@ -347,9 +403,59 @@ async function run() {
       ...team,
       updated: entry.update ?? now.toISOString(),
       players: byPlayer,
+      ...(est ? { est } : {}),
     }
     added++
   }
+
+  // The second source, for what API-Football hasn't priced: placed on
+  // API-Football's fixture (same id, same matchday) by clubs and date.
+  const pricedNow = new Set(entries.map((e) => String(e.fixture?.id)))
+  const noFixture = []
+  let addedSecond = 0
+  for (const event of await theOddsApiEvents()) {
+    const home = place(event.home_team)
+    const away = place(event.away_team)
+    if (!home) unplacedTeams.add(event.home_team)
+    if (!away) unplacedTeams.add(event.away_team)
+    if (!home || !away) continue
+    const fixture = [...fixtures.values()].find(
+      (f) =>
+        place(f.teams.home.name) === home &&
+        place(f.teams.away.name) === away &&
+        Math.abs(Date.parse(f.fixture.date) - Date.parse(event.commence_time)) < 3 * 86400000,
+    )
+    if (!fixture) {
+      noFixture.push(`${home}-${away}`)
+      continue
+    }
+    const id = String(fixture.fixture.id)
+    if (pricedNow.has(id)) continue // API-Football has it, with more markets
+    const saved = matches[id]
+    if (saved && saved.provider !== 'the-odds-api' && saved.source === 'totals') continue // a richer save
+    const kickoff = fixture.fixture.date
+    if (saved && new Date(kickoff) <= now && !refresh) continue // closing odds kept
+    const entry = fromTheOddsApi(event)
+    const team = teamNumbers(entry)
+    if (!team) continue
+    const md = uclMatchday(fixture)
+    const est = estFor(id, home, away)
+    matches[id] = {
+      ...(md != null ? { md } : {}),
+      round: fixture.league?.round ?? '',
+      date: kickoff,
+      home,
+      away,
+      ...team,
+      provider: 'the-odds-api',
+      updated: entry.update ?? now.toISOString(),
+      players: saved?.players ?? {},
+      ...(est ? { est } : {}),
+    }
+    addedSecond++
+  }
+  if (addedSecond) console.log(`Odds: ${addedSecond} matches priced from The Odds API (1X2 + over/under, not yet on API-Football)`)
+  if (noFixture.length) console.log(`Odds: The Odds API matches without an API-Football fixture: ${noFixture.join(', ')}`)
 
   console.log(
     `Odds: ${entries.length} priced UCL fixtures, ${added} saved, ${kept} already kicked off (kept their closing odds), ` +
@@ -398,7 +504,8 @@ const sorted = Object.entries(matches).sort(([, a], [, b]) => a.date.localeCompa
 
 writeFileSync(
   OUT,
-  `// Betting-odds data per UCL match, from API-Football. Generated by
+  `// Betting-odds data per UCL match, from API-Football (and The Odds API for
+// matches it hasn't priced yet). Generated by
 // scripts/build-odds.mjs (see the README) — an archive: each run adds the
 // matches priced at the time and keeps the rest.
 //
@@ -408,8 +515,11 @@ writeFileSync(
 //   cs   [home, away] clean-sheet chance
 //   win  [home, draw, away] chances
 //   bookmakers, source ('totals': team-total markets; 'result': fitted
-//   from 1X2 + over/under), updated (the bookmakers' last update)
+//   from 1X2 + over/under), provider ('the-odds-api' when it came from the
+//   second source), updated (the bookmakers' last update)
 //   players  { sheet player id: [anytime-scorer odds, score-or-assist odds] }
+//   est  { xg, cs } what the Odds tab estimated before the odds came in
+//        (scripts/odds-backtest.mjs)
 //
 // elo: every club's Elo rating from clubelo.com on \`date\`, the objective
 // club strength unpriced matches are estimated from.

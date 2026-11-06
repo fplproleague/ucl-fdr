@@ -544,7 +544,7 @@ export default function OddsView() {
             ) : (
               <span aria-hidden="true" className="text-ucl-star/60">0.42</span>
             )}
-            {view === 'teams' ? 'Dashed' : 'Dimmed'}: estimate until bookmakers price the match (about a week before).
+            {view === 'teams' ? 'Dashed' : 'Dimmed'}: estimate until bookmakers price the match (about three weeks before).
           </span>
         </p>
       )}

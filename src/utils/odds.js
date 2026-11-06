@@ -97,27 +97,45 @@ export function lambdaFromLines(lines) {
   return weights ? sum / weights : null
 }
 
+// Bookmakers price a draw a little above what two independent Poisson means
+// give (low scores are correlated, which Poisson misses): on MD4's 18 matches
+// by 1.65 points on average. Fitting the raw 1X2 to Poisson then pushes the
+// total down to make more draws: without over/under that came out 0.45
+// goals short a match and the clean sheets ~5 points too high. So the draw
+// is fitted with this excess taken off (the win and loss scaled up to match).
+export const DRAW_EXCESS = 0.0165
+// Bookmakers' clean sheets sit about 10% above Poisson's chance of zero
+// (median over MD4's priced clean-sheet markets): used when a match has no
+// clean-sheet or team-total market to price it directly.
+export const CS_LIFT = 1.1
+export const MAX_CS = 0.9
+
 // Expected goals for home and away from the match odds alone (when there
 // are no team-total markets): the pair of Poisson means whose home/draw/
-// away and over/under 2.5 chances sit closest to the bookmakers'.
-export function fitFromResult([pHome, pDraw, pAway], pOver25) {
+// away (draw less DRAW_EXCESS) and over/under 2.5 chances sit closest to
+// the bookmakers'. Means up to 6, so a 90% favourite isn't cut off.
+const FIT_GRID = Array.from({ length: 296 }, (_, i) => Math.round((0.1 + i * 0.02) * 100) / 100)
+let fitPmfs = null
+export function fitFromResult([pHome, pDraw, pAway], pOver25, drawExcess = DRAW_EXCESS) {
+  const draw0 = Math.max(0.01, pDraw - drawExcess)
+  const scale = (1 - draw0) / (pHome + pAway)
+  const [tHome, tDraw, tAway] = [pHome * scale, draw0, pAway * scale]
+  fitPmfs ??= FIT_GRID.map((lambda) => Array.from({ length: 16 }, (_, k) => poissonPmf(lambda, k)))
   let best = null
-  const pmfs = (lambda) => Array.from({ length: 11 }, (_, k) => poissonPmf(lambda, k))
-  for (let h = 0.1; h <= 4.5; h += 0.02) {
-    const ph = pmfs(h)
-    for (let a = 0.1; a <= 4.5; a += 0.02) {
-      const pa = pmfs(a)
+  for (let x = 0; x < FIT_GRID.length; x++) {
+    const ph = fitPmfs[x]
+    for (let y = 0; y < FIT_GRID.length; y++) {
+      const pa = fitPmfs[y]
       let win = 0
       let draw = 0
-      for (let i = 0; i <= 10; i++)
-        for (let j = 0; j <= 10; j++) {
-          if (i > j) win += ph[i] * pa[j]
-          else if (i === j) draw += ph[i] * pa[j]
-        }
+      for (let i = 0; i <= 15; i++) {
+        draw += ph[i] * pa[i]
+        for (let j = 0; j < i; j++) win += ph[i] * pa[j]
+      }
       const loss = 1 - win - draw
-      let err = (win - pHome) ** 2 + (draw - pDraw) ** 2 + (loss - pAway) ** 2
-      if (pOver25 != null) err += (poissonOver(h + a, 2.5) - pOver25) ** 2
-      if (!best || err < best.err) best = { err, home: h, away: a }
+      let err = (win - tHome) ** 2 + (draw - tDraw) ** 2 + (loss - tAway) ** 2
+      if (pOver25 != null) err += (poissonOver(FIT_GRID[x] + FIT_GRID[y], 2.5) - pOver25) ** 2
+      if (!best || err < best.err) best = { err, home: FIT_GRID[x], away: FIT_GRID[y] }
     }
   }
   return [best.home, best.away]
@@ -160,7 +178,7 @@ export function teamNumbers(entry) {
 
   // A clean sheet is the other side scoring nothing: priced directly by the
   // Clean Sheet markets and by the other side's Under 0.5; without either,
-  // Poisson's chance of zero.
+  // Poisson's chance of zero, lifted the way bookmakers lift it (CS_LIFT).
   const cs = [
     [BET.cleanSheetHome, BET.totalAway, xg[1]],
     [BET.cleanSheetAway, BET.totalHome, xg[0]],
@@ -173,7 +191,7 @@ export function teamNumbers(entry) {
       if (zero) out.push(1 - zero.pOver)
       return out
     })
-    return median(direct) ?? Math.exp(-oppXg)
+    return median(direct) ?? Math.min(MAX_CS, Math.exp(-oppXg) * CS_LIFT)
   })
 
   return {
@@ -232,4 +250,39 @@ export function playerOdds(entry) {
     out[v.value] = { side: sideOf.get(v.value) ?? null, odds: [price(v.odd), assistOdd.get(v.value) ?? null] }
   }
   return out
+}
+
+// One event from The Odds API (the second source, for matches API-Football
+// hasn't priced yet: it lists UCL 1X2 and totals about three weeks ahead) →
+// an entry in API-Football's shape, so teamNumbers reads it unchanged:
+// h2h becomes Match Winner, totals becomes Goals Over/Under.
+//   event: { home_team, away_team, bookmakers: [{ title, last_update,
+//            markets: [{ key: 'h2h'|'totals', outcomes: [{ name, price, point }] }] }] }
+export function fromTheOddsApi(event) {
+  const bookmakers = (event?.bookmakers ?? []).map((b) => {
+    const bets = []
+    for (const market of b.markets ?? []) {
+      if (market.key === 'h2h') {
+        const odd = (name) => market.outcomes?.find((o) => o.name === name)?.price
+        bets.push({
+          id: BET.matchWinner,
+          values: [
+            { value: 'Home', odd: odd(event.home_team) },
+            { value: 'Draw', odd: odd('Draw') },
+            { value: 'Away', odd: odd(event.away_team) },
+          ],
+        })
+      } else if (market.key === 'totals') {
+        bets.push({
+          id: BET.goalsOverUnder,
+          values: (market.outcomes ?? [])
+            .filter((o) => /^(over|under)$/i.test(o.name) && o.point != null)
+            .map((o) => ({ value: `${o.name[0].toUpperCase()}${o.name.slice(1).toLowerCase()} ${o.point}`, odd: o.price })),
+        })
+      }
+    }
+    return { name: b.title, bets }
+  })
+  const update = (event?.bookmakers ?? []).map((b) => b.last_update).filter(Boolean).sort().pop()
+  return { bookmakers, update }
 }

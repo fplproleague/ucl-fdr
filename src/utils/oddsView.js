@@ -29,6 +29,12 @@ export const SHRINK_WITHOUT_ELO = 3
 // (one Elo point is worth about as much in goals as it is in results).
 export const DEFAULT_FIT = { base: Math.log(1.45), home: 0.12, elo: 0.17 }
 const MIN_FIT_MATCHES = 6
+// No estimate above what the bookmakers have priced (plus 5%, and at least
+// 4 goals): past that the attack and defence terms only add up, and a
+// straight line through log-goals runs away (Arsenal–Sabah came out at
+// 4.9 while the most any priced match had was 4.1).
+export const XG_CAP_FLOOR = 4
+export const XG_CAP_MARGIN = 1.05
 const RIDGE_ROUNDS = 30
 
 // Every priced match, by "md:team" for both sides.
@@ -107,6 +113,10 @@ export function fitEstimator(odds) {
     if (!(m.xg?.[0] > 0 && m.xg?.[1] > 0)) continue
     obs.push({ team: m.home, opp: m.away, v: 1, y: Math.log(m.xg[0]), e: eloGap(m.home, m.away) })
     obs.push({ team: m.away, opp: m.home, v: -1, y: Math.log(m.xg[1]), e: eloGap(m.away, m.home) })
+    // The lift is read from matches whose clean sheets the bookmakers
+    // priced directly; a 'result' match's clean sheet is Poisson × CS_LIFT
+    // already and would only echo it.
+    if (m.source === 'result') continue
     if (m.cs?.[0] > 0) lifts.push(m.cs[0] / Math.exp(-m.xg[1]))
     if (m.cs?.[1] > 0) lifts.push(m.cs[1] / Math.exp(-m.xg[0]))
   }
@@ -153,7 +163,9 @@ export function fitEstimator(odds) {
   }
   const csLift = Math.min(1.3, Math.max(1, median(lifts) ?? 1.05))
 
-  const expectedGoals = (team, opp, v) => Math.exp(baseLog(team, opp, v) + (attack[team] ?? 0) + (defence[opp] ?? 0))
+  const xgCap = Math.max(XG_CAP_FLOOR, XG_CAP_MARGIN * Math.max(0, ...obs.map((o) => Math.exp(o.y))))
+  const expectedGoals = (team, opp, v) =>
+    Math.min(xgCap, Math.exp(baseLog(team, opp, v) + (attack[team] ?? 0) + (defence[opp] ?? 0)))
   const meanElo = (() => {
     const xs = Object.values(odds?.elo?.teams ?? {}).filter(Number.isFinite)
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null
@@ -163,6 +175,7 @@ export function fitEstimator(odds) {
     fit,
     csLift,
     matches: obs.length / 2,
+    xgCap,
     usesElo: fit.elo > 0 && Object.keys(odds?.elo?.teams ?? {}).length > 0,
     // One fixture from `team`'s side; venue 'H' or 'A'.
     estimate(team, opp, venue) {
