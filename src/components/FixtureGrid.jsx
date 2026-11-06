@@ -84,14 +84,20 @@ export default function FixtureGrid({
   // frame. Compact, the floor drops away and the column is badge + code.
   const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
 
-  const spacer = mds.length < 4
+  // The empty last column (in both rows below) takes the spare width. It used to be there
+  // only under four matchdays; at four on a desktop the matchday columns
+  // shared out ~1,000px between them, each chip centred in a ~245px column,
+  // which left ~110px of nothing between the team names and the MD5 chips
+  // that read as a rendering fault. Now the chips sit right after the names
+  // and the slack goes to the far end. In a table wider than its box (a
+  // phone) the spacer simply gets no width.
   // Rendered twice: in the table, and in the sticky copy that stays under
   // the site header on long tables.
   const headRow = (
     <tr>
       <th
         scope="col"
-        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted transition-[min-width,width] duration-300 ease-out"
+        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left section-label transition-[min-width,width] duration-300 ease-out"
         style={teamColStyle}
       >
         Team
@@ -100,17 +106,15 @@ export default function FixtureGrid({
         <th
           key={md}
           scope="col"
-          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[72px]"
+          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center section-label sm:min-w-[72px]"
         >
           <span className="block leading-tight">MD{md}</span>
-          <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
+          <span className="block text-[9px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
             {MATCHDAY_LABEL[md]}
           </span>
         </th>
       ))}
-      {/* With only a few matchdays, an empty last column takes the spare width so the
-          chips stay next to the team names instead of floating in wide columns. */}
-      {spacer && <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />}
+      <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />
     </tr>
   )
   return (
@@ -119,8 +123,8 @@ export default function FixtureGrid({
         {headRow}
       </StickyHead>
       <div className="relative">
-        <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
-          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm">
+        <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
+          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-table">
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
               {headRow}
@@ -130,7 +134,7 @@ export default function FixtureGrid({
                 const band = ratingColor(difficultyBand(avg))
                 const identity = (
                   <>
-                    <span className="relative block text-xs font-semibold sm:text-sm">
+                    <span className="relative block text-xs font-semibold sm:text-table">
                       <span
                         className={`block truncate transition-[max-width,opacity] duration-300 ease-out ${
                           compact ? 'max-w-[30px] opacity-0 sm:max-w-[36px]' : 'max-w-[150px]'
@@ -147,7 +151,7 @@ export default function FixtureGrid({
                     </span>
                     {showAvg && (
                       <span
-                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
+                        className="mt-0.5 inline-block self-start rounded px-1 py-px text-[10px] font-extrabold leading-tight"
                         style={{ backgroundColor: band.bg, color: band.text }}
                         title="Average fixture difficulty over the selected matchdays"
                       >
@@ -179,16 +183,23 @@ export default function FixtureGrid({
                               onTeamClick(team)
                             }}
                             aria-label={`View ${team.name} details`}
-                            className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
+                            className="-my-1.5 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
                           >
                             {identity}
                           </button>
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
                         )}
+                        {/* 16px targets: fine for a mouse, not for a finger. Below
+                            sm, and on any touch screen, they're left out and the
+                            row's tap opens the team panel, which has the pin and
+                            the remove at full size. (At 390px they sat right
+                            beside the full-height name button, in a row that is
+                            itself a tap target; the narrow team column is better
+                            spent on the name.) */}
                         {(onTogglePin || onRemove) && (
                           <span
-                            className={`flex shrink-0 items-center gap-1.5 overflow-hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
+                            className={`hidden shrink-0 items-center gap-1.5 overflow-hidden sm:flex coarse:hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
                               compact ? 'invisible -ml-1.5 max-w-0 opacity-0' : 'max-w-[48px]'
                             }`}
                           >
@@ -202,7 +213,7 @@ export default function FixtureGrid({
                                 aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
                                 aria-pressed={team.pinned}
                                 className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
-                                  team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                                  team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
                                 }`}
                               >
                                 <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
@@ -245,7 +256,7 @@ export default function FixtureGrid({
                         )}
                       </td>
                     ))}
-                    {spacer && <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />}
+                    <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />
                   </tr>
                 )
               })}
@@ -256,13 +267,13 @@ export default function FixtureGrid({
         {scrollable && !atEnd && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-ucl-navy to-transparent"
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-ucl-navy to-transparent"
           />
         )}
       </div>
 
       {scrollable && !atEnd && (
-        <p className="mt-2 text-center text-[11px] font-medium text-ucl-muted">Swipe the table for later matchdays →</p>
+        <p className="mt-2 text-center text-[11px] font-normal text-ucl-muted">Swipe the table for later matchdays →</p>
       )}
     </>
   )

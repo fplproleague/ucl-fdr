@@ -17,7 +17,7 @@ export default function MatchdayMatches({ md, onTeamClick }) {
 
   if (matches.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+      <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
         <p className="text-sm font-semibold text-ucl-star/80">No matches to show</p>
         <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
           Every team involved this matchday is currently hidden from the table.
@@ -30,13 +30,13 @@ export default function MatchdayMatches({ md, onTeamClick }) {
     <div className="space-y-4">
       {groups.map(({ day, matches }) => (
         <div key={day}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">{DAY_LABEL[day]}</p>
+          <p className="mb-2 section-label">{DAY_LABEL[day]}</p>
           <div className="space-y-1.5">
             {matches.map((m) => (
               <div
                 key={`${m.home.abbr}-${m.away.abbr}`}
-                className={`flex items-center gap-2 rounded-xl border bg-white/[0.03] p-2 sm:gap-3 sm:p-2.5 ${
-                  m.home.pinned || m.away.pinned ? 'border-ucl-accent/40' : 'border-white/10'
+                className={`flex items-center gap-2 rounded-lg border bg-white/[0.03] p-2 sm:gap-3 sm:p-2.5 ${
+                  m.home.pinned || m.away.pinned ? 'border-ucl-brass/40' : 'border-white/10'
                 }`}
               >
                 <TeamSide team={m.home} onTeamClick={onTeamClick} />
@@ -76,7 +76,7 @@ function TeamSide({ team, onTeamClick }) {
       <span className="min-w-0 flex-1 truncate text-xs font-semibold sm:text-sm">{team.shortName ?? team.name}</span>
     </>
   )
-  const className = `flex min-w-0 flex-1 items-center gap-1.5 ${team.pinned ? 'text-ucl-accent' : ''}`
+  const className = `flex min-w-0 flex-1 items-center gap-1.5 ${team.pinned ? 'text-ucl-brass' : ''}`
   if (!onTeamClick) return <div className={className}>{content}</div>
   return (
     <button

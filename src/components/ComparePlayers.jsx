@@ -57,10 +57,10 @@ export default function ComparePlayers({
         role="dialog"
         aria-modal="true"
         aria-labelledby="compare-heading"
-        className="relative h-full w-full overflow-y-auto bg-ucl-navy pb-[env(safe-area-inset-bottom)] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-2xl sm:border sm:border-white/10"
+        className="relative h-full w-full overflow-y-auto bg-ucl-navy pb-[env(safe-area-inset-bottom)] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-lg sm:border sm:border-white/10"
       >
         <div className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-white/10 bg-ucl-navy px-3">
-          <h2 id="compare-heading" className="min-w-0 flex-1 truncate text-sm font-bold">
+          <h2 id="compare-heading" className="min-w-0 flex-1 truncate text-sm font-semibold">
             Compare players{' '}
             <span className="font-normal text-ucl-muted">
               ({players.length}/{max})
@@ -69,7 +69,7 @@ export default function ComparePlayers({
           <button
             type="button"
             onClick={onClear}
-            className="min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
+            className="min-h-[36px] rounded px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
           >
             Clear
           </button>
@@ -78,7 +78,7 @@ export default function ComparePlayers({
             type="button"
             onClick={onClose}
             aria-label="Close the comparison"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star"
+            className="flex h-9 w-9 items-center justify-center rounded text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star"
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -113,12 +113,12 @@ export default function ComparePlayers({
                 >
                   {/* The cross sits in the column's corner, out of the centred
                     stack of badge, name and wins. */}
-                  <div className="relative flex flex-col items-center gap-1 rounded-xl bg-white/[0.03] px-1 pb-1.5 pt-2 text-center">
+                  <div className="relative flex flex-col items-center gap-1 rounded-lg bg-white/[0.03] px-1 pb-1.5 pt-2 text-center">
                     <button
                       type="button"
                       onClick={() => onRemove(p.id)}
                       aria-label={`Remove ${p.name} from the comparison`}
-                      className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full text-ucl-star/40 hover:bg-white/10 hover:text-ucl-star"
+                      className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded text-ucl-star/40 hover:bg-white/10 hover:text-ucl-star"
                     >
                       <X size={13} aria-hidden="true" />
                     </button>
@@ -129,9 +129,9 @@ export default function ComparePlayers({
                     </span>
                     {players.length > 1 && (
                       <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                           wins[i] === mostWins && mostWins > 0
-                            ? 'bg-ucl-accent/30 text-ucl-star'
+                            ? 'bg-white/15 text-ucl-star'
                             : 'bg-white/5 text-ucl-muted'
                         }`}
                       >
@@ -208,7 +208,7 @@ function GroupHeader({ label, cols }) {
       <th
         scope="colgroup"
         colSpan={cols}
-        className="border-t border-white/10 px-2 pb-1 pt-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-ucl-muted sm:px-3"
+        className="border-t border-white/10 px-2 pb-1 pt-2.5 text-left section-label sm:px-3"
       >
         {label}
       </th>
@@ -238,7 +238,7 @@ function StatRow({ row, open, onToggle }) {
               type="button"
               aria-expanded={open}
               onClick={onToggle}
-              className="-mx-1 flex w-[calc(100%+0.5rem)] items-start gap-1 rounded-md px-1 py-0.5 text-left hover:bg-white/[0.06]"
+              className="-mx-1 flex w-[calc(100%+0.5rem)] items-start gap-1 rounded px-1 py-0.5 text-left hover:bg-white/[0.06]"
             >
               {label}
             </button>
@@ -250,15 +250,15 @@ function StatRow({ row, open, onToggle }) {
           const best = row.best.has(i)
           const cell = (
             <>
-              <span className={best ? 'font-bold text-ucl-star' : 'text-ucl-star/75'}>
+              <span className={best ? 'font-semibold text-ucl-star' : 'text-ucl-star/75'}>
                 {text}
                 {best && <span className="sr-only"> (best)</span>}
               </span>
               {row.subs[i] && <span className="block text-[10px] text-ucl-muted">{row.subs[i]}</span>}
               {row.bars && row.values[i] != null && (
-                <span className="mx-auto mt-0.5 block h-1 w-full max-w-[72px] overflow-hidden rounded-full bg-white/[0.06]">
+                <span className="mx-auto mt-0.5 block h-1 w-full max-w-[72px] overflow-hidden rounded bg-white/[0.06]">
                   <span
-                    className={`block h-full rounded-full ${best ? 'bg-ucl-accent' : 'bg-ucl-accent/35'}`}
+                    className={`block h-full rounded ${best ? 'bg-white/70' : 'bg-white/25'}`}
                     style={{ width: `${row.bars[i]}%` }}
                   />
                 </span>
@@ -268,7 +268,7 @@ function StatRow({ row, open, onToggle }) {
           return (
             <td
               key={i}
-              className={`px-1 py-1 text-center align-top tabular-nums ${best ? 'rounded-md bg-ucl-accent/[0.1]' : ''}`}
+              className={`px-1 py-1 text-center align-top tabular-nums ${best ? 'rounded bg-white/[0.05]' : ''}`}
             >
               {row.breakdown?.[i] ? (
                 <button type="button" onClick={onToggle} aria-expanded={open} className="block w-full">
@@ -292,11 +292,11 @@ function StatRow({ row, open, onToggle }) {
                     <li
                       key={m.key}
                       title={m.title}
-                      className={`rounded-md px-1.5 py-1 ${m.hit ? 'bg-ucl-accent/15' : 'bg-white/[0.03]'}`}
+                      className={`rounded px-1.5 py-1 ${m.hit ? 'bg-ucl-accent/15' : 'bg-white/[0.03]'}`}
                     >
                       <span className="block truncate text-[10px] text-ucl-muted">{m.label}</span>
                       <span className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-1">
-                        <span className={`truncate ${m.hit ? 'font-bold text-ucl-star' : 'text-ucl-star/70'}`}>
+                        <span className={`truncate ${m.hit ? 'font-semibold text-ucl-star' : 'text-ucl-star/70'}`}>
                           {m.value}
                         </span>
                         {m.sub && <span className="shrink-0 text-[10px] text-ucl-muted">{m.sub}</span>}

@@ -1,24 +1,22 @@
-import { useState } from 'react'
 import { useTeams } from '../context/TeamsContext.jsx'
 
-// The team detail panel is opened from three places (FDR Table, Best Runs,
-// Compare) with identical open/close/compare wiring — one hook instead of
-// three copies of the same three lines.
+// The team detail panel is opened from several places (FDR Table, Best Runs,
+// Odds) with identical open/close/compare wiring — one hook instead of
+// three copies of the same lines. Which team is open lives in TeamsContext
+// (and the link: &team=VIL), not here, so the back button can close it.
 export function useTeamDetail() {
-  const { setCompare, setTab } = useTeams()
-  const [detailAbbr, setDetailAbbr] = useState(null)
+  const { setCompare, setTab, detail, openTeam, closeTeam } = useTeams()
 
   return {
-    detailAbbr,
-    openTeam: (team) => setDetailAbbr(team.abbr),
-    closeDetail: () => setDetailAbbr(null),
-    // Preselects the viewed team in Compare and switches to it — reuses the
-    // exact setters the site's own tab navigation already uses, no second
-    // comparison mechanism.
+    detailAbbr: detail,
+    openTeam: (team) => openTeam(team.abbr),
+    closeDetail: closeTeam,
+    // Opens the FDR table comparing this team (pick the others there) —
+    // reuses the exact setters the site's own tab navigation already uses,
+    // no second comparison mechanism. The tab change closes the panel.
     compareTeam: (abbr) => {
       setCompare([abbr])
-      setTab('compare')
-      setDetailAbbr(null)
+      setTab('table')
     },
   }
 }
