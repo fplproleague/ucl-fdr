@@ -2,8 +2,10 @@
 //   #/table?from=1&to=8&va=1
 //   #/table?from=1&to=8&skip=3
 //   #/table?from=1&to=1&md=1&day=TUE
-//   #/compare?from=3&to=6&teams=ARS,INT,BAY
+//   #/table?from=3&to=6&teams=ARS,INT,BAY  (the FDR table comparing three teams;
+//                                           old #/compare links open this)
 //   #/runs?from=2&to=5&r=ARS4BVB2
+//   #/table?from=5&to=8&team=VIL (Villarreal's panel open over the table)
 //   #/players?demo=1            (Players with made-up players, for previews)
 //   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
 //   #/odds?from=5&to=8          (bookmaker odds, apart from the ratings)
@@ -15,7 +17,9 @@
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'compare', 'strength', 'gk', 'players', 'odds']
+export const TAB_IDS = ['table', 'runs', 'strength', 'gk', 'players', 'odds']
+// The tabs that can show a team's panel.
+export const PANEL_TABS = ['table', 'runs', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
 export const ODDS_VIEWS = ['teams', 'players']
@@ -25,6 +29,8 @@ export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
   const [path, query = ''] = raw.split('?')
   const params = new URLSearchParams(query)
+  // Compare was a tab of its own; it is now a mode of the FDR table, so a
+  // shared #/compare link lands there with its teams.
   const tab = TAB_IDS.includes(path) ? path : 'table'
   const num = (key) => {
     const v = Number(params.get(key))
@@ -40,6 +46,8 @@ export function parseHash(hash = window.location.hash) {
     to: num('to'),
     skip: num('skip'),
     teams: (params.get('teams') || '').split(',').filter(Boolean),
+    // The team whose panel is open. Only a club code is kept.
+    team: /^[A-Z]{3}$/.test(params.get('team') || '') ? params.get('team') : null,
     venueAdjust: params.get('va') === null ? null : params.get('va') !== '0',
     showMatchday: params.get('md') === null ? null : params.get('md') === '1',
     dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
@@ -86,6 +94,7 @@ export function buildHash({
   to,
   skip,
   teams,
+  team,
   venueAdjust,
   showMatchday,
   dayFilter,
@@ -102,6 +111,7 @@ export function buildHash({
   if (to) params.set('to', String(to))
   if (skip) params.set('skip', String(skip))
   if (teams && teams.length) params.set('teams', teams.join(','))
+  if (team && PANEL_TABS.includes(tab)) params.set('team', team)
   if (venueAdjust === false) params.set('va', '0')
   if (showMatchday) params.set('md', '1')
   if (showMatchday && dayFilter && dayFilter !== 'ALL') params.set('day', dayFilter)
@@ -117,10 +127,13 @@ export function buildHash({
   return `#/${tab}${search ? `?${search}` : ''}`
 }
 
-export function writeHash(next, { push = false } = {}) {
+// state: what to store with a new history entry (see the team panel in
+// TeamsContext). A replace keeps whatever the current entry already holds,
+// so changing the range under an open panel doesn't forget how it opened.
+export function writeHash(next, { push = false, state = null } = {}) {
   const hash = buildHash(next)
   if (hash === window.location.hash) return
   const url = `${window.location.pathname}${window.location.search}${hash}`
-  if (push) window.history.pushState(null, '', url)
-  else window.history.replaceState(null, '', url)
+  if (push) window.history.pushState(state, '', url)
+  else window.history.replaceState(window.history.state, '', url)
 }

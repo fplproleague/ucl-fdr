@@ -13,8 +13,8 @@ export default function ShowFilter({ value, onChange, options, label = 'Show', c
   const active = current !== available[0].id
   return (
     <label
-      className={`relative inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition ${
-        active ? 'bg-ucl-accent text-white' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
+      className={`relative inline-flex min-h-[40px] items-center gap-1.5 rounded px-2.5 text-xs font-semibold transition ${
+        active ? 'bg-ucl-select text-ucl-selectInk' : 'bg-white/5 text-ucl-star/70 hover:bg-white/10'
       } ${className}`}
     >
       <ListFilter size={13} aria-hidden="true" />

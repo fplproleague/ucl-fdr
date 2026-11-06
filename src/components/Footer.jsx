@@ -4,6 +4,8 @@ import { MATCHDAYS } from '../data/matchdays.js'
 // A short "About" in plain, crawlable text, collapsed so it never pushes
 // anything down; the static matchday pages (/md/1/ … /md/8/, built by
 // scripts/build-md-pages.mjs) are linked from here so they aren't orphans.
+const LINK = 'font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star'
+
 export default function Footer() {
   const { setTab } = useTeams()
 
@@ -36,12 +38,13 @@ export default function Footer() {
           <div>
             <h2 className="font-semibold text-ucl-star">How do I compare two teams&apos; fixtures side by side?</h2>
             <p>
-              Open{' '}
-              <a href="#/compare" onClick={(e) => goTo(e, 'compare')} className="font-semibold text-ucl-star underline decoration-ucl-accent underline-offset-2">
-                Compare
-              </a>{' '}
-              and pick up to five teams: their fixtures line up matchday by matchday, easiest run first. The link
-              carries your pick, so you can share it.
+              In the{' '}
+              <a href="#/table" onClick={(e) => goTo(e, 'table')} className={LINK}>
+                FDR Table
+              </a>
+              , tap <strong className="font-semibold text-ucl-star">Compare</strong> and pick the teams: only they stay
+              in the table, their fixtures lined up matchday by matchday, easiest run first. The link carries your
+              pick, so you can share it.
             </p>
           </div>
           <div>
@@ -49,7 +52,7 @@ export default function Footer() {
               Which teams have the easiest fixtures over the next matchdays?
             </h2>
             <p>
-              <a href="#/runs" onClick={(e) => goTo(e, 'runs')} className="font-semibold text-ucl-star underline decoration-ucl-accent underline-offset-2">
+              <a href="#/runs" onClick={(e) => goTo(e, 'runs')} className={LINK}>
                 Best Runs
               </a>{' '}
               ranks every team by its average difficulty over the matchdays you choose, with home games and very hard
@@ -59,9 +62,9 @@ export default function Footer() {
           <div>
             <h2 className="font-semibold text-ucl-star">How is difficulty calculated?</h2>
             <p>
-              Every team has a 1–5 strength rating, seeded from its UEFA coefficient and pot. A fixture takes the
-              rating of the opponent, eased half a step at home and hardened half a step away, and you can change any
-              rating in the Strength tab.
+              Every team has a 1–5 strength rating, taken by default from the bookmakers&apos; odds. A fixture takes
+              the rating of the opponent, eased half a step at home and hardened half a step away, and you can change
+              any rating in the Strength tab.
             </p>
           </div>
         </div>
@@ -83,15 +86,18 @@ export default function Footer() {
         href="https://x.com/fpl_proleague"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-ucl-star/60 transition hover:text-ucl-star"
+        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-normal text-ucl-star/60 transition hover:text-ucl-star"
       >
         Made by @fpl_proleague
         <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 fill-current">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
       </a>
-      <p className="mt-2 text-[10px] text-ucl-star/25">
-        Not affiliated with UEFA. Club badges are the property of their respective clubs.
+      {/* Muted, not the 25% white it was (about 2:1): this line now names
+          whose marks are whose, so it has to be readable. */}
+      <p className="mx-auto mt-2 max-w-xl text-[10px] leading-relaxed text-ucl-muted">
+        Unofficial fan project. Not affiliated with, endorsed by or sponsored by UEFA. UEFA, Champions League and the
+        UEFA Champions League marks are the property of UEFA. Club badges are the property of their respective clubs.
       </p>
     </footer>
   )

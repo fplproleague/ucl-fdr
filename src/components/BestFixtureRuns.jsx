@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Star, TrendingUp, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
-import { compareRuns, formatAvg } from '../utils/difficulty.js'
+import { RUNS_TIEBREAK, compareRuns, formatAvg } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useOdds } from '../utils/useOdds.js'
@@ -13,7 +13,10 @@ import ControlBar from './ControlBar.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
+import StickyHead from './StickyHead.jsx'
+import MyTeamsEmpty from './MyTeamsEmpty.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { mdRange, matchdayRange } from '../utils/mdLabel.js'
 
 const PREVIEW = 8
 // What the ranking runs on: the FDR (default), or the bookmakers' clean-sheet
@@ -33,6 +36,7 @@ export default function BestFixtureRuns() {
     togglePin,
     myTeamsOnly,
     setMyTeamsOnly,
+    pinnedCount,
     venueAdjust,
     from,
     to,
@@ -79,17 +83,25 @@ export default function BestFixtureRuns() {
   const visible = showAll ? ranked : ranked.slice(0, PREVIEW)
 
   return (
-    <div className="mx-auto max-w-2xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
+    <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${shownTeams.length} teams over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
-          byOdds ? (rankBy === 'cs' ? 'best clean-sheet odds first' : 'most expected goals first') : 'easiest average first'
+        subtitle={`${
+          // Say what the table shows: "36 teams" above a table of eight read
+          // as if rows were missing.
+          ranked.length > PREVIEW && !showAll ? `Top ${PREVIEW} of ${ranked.length}` : `All ${ranked.length}`
+        } teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
+          byOdds
+            ? rankBy === 'cs'
+              ? 'best clean-sheet odds first'
+              : 'most expected goals first'
+            : `easiest average first; ${RUNS_TIEBREAK}`
         }.`}
         action={
           <div
             role="group"
             aria-label="Rank by"
-            className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-0.5 text-xs font-semibold"
+            className="flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
           >
             {RANK_BY.map(([id, label]) => (
               <button
@@ -98,8 +110,8 @@ export default function BestFixtureRuns() {
                 onClick={() => setRankBy(id)}
                 aria-pressed={rankBy === id}
                 title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
-                className={`min-h-[36px] rounded-full px-3 transition ${
-                  rankBy === id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+                className={`min-h-[36px] flex-1 rounded px-3 transition sm:flex-none ${
+                  rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
                 }`}
               >
                 {label}
@@ -117,7 +129,7 @@ export default function BestFixtureRuns() {
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
@@ -125,8 +137,8 @@ export default function BestFixtureRuns() {
       )}
 
       {!byOdds && swings.length > 0 && (
-        <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <p className="mb-2 flex items-center gap-1.5 section-label">
             <TrendingUp size={14} aria-hidden="true" />
             Biggest swing into this window
           </p>
@@ -145,138 +157,237 @@ export default function BestFixtureRuns() {
       )}
 
       {visibleTeams.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ucl-star/80">Every team is hidden</p>
           <button
             type="button"
             onClick={() => setHiddenPanelOpen(true)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
+            className="mt-2 text-sm font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
           >
             Show hidden teams
           </button>
         </div>
       ) : myTeamsOnly && ranked.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-ucl-star/80">No pinned teams yet</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-ucl-muted">
-            Tap the star on a team's card (or in its detail view) to add it to My teams.
-          </p>
-          <button
-            type="button"
-            onClick={() => setMyTeamsOnly(false)}
-            className="mt-2 text-sm font-semibold text-ucl-accent underline underline-offset-2 hover:text-ucl-star"
-          >
-            Show all teams
-          </button>
-        </div>
+        <MyTeamsEmpty pinnedCount={pinnedCount} onShowAll={() => setMyTeamsOnly(false)} />
       ) : (
-        <ol className="space-y-2">
-          {visible.map((row, idx) => (
-            <li
-              key={row.team.id}
-              onClick={() => openTeam(row.team)}
-              className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-card transition hover:bg-white/[0.06]"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ucl-accent/20 text-sm font-extrabold text-ucl-accent">
-                  {idx + 1}
-                </span>
-                <TeamBadge abbr={row.team.abbr} size={30} />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    openTeam(row.team)
-                  }}
-                  aria-label={`View ${row.team.name} details`}
-                  className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
-                >
-                  <p className="truncate text-sm font-semibold sm:text-base">{row.team.name}</p>
-                  <p className="text-[11px] text-ucl-muted">
-                    avg {formatAvg(row.avg)} · {row.homes} home
-                    {oddsAvg?.get(row.team.id) && rankBy !== 'fdr' && (
-                      <>
-                        {' · '}
-                        <strong className="text-ucl-star">
-                          {rankBy === 'cs'
-                            ? `CS ${Math.round(oddsAvg.get(row.team.id).cs * 100)}%`
-                            : `xG ${oddsAvg.get(row.team.id).xgFor.toFixed(2)}`}
-                        </strong>{' '}
-                        per match
-                      </>
-                    )}
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    togglePin(row.team.id)
-                  }}
-                  aria-label={row.team.pinned ? `Unpin ${row.team.name} from My teams` : `Pin ${row.team.name} to My teams`}
-                  aria-pressed={row.team.pinned}
-                  className={`shrink-0 rounded p-1 transition hover:bg-white/10 ${
-                    row.team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
-                  }`}
-                >
-                  <Star size={16} aria-hidden="true" fill={row.team.pinned ? 'currentColor' : 'none'} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    hideTeam(row.team.id)
-                  }}
-                  aria-label={`Remove ${row.team.name} from this ranking`}
-                  className="shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {row.fixtures.map((f) => (
-                  // The MD travels with its own chip (rather than one shared
-                  // header above the list) so it survives flex-wrap at any
-                  // width and stays correct if a single card gets screenshotted
-                  // on its own.
-                  <div key={f.gw} className="flex flex-col items-center gap-0.5">
-                    <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
-                      MD{f.gw}
-                    </span>
-                    <FixtureChip
-                      opp={f.opp}
-                      oppName={teamsByAbbr[f.opp]?.name}
-                      venue={f.venue}
-                      rating={teamsByAbbr[f.opp]?.rating ?? 3}
-                      venueAdjust={venueAdjust}
-                      awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
-                      day={f.day}
-                      showDay={showMatchday}
-                      dimmed={showMatchday && dayFilter !== 'ALL' && f.day !== dayFilter}
-                    />
-                  </div>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <RunsTable
+          rows={visible}
+          mds={mds}
+          rankBy={rankBy}
+          oddsAvg={byOdds ? oddsAvg : null}
+          teamsByAbbr={teamsByAbbr}
+          venueAdjust={venueAdjust}
+          showMatchday={showMatchday}
+          dayFilter={dayFilter}
+          onOpen={openTeam}
+          onTogglePin={togglePin}
+          onHide={hideTeam}
+          caption={`Teams ranked by ${
+            byOdds ? (rankBy === 'cs' ? 'clean-sheet odds' : 'expected goals') : 'average fixture difficulty'
+          }, ${matchdayRange(from, to)}${skipMd ? `, matchday ${skipMd} ignored` : ''}`}
+        />
       )}
 
       {ranked.length > PREVIEW && (
+        // A plain link under the table, not a bar as wide as it: showing more
+        // rows is a footnote to the ranking, not its main action. The
+        // min-height keeps it a full-size touch target.
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-3 min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
+          className="mt-2 inline-flex min-h-[44px] items-center text-sm text-ucl-link underline underline-offset-2 hover:text-ucl-star"
         >
-          {showAll ? 'Show top 8 only' : `Show all ${ranked.length} teams`}
+          {showAll ? `Show the top ${PREVIEW} only` : `Show all ${ranked.length} teams`}
         </button>
       )}
 
       {detailAbbr && (
-        <TeamDetailPanel abbr={detailAbbr} onClose={closeDetail} onCompare={() => compareTeam(detailAbbr)} />
+        <TeamDetailPanel
+          abbr={detailAbbr}
+          onClose={closeDetail}
+          onCompare={() => compareTeam(detailAbbr)}
+          onHide={hideTeam}
+        />
       )}
 
       {hiddenPanelOpen && <HiddenTeamsPanel onClose={() => setHiddenPanelOpen(false)} />}
     </div>
+  )
+}
+
+// The ranking as one table, the way the FDR table already reads: rank, team,
+// average, home count, then a chip per matchday under a shared header, with
+// a hairline between rows. It used to be a bordered, shadowed card per team,
+// three screens of scroll for what fits on one. A row still opens the team,
+// and keeps its star and its x.
+//
+// On a phone the table scrolls sideways like the FDR table, with the team
+// column held at the left; the average and home count move under the name
+// there, so the chips start as early as they can. On a touch screen and below sm
+// the star and x are left out of the row (hidden, then sm:block, then
+// coarse:hidden: the `coarse` screen means max-sm: isn't available) (see TeamDetailPanel's onHide): the row
+// opens the panel, which has both at full size.
+function RunsTable({
+  rows,
+  mds,
+  rankBy,
+  oddsAvg,
+  teamsByAbbr,
+  venueAdjust,
+  showMatchday,
+  dayFilter,
+  onOpen,
+  onTogglePin,
+  onHide,
+  caption,
+}) {
+  const scrollerRef = useRef(null)
+  const tableRef = useRef(null)
+  const oddsLabel = rankBy === 'cs' ? 'CS' : 'xG'
+  const oddsText = (team) => {
+    const o = oddsAvg?.get(team.id)
+    if (!o) return null
+    return rankBy === 'cs' ? `${Math.round(o.cs * 100)}%` : o.xgFor.toFixed(2)
+  }
+  const headRow = (
+    <tr className="section-label bg-ucl-deep">
+      <th scope="col" className="sticky left-0 z-20 bg-ucl-deep py-2 pl-2 pr-1 text-left font-semibold">
+        <span className="inline-block w-6 text-center">#</span>
+        <span className="ml-8">Team</span>
+      </th>
+      <th scope="col" className="hidden px-2 py-2 text-right font-semibold sm:table-cell" title="Average fixture difficulty">
+        Avg
+      </th>
+      {oddsAvg && (
+        <th
+          scope="col"
+          className="hidden px-2 py-2 text-right font-semibold sm:table-cell"
+          title={rankBy === 'cs' ? 'Clean-sheet chance per match' : 'Expected goals per match'}
+        >
+          {oddsLabel}
+        </th>
+      )}
+      <th scope="col" className="hidden px-2 py-2 text-right font-semibold sm:table-cell" title="Home matches in the range">
+        Home
+      </th>
+      {mds.map((md) => (
+        <th key={md} scope="col" className="px-1 py-2 text-center font-semibold">
+          MD{md}
+        </th>
+      ))}
+    </tr>
+  )
+  return (
+    <>
+      <StickyHead scrollerRef={scrollerRef} tableRef={tableRef} className="rounded-t-lg">
+        {headRow}
+      </StickyHead>
+      <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
+        <table ref={tableRef} className="w-full border-separate border-spacing-0 text-table">
+          <caption className="sr-only">{caption}</caption>
+          <thead>{headRow}</thead>
+          <tbody>
+            {rows.map((row, idx) => {
+              const { team } = row
+              const odds = oddsText(team)
+              return (
+                <tr key={team.id} onClick={() => onOpen(team)} className="cursor-pointer transition hover:bg-white/[0.06]">
+                  <th
+                    scope="row"
+                    className="sticky left-0 z-10 w-full border-t border-white/5 bg-ucl-navy py-1.5 pl-2 pr-1 text-left font-normal"
+                  >
+                    <div className="flex min-w-[180px] items-center gap-2">
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-meta font-extrabold tabular-nums ${
+                          idx === 0 ? 'bg-ucl-brass text-ucl-navy' : 'text-ucl-muted'
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <TeamBadge abbr={team.abbr} size={22} />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpen(team)
+                        }}
+                        aria-label={`View ${team.name} details`}
+                        className="-my-1.5 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center rounded text-left"
+                      >
+                        <span className="block truncate font-semibold">{team.name}</span>
+                        <span className="block text-meta text-ucl-muted sm:hidden">
+                          avg {formatAvg(row.avg)} · {row.homes} home{odds && ` · ${oddsLabel} ${odds}`}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onTogglePin(team.id)
+                        }}
+                        aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
+                        aria-pressed={team.pinned}
+                        className={`hidden shrink-0 rounded p-1 transition hover:bg-white/10 sm:block coarse:hidden ${
+                          team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
+                        }`}
+                      >
+                        <Star size={14} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onHide(team.id)
+                        }}
+                        aria-label={`Remove ${team.name} from this ranking`}
+                        className="hidden shrink-0 rounded p-1 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star sm:block coarse:hidden"
+                      >
+                        <X size={14} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </th>
+                  <td className="hidden border-t border-white/5 px-2 py-1.5 text-right font-semibold tabular-nums sm:table-cell">
+                    {formatAvg(row.avg)}
+                  </td>
+                  {oddsAvg && (
+                    <td className="hidden border-t border-white/5 px-2 py-1.5 text-right font-semibold tabular-nums sm:table-cell">
+                      {odds ?? '–'}
+                    </td>
+                  )}
+                  <td className="hidden border-t border-white/5 px-2 py-1.5 text-right tabular-nums text-ucl-star/75 sm:table-cell">
+                    {row.homes}
+                  </td>
+                  {row.cells.map((f, i) => {
+                    return (
+                      <td
+                        key={mds[i]}
+                        className="border-t border-white/5 px-1 py-1.5 text-center"
+                      >
+                        {f ? (
+                          <FixtureChip
+                            opp={f.opp}
+                            oppName={teamsByAbbr[f.opp]?.name}
+                            venue={f.venue}
+                            rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                            venueAdjust={venueAdjust}
+                            awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+                            day={f.day}
+                            showDay={showMatchday}
+                            dimmed={showMatchday && dayFilter !== 'ALL' && f.day !== dayFilter}
+                            className="mx-auto"
+                          />
+                        ) : (
+                          <span className="text-ucl-star/20">–</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

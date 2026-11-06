@@ -75,7 +75,7 @@ export default function StickyHead({ scrollerRef, tableRef, children, className 
           show ? 'opacity-100' : 'pointer-events-none invisible opacity-0'
         } ${className}`}
       >
-        <table className="border-separate border-spacing-0 text-sm" style={{ tableLayout: 'fixed', width: cols.total || undefined }}>
+        <table className="border-separate border-spacing-0 text-table" style={{ tableLayout: 'fixed', width: cols.total || undefined }}>
           <colgroup>
             {cols.widths.map((w, i) => (
               <col key={i} style={{ width: w }} />

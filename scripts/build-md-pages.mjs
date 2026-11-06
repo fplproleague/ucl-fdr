@@ -3,8 +3,9 @@
 // The app keeps every view in the URL hash, which search engines ignore, so
 // "ucl md5 fixtures" could only ever land on the home page. These are plain
 // HTML (no React, no JS) built from the same fixture data and difficulty
-// helpers the app uses, with the DEFAULT ratings, and each one links into
-// the full fixture ticker for that matchday.
+// helpers the app uses, with the app's DEFAULT ratings (what the bookmakers'
+// odds say, as on a first visit), and each one links into the full fixture
+// ticker for that matchday.
 //
 // Runs from the Vite build (closeBundle in vite.config.js). By hand:
 //   node scripts/build-md-pages.mjs [outDir]     (default: dist)
@@ -12,13 +13,20 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { INITIAL_TEAMS, RATING_COLORS } from '../src/data/teams.js'
+import { ODDS } from '../src/data/odds.js'
+import { impliedRatings } from '../src/utils/oddsView.js'
 import { MATCHDAYS } from '../src/data/matchdays.js'
 import { matchesForMatchday } from '../src/utils/matches.js'
 import { DAY_LABEL, DAY_ORDER } from '../src/utils/matchdaySplit.js'
 import { effectiveDifficulty, difficultyBand, ratingColor } from '../src/utils/difficulty.js'
 import { SITE_URL, matchdayDates, matchdayPath, upcomingMatchday } from './seo.mjs'
 
-const TEAMS_BY_ABBR = Object.fromEntries(INITIAL_TEAMS.map((t) => [t.abbr, t]))
+// The ratings a first-time visitor sees: the odds-implied rating, worked out
+// exactly as the virtual:odds-ratings module in vite.config.js does, and the
+// seed rating from teams.js for a club the odds can't place yet.
+const IMPLIED = impliedRatings(ODDS, Object.fromEntries(INITIAL_TEAMS.map((t) => [t.abbr, t.rating])))
+export const DEFAULT_TEAMS = INITIAL_TEAMS.map((t) => ({ ...t, rating: IMPLIED[t.abbr]?.rating ?? t.rating }))
+const TEAMS_BY_ABBR = Object.fromEntries(DEFAULT_TEAMS.map((t) => [t.abbr, t]))
 const WEEKDAY = { TUE: 2, WED: 3, THU: 4 }
 
 const esc = (s) =>
@@ -132,7 +140,7 @@ export function renderMatchdayPage(md, { today = new Date() } = {}) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#050a24" />
+    <meta name="theme-color" content="#040818" />
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
     <link rel="canonical" href="${canonical}" />
@@ -151,34 +159,35 @@ export function renderMatchdayPage(md, { today = new Date() } = {}) {
     <meta name="twitter:title" content="${esc(title)}" />
     <meta name="twitter:description" content="${esc(description)}" />
     <meta name="twitter:image" content="${SITE_URL}/og-image.jpg" />
-    <link rel="icon" type="image/png" href="/ucl-icon.png" />
-    <link rel="apple-touch-icon" href="/ucl-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
-      body { margin: 0; background: #050a24; color: #e6e9ff; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-      a { color: #8fa2ff; }
+      body { margin: 0; background: #040818; color: #e6e9ff; font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      a { color: #7f95ff; }
       .wrap { max-width: 44rem; margin: 0 auto; padding: 1rem 1rem 2.5rem; }
       .top { display: flex; align-items: center; gap: .75rem; font-size: .875rem; margin-bottom: 1.25rem; }
       .top a { color: #e6e9ff; font-weight: 800; text-decoration: none; }
-      .top img { width: 32px; height: 32px; border-radius: 50%; background: #fff; padding: 3px; }
+      .top img { width: 32px; height: 32px; border-radius: 8px; }
       h1 { font-size: 1.5rem; line-height: 1.2; margin: 0 0 .5rem; }
       h2 { font-size: 1.125rem; margin: 1.75rem 0 .5rem; }
       h3 { font-size: .9375rem; margin: 1.25rem 0 .5rem; }
       p { margin: .5rem 0; }
       .muted, .lead { color: #8f92b8; }
       .lead { font-size: .9375rem; }
-      .note { font-size: .875rem; color: #c8ccef; border-left: 3px solid #4361ff; padding-left: .75rem; }
-      .cta { display: inline-block; margin: .75rem 0 .25rem; padding: .75rem 1.25rem; border-radius: 999px; background: #4361ff; color: #fff; font-weight: 700; text-decoration: none; }
-      .cta:hover, .cta:focus-visible { background: #1b2ad9; }
+      .note { font-size: .875rem; color: #c8ccef; border-left: 3px solid #D7B45A; padding-left: .75rem; }
+      .cta { display: inline-block; margin: .75rem 0 .25rem; padding: .75rem 1.25rem; border-radius: 8px; background: #fff; color: #0C1330; font-weight: 700; text-decoration: none; }
+      .cta:hover, .cta:focus-visible { background: #e6e9ff; }
       ul, ol { list-style: none; margin: 0; padding: 0; }
-      .matches { border: 1px solid rgba(255,255,255,.1); border-radius: 1rem; background: rgba(255,255,255,.03); overflow: hidden; }
+      .matches { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #0C1330; overflow: hidden; }
       .match { display: grid; grid-template-columns: 1.75rem 1fr auto 1fr 1.75rem; align-items: center; gap: .5rem; padding: .5rem .75rem; }
       .match + .match { border-top: 1px solid rgba(255,255,255,.07); }
       .h { text-align: right; }
       .h, .a { font-weight: 600; overflow-wrap: anywhere; }
       .v { color: #8f92b8; }
-      .d { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: .5rem; font-weight: 800; font-size: .875rem; flex: none; }
+      .d { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 4px; font-weight: 800; font-size: .875rem; flex: none; }
       .easiest li, .legend li { display: flex; align-items: center; gap: .625rem; padding: .3rem 0; }
       .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .875rem; color: #c8ccef; }
       .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -191,10 +200,10 @@ export function renderMatchdayPage(md, { today = new Date() } = {}) {
   </head>
   <body>
     <div class="wrap">
-      <div class="top"><img src="/ucl-icon.png" alt="" width="32" height="32" /><a href="/">UCL FDR</a><span class="muted">Fixture ticker &amp; fixture difficulty</span></div>
+      <div class="top"><img src="/favicon.svg" alt="" width="32" height="32" /><a href="/">UCL FDR</a><span class="muted">Fixture ticker &amp; fixture difficulty</span></div>
       <main>
         <h1>Champions League MD${md} fixtures &amp; difficulty</h1>
-        <p class="lead">${esc(dates)} · all 18 matches. Difficulty is the opponent's 1–5 strength rating, eased half a step at home and hardened half a step away (the site's default ratings).</p>
+        <p class="lead">${esc(dates)} · all 18 matches. Difficulty is the opponent's 1–5 strength rating, eased half a step at home and hardened half a step away. Ratings are the site's defaults, taken from the bookmakers' odds; in the fixture ticker you can set your own.</p>
         ${status}
         <a class="cta" href="${tickerHref}">Open the full fixture ticker</a>
         <ul class="legend" aria-label="Difficulty colours">${legend}</ul>

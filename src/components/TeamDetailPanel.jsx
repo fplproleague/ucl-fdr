@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Percent, Scale, Star, Users, X } from 'lucide-react'
+import { EyeOff, Percent, Scale, Star, Users, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES, TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
@@ -13,6 +13,9 @@ import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } 
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
+import { useDialogFocus } from '../utils/useDialogFocus.js'
+import { RAMP_INK, goodness, rampFill } from '../utils/oddsRamp.js'
+import { mdRange } from '../utils/mdLabel.js'
 
 // A centred, wide rectangular modal on desktop (the table stays visible and
 // dimmed behind it), a full-screen panel on mobile — one set of responsive
@@ -20,11 +23,16 @@ import StrengthPicker from './StrengthPicker.jsx'
 // league phase (a matchday that's already passed is gone from the whole
 // site, not just this panel), independent of whatever MD range the table
 // itself is currently showing.
-export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
+// onHide, when given, adds a "Hide from table" button: on a touch screen the
+// rows' own 16px star and x are hidden (too small for a finger), so the pin
+// and the remove both live here, at full size.
+export default function TeamDetailPanel({ abbr, onClose, onCompare, onHide }) {
   const { teamsByAbbr, venueAdjust, setRating, togglePin, setCompare, setTab, openTab } = useTeams()
   const { odds, index, estimator } = useOdds()
   const team = teamsByAbbr[abbr]
   const closeButtonRef = useRef(null)
+  const dialogRef = useRef(null)
+  useDialogFocus(dialogRef)
 
   const floor = currentMatchday()
   const seasonMds = useMemo(() => Array.from({ length: TOTAL_MATCHDAYS - floor + 1 }, (_, i) => floor + i), [floor])
@@ -61,8 +69,8 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
   const easyCount = cellBands.filter((b) => b != null && b <= 2).length
   const hardCount = cellBands.filter((b) => b != null && b >= 4).length
 
-  const { best, worst } = useMemo(() => {
-    if (!team) return { best: null, worst: null }
+  const { best, worst, length: runLength } = useMemo(() => {
+    if (!team) return { best: null, worst: null, length: 0 }
     const remaining = (FIXTURES[abbr] ?? []).filter((f) => f.gw >= floor)
     return findBestWorstRuns(remaining, teamsByAbbr, venueAdjust)
   }, [abbr, team, teamsByAbbr, venueAdjust, floor])
@@ -90,8 +98,9 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
   if (!team || !row) return null
 
+  // Both of these change tab, which closes the panel as part of the same
+  // history entry; calling onClose too would step back over it.
   function openPlayers(tab) {
-    onClose()
     if (tab === 'odds') openTab('odds', { oddsView: 'players', oddsQuery: team.name })
     else openTab('players', { playersQuery: team.name })
   }
@@ -101,18 +110,21 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
   function openRotationPartner(partnerAbbr) {
     setCompare([team.abbr, partnerAbbr])
-    setTab('compare')
-    onClose()
+    setTab('table')
   }
 
   return (
-    <div className="fixed inset-0 z-40 sm:flex sm:items-center sm:justify-center sm:p-6">
+    // On a phone a sheet from the bottom that stops 3rem short of the top,
+    // so there is backdrop left to tap: full-screen, a tap outside had
+    // nowhere to land. From sm up, a centred dialog over the dimmed table.
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center sm:justify-center sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="team-detail-heading"
-        className="relative flex h-full w-full flex-col overflow-y-auto bg-ucl-navy shadow-2xl sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10"
+        className="relative flex h-[calc(100%-3rem)] w-full flex-col overflow-y-auto rounded-t-lg border-t border-white/10 bg-ucl-navy pb-[env(safe-area-inset-bottom)] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-3xl sm:rounded-lg sm:border"
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
           <TeamBadge abbr={team.abbr} size={36} />
@@ -124,8 +136,8 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             onClick={() => togglePin(team.id)}
             aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
             aria-pressed={team.pinned}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 ${
-              team.pinned ? 'text-ucl-accent' : 'text-ucl-muted hover:text-ucl-star'
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 ${
+              team.pinned ? 'text-ucl-brass' : 'text-ucl-muted hover:text-ucl-star'
             }`}
           >
             <Star size={20} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
@@ -135,7 +147,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -143,14 +155,14 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
         <div className="flex-1 space-y-5 px-4 py-4 sm:px-5">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Team Strength</p>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <p className="mb-1.5 section-label">Team Strength</p>
               <StrengthPicker team={team} onSetRating={setRating} compact />
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">Average FDR</p>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <p className="section-label">Average FDR</p>
               <span
-                className="mt-1 inline-flex rounded-lg px-2.5 py-1 text-sm font-black"
+                className="mt-1 inline-flex rounded px-2.5 py-1 text-sm font-extrabold"
                 style={{ backgroundColor: avgBand.bg, color: avgBand.text }}
                 title={strengthColor.label}
               >
@@ -160,13 +172,13 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
-              MD{seasonMds[0]}–MD{seasonMds[seasonMds.length - 1]} fixtures
+            <p className="mb-2 section-label">
+              {mdRange(seasonMds[0], seasonMds[seasonMds.length - 1])} fixtures
             </p>
             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
               {row.cells.map((cell, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
-                  <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                  <span className="section-label leading-none">
                     MD{seasonMds[i]}
                   </span>
                   {cell ? (
@@ -190,21 +202,25 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
           {oddsRow && (
             <div>
-              <p className="mb-2 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+              <p className="mb-2 flex items-baseline justify-between gap-2 section-label">
                 <span>Bookmaker odds</span>
-                <span className="text-[10px] font-medium normal-case tracking-normal">clean sheet · goals for</span>
+                <span className="text-[10px] font-normal normal-case tracking-normal">clean sheet · goals for</span>
               </p>
               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))' }}>
                 {oddsRow.cells.map((cell, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-ucl-muted/70">
+                    <span className="section-label leading-none">
                       MD{seasonMds[i]}
                     </span>
                     {cell ? (
                       <div
-                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded-md text-center sm:w-[64px] ${
-                          cell.estimated ? 'border border-dashed border-ucl-star/30 bg-ucl-accent/10' : 'bg-ucl-accent/25'
+                        // The Odds tab's ramp (lighter = likelier clean sheet), on
+                        // a fixed 5–50% scale so one team's cells compare with
+                        // another's; dashed = estimate, as there.
+                        className={`flex h-9 w-[58px] flex-col items-center justify-center rounded border text-center sm:w-[64px] ${
+                          cell.estimated ? 'border-dashed border-ucl-star/55' : 'border-transparent'
                         }`}
+                        style={{ backgroundColor: rampFill(goodness(cell.cs, [0.05, 0.5])), color: RAMP_INK }}
                         title={`${cell.estimated ? 'Estimate' : 'Bookmaker odds'}: clean sheet ${Math.round(cell.cs * 100)}%, xG ${cell.xgFor.toFixed(
                           2,
                         )} for, ${cell.xgAgainst.toFixed(2)} against`}
@@ -227,7 +243,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             <button
               type="button"
               onClick={() => openPlayers('players')}
-              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
             >
               <Users size={14} aria-hidden="true" />
               {team.shortName ?? team.name} players
@@ -235,28 +251,30 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
             <button
               type="button"
               onClick={() => openPlayers('odds')}
-              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-semibold transition hover:bg-white/[0.08]"
             >
               <Percent size={14} aria-hidden="true" />
               Player odds
             </button>
           </div>
 
+          {/* Only when there are two different runs to show: see
+              findBestWorstRuns. Each says which matchdays it covers. */}
+          {best && worst && (
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Best run', run: best },
-              { label: 'Worst run', run: worst },
+              { label: `Best ${runLength} matchdays`, run: best },
+              { label: `Worst ${runLength} matchdays`, run: worst },
             ].map(({ label, run }) => {
-              if (!run) return null
               const runBand = ratingColor(difficultyBand(run.avg))
               return (
-                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ucl-muted">{label}</p>
+                <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                  <p className="section-label">{label}</p>
                   <p className="mt-1 text-sm font-semibold text-ucl-star">
-                    MD{run.fromMd}–MD{run.toMd}
+                    {mdRange(run.fromMd, run.toMd)}
                   </p>
                   <span
-                    className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-black"
+                    className="mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-extrabold"
                     style={{ backgroundColor: runBand.bg, color: runBand.text }}
                   >
                     avg {formatAvg(run.avg)}
@@ -265,6 +283,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
               )
             })}
           </div>
+          )}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ucl-star/80">
             <span>
@@ -283,7 +302,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
 
           {rotationPartners.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ucl-muted">
+              <p className="mb-2 section-label">
                 Best rotation partners
               </p>
               <ul className="space-y-1.5">
@@ -292,7 +311,7 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
                     <button
                       type="button"
                       onClick={() => openRotationPartner(candidate.abbr)}
-                      className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-left transition hover:bg-white/[0.06]"
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-2 text-left transition hover:bg-white/[0.06]"
                     >
                       <TeamBadge abbr={candidate.abbr} size={24} />
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
@@ -309,11 +328,24 @@ export default function TeamDetailPanel({ abbr, onClose, onCompare }) {
           )}
         </div>
 
-        <div className="border-t border-white/10 px-4 py-3 sm:px-5">
+        <div className="flex gap-2 border-t border-white/10 px-4 py-3 sm:px-5">
+          {onHide && (
+            <button
+              type="button"
+              onClick={() => {
+                onHide(team.id)
+                onClose()
+              }}
+              className="flex min-h-[48px] shrink-0 items-center justify-center gap-1.5 rounded border border-white/10 px-3 text-sm font-semibold text-ucl-star/80 transition hover:bg-white/10"
+            >
+              <EyeOff size={16} aria-hidden="true" />
+              Hide from table
+            </button>
+          )}
           <button
             type="button"
             onClick={onCompare}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-ucl-accent text-sm font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
+            className="flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded bg-ucl-select text-ucl-selectInk text-sm font-extrabold transition hover:bg-white/90 active:scale-[0.99]"
           >
             <Scale size={16} aria-hidden="true" />
             Compare {team.shortName ?? team.name}

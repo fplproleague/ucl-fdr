@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { RotateCcw, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
-import { useOdds } from '../utils/useOdds.js'
-import { impliedRatings } from '../utils/oddsView.js'
+import { ODDS_RATINGS, ODDS_RATINGS_MATCHES } from 'virtual:odds-ratings'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
 
@@ -21,17 +20,12 @@ export default function TeamStrengthSettings() {
   // A sub-tab, not two stacked sections — most people never scroll far enough
   // to find Away Difficulty if it just sits below all 36 strength rows.
   const [subTab, setSubTab] = useState('strength')
-  // Where the bookmakers (and Elo) would put each team, as advice next to
-  // its own rating: it never changes one, and doesn't look at them either
-  // (only the seeded ratings' band sizes).
-  const { odds } = useOdds()
-  const implied = useMemo(() => {
-    if (!odds) return {}
-    return impliedRatings(odds, Object.fromEntries(teams.map((t) => [t.abbr, t.baseRating])))
-  }, [odds, teams])
-  const hasImplied = Object.keys(implied).length > 0
+  // The defaults come from the odds (see oddsRatings in vite.config.js).
+  // There used to be an "Odds ≈ 4" hint under each team beside a hand-set
+  // default; the default is now that number, so the hint went with it.
+  const fromOdds = Object.keys(ODDS_RATINGS).length > 0
 
-  // Ordered by the seed rating, never the live one — otherwise a team jumps
+  // Ordered by the default rating, never the live one — otherwise a team jumps
   // rows the instant you change it and you lose your place in a 36-row list.
   const sorted = [...teams].sort((a, b) => b.baseRating - a.baseRating || a.name.localeCompare(b.name))
   const filtered = sorted.filter((t) => {
@@ -53,7 +47,7 @@ export default function TeamStrengthSettings() {
             <button
               type="button"
               onClick={resetRatings}
-              className="flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 active:scale-95"
+              className="flex min-h-[40px] shrink-0 items-center gap-1.5 rounded border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 active:scale-95"
             >
               <RotateCcw size={14} aria-hidden="true" />
               Reset {modifiedCount}
@@ -62,7 +56,7 @@ export default function TeamStrengthSettings() {
         }
       />
 
-      <div className="mb-3 flex gap-1.5 rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist">
+      <div className="mb-3 flex rounded-lg border border-white/10 p-0.5" role="tablist">
         {SUB_TABS.map((t) => (
           <button
             key={t.id}
@@ -70,8 +64,8 @@ export default function TeamStrengthSettings() {
             role="tab"
             aria-selected={subTab === t.id}
             onClick={() => setSubTab(t.id)}
-            className={`min-h-[36px] flex-1 rounded-full text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
-              subTab === t.id ? 'bg-ucl-accent text-white' : 'text-ucl-star/60 hover:text-ucl-star'
+            className={`min-h-[36px] flex-1 rounded text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
+              subTab === t.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
             }`}
           >
             {t.label}
@@ -82,11 +76,12 @@ export default function TeamStrengthSettings() {
       {subTab === 'strength' && (
         <>
           <RatingLegend variant="full" className="mb-3" />
-          {hasImplied && (
+          {fromOdds && (
             <p className="mb-3 text-xs text-ucl-muted">
-              <span className="font-semibold text-ucl-star/80">Odds ≈</span> is where the bookmakers&apos; prices (and
-              Elo club ratings) put a team: all 36 ranked, in bands as big as the seeded ones. Highlighted when it differs
-              from yours. Still rough with few matches priced.
+              The default ratings follow the bookmakers&apos; prices (and Elo club ratings where a club isn&apos;t
+              priced): all 36 ranked, in bands as big as a hand-set list would have, from {ODDS_RATINGS_MATCHES} priced
+              matches so far. They move as new odds come in. A rating you change is yours and stays as you set it until
+              you reset it.
             </p>
           )}
 
@@ -102,7 +97,7 @@ export default function TeamStrengthSettings() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search 36 teams"
               aria-label="Search teams"
-              className="min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
             />
           </div>
 
@@ -110,7 +105,7 @@ export default function TeamStrengthSettings() {
             {filtered.map((team) => (
               <li
                 key={team.id}
-                className={`flex items-center gap-3 rounded-2xl border bg-white/[0.03] p-2.5 shadow-card transition-opacity sm:p-3 ${
+                className={`flex items-center gap-3 rounded-lg border bg-white/[0.03] p-2.5 shadow-card transition-opacity sm:p-3 ${
                   team.modified ? 'border-ucl-accent/50' : 'border-white/10'
                 } ${team.hidden ? 'opacity-50' : ''}`}
               >
@@ -122,15 +117,12 @@ export default function TeamStrengthSettings() {
                       <button
                         type="button"
                         onClick={() => resetTeam(team.id)}
-                        className="font-semibold text-ucl-accent transition hover:underline"
+                        className="font-semibold text-ucl-link transition hover:underline"
                       >
-                        was {team.baseRating} · reset
+                        {fromOdds ? 'odds say' : 'was'} {team.baseRating} · reset
                       </button>
                     ) : (
                       <span className="uppercase tracking-wide text-ucl-muted">{team.abbr}</span>
-                    )}
-                    {implied[team.abbr] && (
-                      <OddsHint rating={team.rating} implied={implied[team.abbr]} />
                     )}
                     {team.hidden && (
                       <>
@@ -138,7 +130,7 @@ export default function TeamStrengthSettings() {
                         <button
                           type="button"
                           onClick={() => showTeam(team.id)}
-                          className="font-semibold text-ucl-accent transition hover:underline"
+                          className="font-semibold text-ucl-link transition hover:underline"
                         >
                           show
                         </button>
@@ -150,7 +142,7 @@ export default function TeamStrengthSettings() {
               </li>
             ))}
             {filtered.length === 0 && (
-              <li className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
+              <li className="rounded-lg border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
                 No team matches “{query}”.
               </li>
             )}
@@ -165,11 +157,11 @@ export default function TeamStrengthSettings() {
             Home/away.
           </p>
 
-          <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <ul className="divide-y divide-white/5 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
             {byName.map((team) => (
               <li key={team.id} className="flex items-center gap-2.5 px-2.5 py-2 sm:gap-3 sm:px-3">
                 <TeamBadge abbr={team.abbr} size={24} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{team.shortName ?? team.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-normal">{team.shortName ?? team.name}</span>
                 <div className="flex shrink-0 gap-1" role="group" aria-label={`${team.name} away difficulty`}>
                   {AWAY_DIFFICULTY_LEVELS.map((level) => {
                     const active = team.awayDifficulty === level
@@ -180,8 +172,8 @@ export default function TeamStrengthSettings() {
                         aria-pressed={active}
                         aria-label={`${team.name}: ${level === 0 ? 'no away difficulty adjustment' : `+${level} away difficulty`}`}
                         onClick={() => setAwayDifficulty(team.id, level)}
-                        className={`flex h-8 w-9 items-center justify-center rounded-lg text-xs font-bold transition active:scale-90 ${
-                          active ? 'bg-ucl-accent text-white' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
+                        className={`flex h-8 w-9 items-center justify-center rounded text-xs font-semibold transition active:scale-90 ${
+                          active ? 'bg-ucl-select text-ucl-selectInk' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
                         }`}
                       >
                         {level === 0 ? '0' : `+${level}`}
@@ -195,21 +187,5 @@ export default function TeamStrengthSettings() {
         </>
       )}
     </div>
-  )
-}
-
-// "Odds ≈ 4" on its own line, lit up with an arrow when it differs from the
-// rating as set.
-function OddsHint({ rating, implied }) {
-  const gap = implied.rating - rating
-  const far = gap !== 0
-  return (
-    <span
-      className={`w-full ${far ? 'font-semibold text-ucl-accent' : 'text-ucl-muted'}`}
-      title={`From ${implied.matches} priced match${implied.matches === 1 ? '' : 'es'}`}
-    >
-      Odds ≈ {implied.rating}
-      {far && (gap > 0 ? ' ↑' : ' ↓')}
-    </span>
   )
 }

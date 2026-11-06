@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Info, Search, Star } from 'lucide-react'
+import { ArrowDown, ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -26,15 +26,16 @@ import MdRangePicker from './MdRangePicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import ComparePlayers from './ComparePlayers.jsx'
 import ShowFilter from './ShowFilter.jsx'
+import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import StickyHead from './StickyHead.jsx'
 import { MAX_COMPARE_PLAYERS } from '../utils/urlState.js'
+import { mdRange } from '../utils/mdLabel.js'
 
 // How many players a phone compares: three fit side by side without
 // scrolling sideways.
 const PHONE_COMPARE_PLAYERS = 3
 
 const PREVIEW = 40
-export const PRICE_STEP = 0.5
 // "Differential": owned by at most this share of managers.
 const DIFFERENTIAL_MAX = 5
 
@@ -97,6 +98,7 @@ export default function PlayerProjections() {
   const [show, setShow] = useState('all')
   const [openId, setOpenId] = useState(null)
   const [showInfo, setShowInfo] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   // A search arriving from another tab (a player's name, a club) opens
   // that player's details when it finds exactly one.
   const [autoOpened, setAutoOpened] = useState(null)
@@ -226,10 +228,12 @@ export default function PlayerProjections() {
   const starredCount = players.filter((p) => starred.has(p.id)).length
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
+  // How many of the filters behind the Filters button are narrowing the list.
+  const activeFilters = (maxPrice != null ? 1 : 0) + (show !== 'all' ? 1 : 0)
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
   const chip = (active) =>
-    `min-h-[36px] rounded-[6px] px-2.5 text-xs font-semibold transition ${
-      active ? 'bg-ucl-accent text-white' : 'text-ucl-star/70 hover:bg-white/10'
+    `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
+      active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
     }`
 
   const dataSource = demo
@@ -253,14 +257,14 @@ export default function PlayerProjections() {
   const withoutDomestic = players.length - domestic.size
   // In the table and in the sticky copy under the site header.
   const headRow = (
-    <tr className="bg-ucl-deep text-[10px] uppercase tracking-wider text-ucl-muted">
+    <tr className="section-label bg-ucl-deep">
       {/* w-full + max-w-0 on the name column: it takes whatever the
           number columns leave, and truncates instead of squeezing them. */}
       <th scope="col" className="w-full px-2 py-2 text-left font-semibold">
         Player
       </th>
       <th scope="col" className="hidden px-1 py-2 text-left font-semibold lg:table-cell">
-        Fixtures{mds.length > 0 && ` · MD${mds[0]} → MD${mds[mds.length - 1]}`}
+        Fixtures{mds.length > 0 && ` · ${mdRange(mds[0], mds[mds.length - 1])}`}
       </th>
       <th scope="col" className="px-1.5 py-2 text-right font-semibold">
         €m
@@ -280,14 +284,28 @@ export default function PlayerProjections() {
       </th>
       <th
         scope="col"
-        className="px-2 py-2 text-left font-semibold"
+        className="px-2 py-2 text-right font-semibold"
         title={
           sortBy === 'value'
             ? 'Score per €1m, 100 = best value over these matchdays'
             : 'Form and fixtures, 100 = best player over these matchdays'
         }
       >
-        {sortBy === 'value' ? 'Score / €m' : 'Score'}
+        {/* The explanation opens from here. The caveat sits just above the
+            table instead (see below): in this header it crowded the column. */}
+        <span className="inline-flex items-center gap-1">
+          {sortBy === 'value' ? 'Score / €m' : 'Score'}
+          <button
+            type="button"
+            aria-expanded={showInfo}
+            aria-controls="players-info"
+            onClick={() => setShowInfo(!showInfo)}
+            className="-my-2 inline-flex h-8 w-8 items-center justify-center rounded text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
+          >
+            <Info size={13} aria-hidden="true" />
+            <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
+          </button>
+        </span>
       </th>
     </tr>
   )
@@ -296,17 +314,17 @@ export default function PlayerProjections() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Players"
-        subtitle={`Form and fixtures per player over MD${from}–MD${to}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
+        subtitle={`Form and fixtures per player over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
       />
 
       {demo && (
-        <p className="mb-3 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+        <p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
           Demo: these players and their numbers are made up to preview this page.
         </p>
       )}
 
       {!players.length ? (
-        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
+        <p className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-ucl-star/75">
           {live.loading ? 'Loading players…' : 'Players appear here once the player database is connected.'}
         </p>
       ) : (
@@ -319,55 +337,6 @@ export default function PlayerProjections() {
             onSkipChange={setSkipMd}
             className="mb-3"
           />
-
-          <div className="mb-3 text-xs text-ucl-muted">
-            <p className="flex items-start gap-1.5">
-              <span>
-                <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
-                matchdays.{' '}
-                <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
-                  Not a points prediction
-                </mark>
-              </span>
-              <button
-                type="button"
-                aria-expanded={showInfo}
-                aria-controls="players-info"
-                onClick={() => setShowInfo(!showInfo)}
-                className="-my-1.5 inline-flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded-full text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
-              >
-                <Info size={15} aria-hidden="true" />
-                <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
-              </button>
-            </p>
-            {showInfo && (
-              <div id="players-info" className="mt-2 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p>
-                  <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
-                  matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
-                  samples towards the average for his position. It doesn&rsquo;t know about injuries, team news or
-                  expected goals.
-                </p>
-                {hasDomestic && (
-                  <p>
-                    <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
-                    {domesticMatches} league matches
-                    {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}, scored with UCL
-                    Fantasy&rsquo;s main rules (appearance, goals, assists, clean sheets, cards), without balls
-                    recovered or POTM. <span className="font-semibold text-ucl-star/80">Both</span> counts UCL and
-                    domestic form equally.
-                    {withoutDomestic > 0 &&
-                      ` ${withoutDomestic} players have no domestic data and keep their UCL form.`}
-                  </p>
-                )}
-                <p>
-                  Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
-                  (saved in this browser), or tap VS on up to {maxCompare} players and then Compare to see them side by
-                  side (the comparison is in the link, so you can share it). {dataSource}
-                </p>
-              </div>
-            )}
-          </div>
 
           {compareOpen && compared.length > 0 && (
             <ComparePlayers
@@ -388,8 +357,12 @@ export default function PlayerProjections() {
             />
           )}
 
+          {/* One toolbar: what to show (position, form), how to order it, and a
+              search. The rest (price cap, shortlists) sits behind Filters,
+              closed by default, with a count on the button while any of it
+              is narrowing the list. These used to be five full-width rows. */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div role="group" aria-label="Position" className="flex rounded-lg bg-white/5 p-0.5">
+            <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
               {['ALL', ...POSITIONS].map((pos) => (
                 <button
                   key={pos}
@@ -403,8 +376,8 @@ export default function PlayerProjections() {
               ))}
             </div>
             {hasDomestic && (
-              <div role="group" aria-label="Form" className="flex items-center rounded-lg bg-white/5 p-0.5">
-                <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Form</span>
+              <div role="group" aria-label="Form" className="flex items-center rounded-lg border border-white/10 p-0.5">
+                <span className="px-2 section-label">Form</span>
                 {FORM_LABELS.map(([id, label]) => (
                   <button
                     key={id}
@@ -418,7 +391,15 @@ export default function PlayerProjections() {
                 ))}
               </div>
             )}
-            <div role="group" aria-label="Sort by" className="flex rounded-lg bg-white/5 p-0.5">
+            {/* The order of the list, not a filter on it, so it doesn't look like
+                one: no rail and no white fill (All and Both already wear that),
+                but a label and an underlined, arrowed choice, the way a sorted
+                column head reads. Three white pills side by side read as one
+                control. */}
+            <div role="group" aria-label="Sort by" className="flex items-center">
+              <span aria-hidden="true" className="px-1.5 section-label">
+                Sort
+              </span>
               {[
                 ['score', 'Score'],
                 ['value', 'Per €m'],
@@ -429,47 +410,121 @@ export default function PlayerProjections() {
                   type="button"
                   aria-pressed={sortBy === id}
                   onClick={() => setSortBy(id)}
-                  className={chip(sortBy === id)}
+                  className={`flex min-h-[36px] items-center gap-0.5 border-b-2 px-2 text-xs font-semibold transition ${
+                    sortBy === id
+                      ? 'border-ucl-star text-ucl-star'
+                      : 'border-transparent text-ucl-star/60 hover:text-ucl-star'
+                  }`}
                 >
                   {label}
+                  {sortBy === id && <ArrowDown size={12} aria-hidden="true" />}
                 </button>
               ))}
             </div>
-            <ShowFilter
-              value={show}
-              onChange={setShow}
-              options={[
-                { id: 'all', label: 'All players' },
-                { id: 'starred', label: 'Starred', count: starredCount },
-                { id: 'mine', label: 'My teams', count: pinnedCount },
-                ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
-              ]}
-            />
+            <div className="relative min-w-[200px] flex-1">
+              <Search
+                size={16}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search player or club"
+                aria-label="Search player or club"
+                className="min-h-[40px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              />
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="players-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className={`flex min-h-[40px] items-center gap-1.5 rounded border px-3 text-xs font-semibold transition ${
+                activeFilters > 0
+                  ? 'border-white/40 bg-white/10 text-ucl-star'
+                  : 'border-white/10 text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star'
+              }`}
+            >
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              Filters{activeFilters > 0 && ` · ${activeFilters}`}
+            </button>
           </div>
 
-          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
+          {filtersOpen && (
+            <div
+              id="players-filters"
+              className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/10 p-2"
+            >
+              <ShowFilter
+                value={show}
+                onChange={setShow}
+                options={[
+                  { id: 'all', label: 'All players' },
+                  { id: 'starred', label: 'Starred', count: starredCount },
+                  { id: 'mine', label: 'My teams', count: pinnedCount },
+                  ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
+                ]}
+              />
+              <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="min-w-[260px] flex-1" />
+            </div>
+          )}
 
-          <div className="relative mb-3">
-            <Search
-              size={16}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search player or club"
-              aria-label="Search player or club"
-              className="min-h-[44px] w-full rounded-2xl border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
-            />
-          </div>
+          {showInfo && (
+            <div
+              id="players-info"
+              className="relative mb-3 space-y-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-ucl-muted"
+            >
+              <button
+                type="button"
+                onClick={() => setShowInfo(false)}
+                aria-label="Close how the score works"
+                className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded text-ucl-muted transition hover:bg-white/10 hover:text-ucl-star"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+              <p className="pr-8">
+                <span className="font-semibold text-ucl-star/80">Score</span>: form and fixtures, 100 = best for these
+                matchdays. <NotAPrediction />
+              </p>
+              <p>
+                <span className="font-semibold text-ucl-star/80">Form</span> is points per match so far, counting the
+                matches he didn&rsquo;t play as zeros. The score adds the fixtures in the range and pulls small
+                samples towards the average for his position. It doesn&rsquo;t know about injuries, team news or
+                expected goals.
+              </p>
+              {hasDomestic && (
+                <p>
+                  <span className="font-semibold text-ucl-star/80">Domestic</span> is each club&rsquo;s last{' '}
+                  {domesticMatches} league matches
+                  {!demo && domesticForm?.updated ? ` (up to ${domesticForm.updated})` : ''}, scored with UCL
+                  Fantasy&rsquo;s main rules (appearance, goals, assists, clean sheets, cards), without balls
+                  recovered or POTM. <span className="font-semibold text-ucl-star/80">Both</span> counts UCL and
+                  domestic form equally.
+                  {withoutDomestic > 0 &&
+                    ` ${withoutDomestic} players have no domestic data and keep their UCL form.`}
+                </p>
+              )}
+              <p>
+                Tap a player for his minutes, points per matchday and league matches. Star players to keep a shortlist
+                (saved in this browser), or tap VS on up to {maxCompare} players and then Compare to see them side by
+                side (the comparison is in the link, so you can share it). {dataSource}
+              </p>
+            </div>
+          )}
+
+          {/* The caveat, one line above the table at every width, right over
+              the Score column it qualifies. */}
+          <p className="mb-1.5 text-right text-meta text-ucl-muted">
+            Score: form and fixtures, 100 = best for {mdRange(from, to)}. <NotAPrediction />
+          </p>
 
           <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">
             {headRow}
           </StickyHead>
-          <div ref={tableScrollerRef} className="overflow-x-auto rounded-2xl border border-white/10">
-            <table ref={tableRef} className="w-full whitespace-nowrap text-sm">
+          <div ref={tableScrollerRef} className="overflow-x-auto rounded-lg border border-white/10">
+            <table ref={tableRef} className="w-full whitespace-nowrap text-table">
               <thead>
                 {headRow}
               </thead>
@@ -477,7 +532,7 @@ export default function PlayerProjections() {
                 {visible.map((p) => {
                   const open = openId === p.id
                   const shown = sortBy === 'value' ? p.valueScore : p.score
-                  // The player on 100: a faint tint and a ring on his bar.
+                  // The player on 100: his score in the heaviest weight.
                   const top = shown >= 99.95
                   const isStarred = starred.has(p.id)
                   const inCompare = compareSet.has(p.id)
@@ -485,7 +540,7 @@ export default function PlayerProjections() {
                     <Fragment key={p.id}>
                       <tr
                         className={`cursor-pointer border-t border-white/5 transition hover:bg-white/[0.04] ${
-                          open ? 'bg-white/[0.04]' : top ? 'bg-ucl-accent/[0.07]' : ''
+                          open ? 'bg-white/[0.04]' : ''
                         }`}
                         onClick={() => setOpenId(open ? null : p.id)}
                       >
@@ -499,8 +554,8 @@ export default function PlayerProjections() {
                                 e.stopPropagation()
                                 toggleStar(p.id)
                               }}
-                              className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-white/10 ${
-                                isStarred ? 'text-amber-300' : 'text-ucl-star/25 hover:text-ucl-star/60'
+                              className={`flex h-9 w-7 shrink-0 items-center justify-center rounded transition hover:bg-white/10 ${
+                                isStarred ? 'text-ucl-brass' : 'text-ucl-star/25 hover:text-ucl-star/60'
                               }`}
                             >
                               <Star size={15} aria-hidden="true" fill={isStarred ? 'currentColor' : 'none'} />
@@ -521,13 +576,13 @@ export default function PlayerProjections() {
                                 e.stopPropagation()
                                 toggleCompare(p.id)
                               }}
-                              className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+                              className="mr-1 flex h-9 w-7 shrink-0 items-center justify-center rounded hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <span
                                 aria-hidden="true"
-                                className={`rounded-[5px] border px-1 py-[1px] text-[9px] font-black leading-none tracking-tight ${
+                                className={`rounded border px-1 py-[1px] text-[9px] font-extrabold leading-none tracking-tight ${
                                   inCompare
-                                    ? 'border-ucl-accent bg-ucl-accent text-white'
+                                    ? 'border-ucl-select bg-ucl-select text-ucl-selectInk'
                                     : 'border-ucl-star/30 text-ucl-star/55'
                                 }`}
                               >
@@ -541,7 +596,7 @@ export default function PlayerProjections() {
                             >
                               <TeamBadge abbr={p.team} size={22} />
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-semibold">{p.name}</span>
+                                <span className="block truncate text-table font-semibold">{p.name}</span>
                                 <span className="block truncate text-[11px] text-ucl-muted">
                                   {/* Minutes live in the details: this line stays short. */}
                                   {p.position} · {nameOf(p.team)}
@@ -580,21 +635,26 @@ export default function PlayerProjections() {
                           )}
                         </td>
                         <td className="px-2 py-1.5">
-                          <ScoreBar value={shown} highlight={top} />
+                          <ScoreValue value={shown} highlight={top} />
                         </td>
                       </tr>
                       {open && (
                         <tr className="bg-white/[0.04]">
+                          {/* The details sit in a panel of their own (the 8px
+                              container radius), so they read as belonging to
+                              the row above and not as more table. */}
                           <td colSpan={5} className="whitespace-normal px-2 pb-3 pt-1">
-                            <PlayerDetails
-                              player={p}
-                              odds={oddsById.get(p.id)}
-                              onOpenOdds={() => openTab('odds', { oddsView: 'players', oddsQuery: p.name })}
-                              teamsByAbbr={teamsByAbbr}
-                              venueAdjust={venueAdjust}
-                              league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
-                              clubMatches={clubMatches}
-                            />
+                            <div className="rounded-lg border border-white/10 bg-ucl-navy/60 p-3">
+                              <PlayerDetails
+                                player={p}
+                                odds={oddsById.get(p.id)}
+                                onOpenOdds={() => openTab('odds', { oddsView: 'players', oddsQuery: p.name })}
+                                teamsByAbbr={teamsByAbbr}
+                                venueAdjust={venueAdjust}
+                                league={demo ? 'league' : domesticForm?.leagues?.[p.team]}
+                                clubMatches={clubMatches}
+                              />
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -615,7 +675,7 @@ export default function PlayerProjections() {
             <button
               type="button"
               onClick={() => setShowAll(!showAll)}
-              className="mt-2 min-h-[40px] w-full rounded-xl bg-white/5 text-xs font-semibold text-ucl-star/80 hover:bg-white/10"
+              className="mt-2 min-h-[40px] w-full rounded bg-white/5 text-xs font-semibold text-ucl-star/80 hover:bg-white/10"
             >
               {showAll ? 'Show fewer' : `Show all ${rows.length}`}
             </button>
@@ -624,10 +684,10 @@ export default function PlayerProjections() {
             // Follows the list while scrolling: pick players anywhere in it,
             // then open them side by side from here.
             <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-3 flex justify-center sm:bottom-4">
-              <div className="flex items-center gap-1.5 rounded-full border border-ucl-accent/40 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
+              <div className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-ucl-navy/95 p-1 pl-2 shadow-card backdrop-blur-md">
                 <span className="flex -space-x-1.5" aria-hidden="true">
                   {compared.map((p) => (
-                    <span key={p.id} className="rounded-full bg-ucl-navy p-0.5">
+                    <span key={p.id} className="rounded bg-ucl-navy p-0.5">
                       <TeamBadge abbr={p.team} size={20} />
                     </span>
                   ))}
@@ -639,7 +699,7 @@ export default function PlayerProjections() {
                   type="button"
                   disabled={compared.length < 2}
                   onClick={() => setCompareOpen(true)}
-                  className="min-h-[36px] rounded-full bg-ucl-accent px-3 text-xs font-semibold text-white disabled:bg-white/10 disabled:text-ucl-star/60"
+                  className="min-h-[36px] rounded bg-ucl-select text-ucl-selectInk px-3 text-xs font-semibold disabled:bg-white/10 disabled:text-ucl-star/60"
                 >
                   {compared.length < 2 ? 'Pick 1 more' : 'Compare'}
                 </button>
@@ -647,7 +707,7 @@ export default function PlayerProjections() {
                   type="button"
                   onClick={() => setComparePlayers([])}
                   aria-label="Clear the comparison"
-                  className="min-h-[36px] rounded-full px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
+                  className="min-h-[36px] rounded px-2.5 text-xs font-semibold text-ucl-star/70 hover:bg-white/10"
                 >
                   Clear
                 </button>
@@ -666,80 +726,44 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 // minutes he could have played (a cameo goal isn't a rate worth showing).
 const formatGa90 = (dom) => (dom?.ga90 == null || dom.minutes < dom.matches * 45 ? '–' : dom.ga90.toFixed(2))
 
-// The score as a bar with the number on it, so the column reads at a glance
-// instead of as one more figure next to price and form.
-export function ScoreBar({ value, highlight = false }) {
+// The score as a number, right-aligned like the price and form beside it,
+// with a 2px rule under it as long as the score. It used to be a filled bar
+// with the number printed on it as well: the same value twice, and a column
+// that read as a row of progress bars. The rule keeps the glance; the
+// number is the reading. The player on 100 gets his number in 800.
+export function ScoreValue({ value, highlight = false }) {
   const pct = Math.max(0, Math.min(100, value))
   return (
-    <div
-      className={`relative h-6 w-16 overflow-hidden rounded-md bg-white/[0.06] sm:w-28 ${
-        highlight ? 'shadow-[0_0_10px_-2px_rgba(67,97,255,0.7)] ring-1 ring-ucl-accent/70' : ''
-      }`}
-    >
-      <div
-        className={`absolute inset-y-0 left-0 rounded-md ${highlight ? 'bg-ucl-accent/80' : 'bg-ucl-accent/60'}`}
-        style={{ width: `${pct}%` }}
-      />
-      <span className="relative flex h-full items-center px-1.5 text-xs font-bold tabular-nums">{Math.round(pct)}</span>
-    </div>
+    <span className="ml-auto block w-10 sm:w-20">
+      <span className={`block text-right tabular-nums ${highlight ? 'font-extrabold text-ucl-star' : 'font-semibold'}`}>
+        {Math.round(pct)}
+      </span>
+      {/* 2px at 60% white on a barely-there track: at the old white/70 on
+          white/15 the two were too close to read as a length. */}
+      <span aria-hidden="true" className="mt-1 block h-0.5 bg-white/[0.06]">
+        <span className="block h-full bg-white/60" style={{ width: `${pct}%` }} />
+      </span>
+    </span>
   )
 }
 
-// Max price in €0.5m steps. The top of the slider means no cap. Shared with
-// GK Rotation.
-export function PriceSlider({ bounds, value, onChange }) {
-  const current = value ?? bounds.max
-  return (
-    <label className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
-      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-ucl-muted">Max price</span>
-      <input
-        type="range"
-        min={bounds.min}
-        max={bounds.max}
-        step={PRICE_STEP}
-        value={current}
-        onChange={(e) => {
-          const v = Number(e.target.value)
-          onChange(v >= bounds.max ? null : v)
-        }}
-        aria-valuetext={value == null ? 'Any price' : `€${current.toFixed(1)}m`}
-        className="h-10 min-w-0 flex-1 accent-ucl-accent"
-      />
-      <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">
-        {value == null ? 'Any' : `€${current.toFixed(1)}m`}
-      </span>
-    </label>
-  )
-}
 
 // One line in the table (the name column would otherwise squeeze the chips
-// into a stack), wrapping in a row's details on a phone.
-// `showMd` puts the matchday over each chip, where the column header
-// isn't there to say which is which.
-function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true, showMd = false }) {
+// into a stack).
+function Fixtures({ fixtures, teamsByAbbr, venueAdjust, wrap = true }) {
   return (
     <div className={`flex gap-1 ${wrap ? 'flex-wrap' : ''}`}>
-      {fixtures.map((f) => {
-        const chip = (
-          <FixtureChip
-            key={f.gw}
-            opp={f.opp}
-            oppName={teamsByAbbr[f.opp]?.name}
-            venue={f.venue}
-            rating={teamsByAbbr[f.opp]?.rating ?? 3}
-            venueAdjust={venueAdjust}
-            awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
-          />
-        )
-        return showMd ? (
-          <span key={f.gw} className="flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-semibold text-ucl-muted">MD{f.gw}</span>
-            {chip}
-          </span>
-        ) : (
-          chip
-        )
-      })}
+      {fixtures.map((f) => (
+        <FixtureChip
+          key={f.gw}
+          opp={f.opp}
+          oppName={teamsByAbbr[f.opp]?.name}
+          venue={f.venue}
+          rating={teamsByAbbr[f.opp]?.rating ?? 3}
+          venueAdjust={venueAdjust}
+          awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+        />
+      ))}
     </div>
   )
 }
@@ -768,117 +792,153 @@ function useIsPhone() {
   return phone
 }
 
-// What's behind the numbers: points per matchday (is that average one big
-// haul or steady returns?), the season stats, and — for phones, where the
-// fixtures column is hidden — the fixtures in the range.
+// What's behind the numbers, in three columns that use the row's width
+// (stacked on a phone): what's next, what he has done in the UCL, and his
+// league form. It used to be six stacked blocks down the left edge, with
+// minutes in a block of their own and the fixtures listed twice on a phone
+// (once with odds, once without). Now each match is one line: the fixture
+// and his goal-or-assist chance side by side; minutes sit in the heading of
+// the competition they belong to.
 function PlayerDetails({ player, odds, onOpenOdds, teamsByAbbr, venueAdjust, league, clubMatches }) {
+  // Balls recovered is left out: it's the longest label and the smallest
+  // points source; the Odds and Compare views still have it.
   const stats = STAT_LABELS.filter(
-    ([field, , positions]) => player.stats?.[field] != null && (!positions || positions.includes(player.position)),
+    ([field, , positions]) =>
+      field !== 'ballsRecovered' && player.stats?.[field] != null && (!positions || positions.includes(player.position)),
   )
+  const oddsByMd = new Map((odds?.matches ?? []).map((m) => [m.md, m]))
+  const pct = (part, whole) => (whole > 0 ? ` (${Math.round((part / whole) * 100)}%)` : '')
+  const first = player.fixtures[0]?.gw
+  const last = player.fixtures[player.fixtures.length - 1]?.gw
   return (
-    <div className="space-y-2.5">
-      {odds && (
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
-            Goal or assist chance · bookmaker odds, if he plays
-          </p>
-          <div className="flex flex-wrap items-center gap-1">
-            {odds.matches.map((m) => (
-              <span
-                key={m.md}
-                title={`MD${m.md} ${m.venue === 'H' ? 'v' : 'at'} ${m.opp}: xG ${m.xg.toFixed(2)}${
-                  m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
-                }${m.estimated ? ' (estimate)' : ''}`}
-                className={`inline-flex min-w-[52px] flex-col items-center rounded-md px-1.5 py-1 text-xs ${
-                  m.estimated ? 'border border-dashed border-ucl-star/25' : 'bg-ucl-accent/20'
-                }`}
-              >
-                <span className="text-[10px] text-ucl-muted">
-                  MD{m.md} {m.opp}
-                </span>
-                <span className="font-bold tabular-nums">{Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%</span>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenOdds()
-              }}
-              className="ml-1 min-h-[32px] rounded-md px-2 text-xs font-semibold text-ucl-accent hover:bg-white/10"
-            >
-              Odds →
-            </button>
-          </div>
-        </div>
+    <div className="grid gap-x-6 gap-y-4 pt-1 md:grid-cols-3">
+      {player.fixtures.length > 0 && (
+        <section>
+          <DetailHeading
+            title={`Next · ${mdRange(first, last)}`}
+            aside={
+              odds && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenOdds()
+                  }}
+                  className="-my-2 min-h-[32px] rounded px-1.5 font-semibold normal-case tracking-normal text-ucl-link hover:bg-white/10"
+                >
+                  Odds →
+                </button>
+              )
+            }
+          />
+          <ul className="space-y-1">
+            {player.fixtures.map((f) => {
+              const m = oddsByMd.get(f.gw)
+              return (
+                <li key={f.gw} className="flex items-center gap-2 text-xs">
+                  <span className="w-8 shrink-0 text-meta text-ucl-muted">MD{f.gw}</span>
+                  <FixtureChip
+                    opp={f.opp}
+                    oppName={teamsByAbbr[f.opp]?.name}
+                    venue={f.venue}
+                    rating={teamsByAbbr[f.opp]?.rating ?? 3}
+                    venueAdjust={venueAdjust}
+                    awayDifficulty={teamsByAbbr[f.opp]?.awayDifficulty ?? 0}
+                  />
+                  {m && (
+                    <span
+                      className="tabular-nums text-ucl-star/80"
+                      title={`Bookmaker odds, if he plays: xG ${m.xg.toFixed(2)}${
+                        m.xa != null ? `, xA ${m.xa.toFixed(2)}` : ''
+                      }${m.estimated ? ' (estimate until the match is priced)' : ''}`}
+                    >
+                      <span className="font-semibold text-ucl-star">
+                        {Math.round((1 - Math.exp(-(m.xg + (m.xa ?? 0)))) * 100)}%
+                      </span>{' '}
+                      goal or assist{m.estimated && <span className="text-ucl-muted"> · est.</span>}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
       )}
-      {player.form?.length > 0 && (
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Points per matchday</p>
-          <div className="flex flex-wrap gap-1">
+
+      <section>
+        <DetailHeading
+          title="UCL so far"
+          aside={`${player.minutes}/${clubMatches * 90} min${pct(player.minutes, clubMatches * 90)}`}
+        />
+        {player.form?.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1">
             {player.form.map((f) => (
               <span
                 key={f.md}
-                className="inline-flex min-w-[44px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs"
+                className="inline-flex min-w-[40px] flex-col items-center rounded bg-white/5 px-1.5 py-1 text-xs"
               >
                 <span className="text-[10px] text-ucl-muted">MD{f.md}</span>
-                <span className="font-bold tabular-nums">{f.points}</span>
+                <span className="font-semibold tabular-nums">{f.points}</span>
               </span>
             ))}
           </div>
-        </div>
-      )}
-      {stats.length > 0 && (
+        )}
         <p className="text-xs text-ucl-star/80">
-          {stats.map(([field, label]) => `${player.stats[field]} ${label}`).join(' · ')}
+          {[player.apps != null && plural(player.apps, 'app'), ...stats.map(([field, label]) => `${player.stats[field]} ${label}`)]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-      )}
-      <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Minutes</p>
-        <p className="text-xs text-ucl-star/80">
-          UCL {player.minutes}/{clubMatches * 90}
-          {clubMatches > 0 && ` (${Math.round(player.minutesShare * 100)}%)`}
-          {player.apps != null && `, ${plural(player.apps, 'app')}`}
-          {player.dom &&
-            ` · ${league ?? 'League'} ${player.dom.minutes}/${player.dom.matches * 90} (${Math.round(
-              (player.dom.minutes / (player.dom.matches * 90)) * 100,
-            )}%), ${player.dom.apps}/${player.dom.matches} apps`}
-        </p>
-      </div>
+      </section>
+
       {player.dom && (
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">
-            Last {player.dom.matches} in {league ?? 'the league'}
-          </p>
-          <div className="flex flex-wrap gap-1">
+        <section>
+          <DetailHeading
+            title={`${league ?? 'League'} · last ${player.dom.matches}`}
+            aside={`${player.dom.minutes}/${player.dom.matches * 90} min`}
+          />
+          <ul className="mb-1.5 space-y-0.5">
             {player.domestic.map((g) => (
-              <span
+              <li
                 key={`${g.d}-${g.opp}`}
-                title={`${g.d} · ${g.opp} (${g.v === 'H' ? 'home' : 'away'})`}
-                className={`inline-flex w-[72px] flex-col items-center rounded-md bg-white/5 px-1.5 py-1 text-xs ${g.min ? '' : 'opacity-50'}`}
+                title={g.d}
+                className={`flex items-baseline gap-2 text-xs ${g.min ? '' : 'text-ucl-muted'}`}
               >
-                <span className="w-full truncate text-center text-[10px] text-ucl-muted">
+                <span className="min-w-0 flex-1 truncate">
                   {g.v === 'H' ? 'v' : '@'} {g.opp}
                 </span>
-                <span className="font-bold tabular-nums">{g.min}&prime;</span>
-                <span className="text-[10px] tabular-nums text-ucl-star/70">
+                <span className="w-9 text-right tabular-nums">{g.min}&prime;</span>
+                <span className="w-10 text-right tabular-nums">
                   {g.g || g.a ? [g.g && `${g.g}G`, g.a && `${g.a}A`].filter(Boolean).join(' ') : '–'}
                 </span>
-              </span>
+              </li>
             ))}
-          </div>
-          <p className="mt-1 text-xs text-ucl-star/80">
+          </ul>
+          <p className="text-xs text-ucl-star/80">
             {plural(player.dom.goals, 'goal')} · {plural(player.dom.assists, 'assist')}
             {player.dom.ga90 != null && ` · ${player.dom.ga90.toFixed(2)} G+A per 90`}
           </p>
-        </div>
-      )}
-      {player.fixtures.length > 0 && (
-        <div className="lg:hidden">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ucl-muted">Fixtures in range</p>
-          <Fixtures fixtures={player.fixtures} teamsByAbbr={teamsByAbbr} venueAdjust={venueAdjust} showMd />
-        </div>
+        </section>
       )}
     </div>
+  )
+}
+
+// A column's heading in a player's details, with a figure on the right.
+function DetailHeading({ title, aside }) {
+  return (
+    <p className="mb-1.5 flex items-baseline justify-between gap-2 border-b border-white/10 pb-1 section-label">
+      <span className="truncate">{title}</span>
+      {aside && <span className="shrink-0 normal-case tracking-normal text-ucl-star/70">{aside}</span>}
+    </p>
+  )
+}
+
+// "Not a points prediction": kept wherever the score is explained, because
+// a 0-100 number beside fixtures is easy to read as expected points.
+function NotAPrediction() {
+  return (
+    <mark className="whitespace-nowrap rounded bg-amber-300/15 px-1 font-semibold text-amber-100">
+      Not a points prediction
+    </mark>
   )
 }

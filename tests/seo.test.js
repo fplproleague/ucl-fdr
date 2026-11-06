@@ -96,3 +96,13 @@ test('matchday page ratings come from the default ratings, every team once', () 
   assert.equal(sample.home.band, 1)
   assert.equal(sample.away.band, 5)
 })
+
+test('matchday pages use the same default ratings as the app (odds-implied, else the seed)', async () => {
+  const { DEFAULT_TEAMS } = await import('../scripts/build-md-pages.mjs')
+  const { ODDS } = await import('../src/data/odds.js')
+  const { INITIAL_TEAMS } = await import('../src/data/teams.js')
+  const { impliedRatings } = await import('../src/utils/oddsView.js')
+  const implied = impliedRatings(ODDS, Object.fromEntries(INITIAL_TEAMS.map((t) => [t.abbr, t.rating])))
+  assert.equal(DEFAULT_TEAMS.length, 36)
+  for (const t of DEFAULT_TEAMS) assert.equal(t.rating, implied[t.abbr]?.rating ?? INITIAL_TEAMS.find((x) => x.abbr === t.abbr).rating, t.abbr)
+})
