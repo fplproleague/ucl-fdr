@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_FIT, compareRows, fitEstimator, indexOdds, playerOddsRows, teamOddsRows } from '../src/utils/oddsView.js'
+import { DEFAULT_FIT, XG_CAP_FLOOR, XG_CAP_MARGIN, compareRows, fitEstimator, indexOdds, playerOddsRows, teamOddsRows } from '../src/utils/oddsView.js'
 import { FIXTURES } from '../src/data/fixtures.js'
 
 const near = (actual, expected, tolerance, label) =>
@@ -155,4 +155,22 @@ test('Elo gaps wider than the priced matches have shown are capped', () => {
   const capped = est.estimate('A', 'Z', 'H').xgFor
   // No wider than the widest priced gap (A–E, 400 points; at least 300).
   near(capped, est.estimate('A', 'Y', 'H').xgFor * Math.exp(est.fit.elo * 4), 1e-6, 'capped at the widest priced gap')
+})
+
+test('no estimate goes past the most the bookmakers have priced', () => {
+  const lopsided = structuredClone(odds)
+  lopsided.elo.teams = { ...lopsided.elo.teams, Z: 500 }
+  const est = fitEstimator(lopsided)
+  const top = Math.max(...Object.values(lopsided.matches).flatMap((m) => m.xg))
+  near(est.xgCap, Math.max(XG_CAP_FLOOR, XG_CAP_MARGIN * top), 1e-9, 'cap')
+  for (const t of Object.keys(lopsided.elo.teams))
+    for (const u of Object.keys(lopsided.elo.teams))
+      if (t !== u) assert.ok(est.estimate(t, u, 'H').xgFor <= est.xgCap + 1e-9, `${t}-${u}`)
+})
+
+test('the live data: Arsenal–Sabah stays within what the odds have shown', async () => {
+  const { ODDS } = await import('../src/data/odds.js')
+  const est = fitEstimator(ODDS)
+  const top = Math.max(...Object.values(ODDS.matches).flatMap((m) => m.xg))
+  assert.ok(est.estimate('ARS', 'SAB', 'H').xgFor <= Math.max(XG_CAP_FLOOR, XG_CAP_MARGIN * top) + 1e-9)
 })
