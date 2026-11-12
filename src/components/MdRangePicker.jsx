@@ -50,7 +50,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-from"
           value={from}
           onChange={(e) => handleFrom(Number(e.target.value))}
-          className="min-h-[40px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+          className="min-h-[44px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
         >
           {all.map((md) => (
             <option key={md} value={md}>
@@ -68,7 +68,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
           id="md-to"
           value={to}
           onChange={(e) => onChange(from, Number(e.target.value))}
-          className="min-h-[40px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+          className="min-h-[44px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
         >
           {all
             .filter((md) => md >= from)
@@ -90,7 +90,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
                 type="button"
                 onClick={() => onChange(p.from, p.to)}
                 aria-pressed={active}
-                className={`min-h-[40px] rounded border px-2.5 text-sm font-semibold transition ${
+                className={`min-h-[44px] rounded border px-2.5 text-sm font-semibold transition ${
                   active
                     ? 'border-white/40 bg-white/10 text-ucl-star'
                     : 'border-white/10 bg-ucl-deep text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star'
@@ -113,7 +113,7 @@ export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange
             value={skipMd ?? ''}
             onChange={(e) => onSkipChange(e.target.value ? Number(e.target.value) : null)}
             title="Leave one matchday out of the table and every average — handy for a Limitless/wildcard matchday you're building a separate team for"
-            className={`min-h-[40px] rounded border px-2 text-sm font-semibold ${
+            className={`min-h-[44px] rounded border px-2 text-sm font-semibold ${
               skipMd
                 ? 'border-white/40 bg-white/10 text-ucl-star'
                 : 'border-white/10 bg-ucl-deep text-ucl-star/80'

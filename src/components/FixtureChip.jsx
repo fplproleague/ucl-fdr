@@ -38,7 +38,7 @@ export default function FixtureChip({
       <span aria-hidden="true">
         {opp} ({venue})
       </span>
-      <span aria-hidden="true" className="absolute right-[3px] top-[1px] text-[9px] font-extrabold leading-none opacity-60">
+      <span aria-hidden="true" className="absolute right-[3px] top-[1px] text-[10px] font-extrabold leading-none opacity-60">
         {band}
       </span>
       {awayBumpApplied && (

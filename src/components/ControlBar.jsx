@@ -77,7 +77,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
               type="button"
               aria-pressed={dayFilter === d}
               onClick={() => setDayFilter(d)}
-              className={`min-h-[32px] rounded px-3 text-[11px] font-semibold transition ${
+              className={`min-h-[44px] rounded px-3 text-[11px] font-semibold transition ${
                 dayFilter === d ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
               }`}
             >
@@ -96,7 +96,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
               type="button"
               onClick={() => setTab('strength')}
               title="Ratings you changed on the Strength tab"
-              className="min-h-[32px] rounded bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
+              className="min-h-[44px] rounded bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
             >
               {modifiedCount} custom rating{modifiedCount === 1 ? '' : 's'}
             </button>
@@ -106,7 +106,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
             type="button"
             onClick={() => setOpenMethod((v) => !v)}
             aria-expanded={openMethod}
-            className="flex min-h-[32px] items-center gap-1.5 rounded px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
+            className="flex min-h-[44px] items-center gap-1.5 rounded px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
           >
             <Info size={14} aria-hidden="true" />
             <span className="sm:hidden">How it works</span>
@@ -116,7 +116,7 @@ export default function ControlBar({ showRange = true, showMyTeamsFilter = false
           <button
             type="button"
             onClick={handleCopyLink}
-            className="flex min-h-[32px] items-center gap-1.5 rounded border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
+            className="flex min-h-[44px] items-center gap-1.5 rounded border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
           >
             {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
             {copied ? 'Copied!' : 'Copy link'}
@@ -163,7 +163,7 @@ function OptionToggle({ on, onChange, children }) {
       role="switch"
       aria-checked={on}
       onClick={() => onChange(!on)}
-      className={`flex min-h-[36px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
+      className={`flex min-h-[44px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
         on
           ? 'border-white/40 bg-white/10 text-ucl-star'
           : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'

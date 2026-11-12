@@ -109,7 +109,7 @@ export default function FixtureGrid({
           className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center section-label sm:min-w-[72px]"
         >
           <span className="block leading-tight">MD{md}</span>
-          <span className="block text-[9px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
+          <span className="block whitespace-nowrap text-[10px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
             {MATCHDAY_LABEL[md]}
           </span>
         </th>
