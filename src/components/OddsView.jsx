@@ -116,7 +116,7 @@ function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClic
               MD{md}
               {sortMd === md && <ArrowDown size={11} aria-hidden="true" />}
             </span>
-            <span className="block text-[9px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
+            <span className="block whitespace-nowrap text-[10px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
               {MATCHDAY_LABEL[md]}
             </span>
           </button>

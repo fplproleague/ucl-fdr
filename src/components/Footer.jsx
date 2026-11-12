@@ -70,16 +70,21 @@ export default function Footer() {
         </div>
       </details>
 
-      <nav aria-label="Matchday pages" className="mt-3 text-[11px] text-ucl-muted">
-        Matchday pages:{' '}
-        {MATCHDAYS.map(({ md }, i) => (
-          <span key={md}>
-            {i > 0 && ' · '}
-            <a href={`/md/${md}/`} className="transition hover:text-ucl-star">
+      {/* Each link is a full 44px tap target: as plain inline text at 11px
+          they were about 24×11, too small to hit on a phone. */}
+      <nav aria-label="Matchday pages" className="mt-3 text-xs text-ucl-muted">
+        <span className="block">Matchday pages:</span>
+        <span className="flex flex-wrap justify-center">
+          {MATCHDAYS.map(({ md }) => (
+            <a
+              key={md}
+              href={`/md/${md}/`}
+              className="inline-flex min-h-[44px] min-w-[40px] items-center justify-center rounded px-1 transition hover:bg-white/5 hover:text-ucl-star"
+            >
               MD{md}
             </a>
-          </span>
-        ))}
+          ))}
+        </span>
       </nav>
 
       <a
