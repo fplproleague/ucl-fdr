@@ -2,6 +2,7 @@ node_modules
 dist
 .DS_Store
 *.local
+.env
 .vercel
 # clubelo.com downloads read by scripts/build-odds.mjs
 clubelo*.csv
