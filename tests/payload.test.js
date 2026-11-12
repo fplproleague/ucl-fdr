@@ -2,12 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // Guards for the first-load budget (see the commit that added this file):
 // the views other than the FDR table are loaded on demand, and the body
 // text uses Archivo's 35 kB weight-only face, not the 90 kB two-axis one.
 
-const SRC = new URL('../src/', import.meta.url).pathname
+const SRC = fileURLToPath(new URL('../src/', import.meta.url))
 function sources(dir = SRC) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? sources(join(dir, e.name)) : /\.(jsx?|css)$/.test(e.name) ? [join(dir, e.name)] : [],
@@ -30,7 +31,7 @@ test('the body face is the weight-only Archivo; the expanded one is a small subs
   const all = files.map((f) => f.text).join('\n')
   assert.ok(!all.includes('@fontsource-variable/archivo/wdth.css'), 'the 90 kB two-axis file is back')
   assert.ok(all.includes('@fontsource-variable/archivo/wght.css'))
-  const fonts = new URL('../src/assets/fonts/', import.meta.url).pathname
+  const fonts = fileURLToPath(new URL('../src/assets/fonts/', import.meta.url))
   for (const name of readdirSync(fonts)) {
     const size = readFileSync(join(fonts, name)).length
     assert.ok(size < 25_000, `${name} is ${size} bytes`)
