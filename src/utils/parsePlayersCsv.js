@@ -10,6 +10,8 @@
 //
 // Optional, used when present (any other column is ignored):
 //   Player ID     a stable id, so a renamed player keeps the same row key
+//   API ID        his API-Football player id, for when the domestic form
+//                 script can't match him by name (build-domestic-form.mjs)
 //   Ownership %   share of managers who own him (0–100)
 //   Apps          appearances
 //   MD1, MD2, …   points per matchday: the form line in the details
@@ -47,6 +49,7 @@ const STAT_COLUMNS = {
   potm: 'potm',
 }
 const OWNERSHIP_HEADERS = ['ownership %', 'ownership', 'selected %', 'selected by %']
+const API_ID_HEADERS = ['api id', 'api-football id', 'api football id']
 
 const number = (raw) =>
   Number(
@@ -73,6 +76,7 @@ export function parsePlayerRows(csvText, clubLookup) {
   const idCol = header.indexOf('player id')
   const ownershipCol = header.findIndex((h) => OWNERSHIP_HEADERS.includes(h))
   const appsCol = header.indexOf('apps')
+  const apiIdCol = header.findIndex((h) => API_ID_HEADERS.includes(h))
   const mdCols = header
     .map((h, i) => ({ md: Number(h.match(/^md\s*(\d+)$/)?.[1]), i }))
     .filter(({ md }) => Number.isInteger(md))
@@ -141,6 +145,8 @@ export function parsePlayerRows(csvText, clubLookup) {
     if (ownership != null) player.ownership = ownership
     const apps = optional(cells, appsCol)
     if (apps != null) player.apps = apps
+    const apiId = optional(cells, apiIdCol)
+    if (apiId != null && apiId > 0) player.apiId = apiId
     if (mdCols.length) {
       // Only matchdays with a number in them: a blank MD5 column added ahead
       // of time is "not played yet", not a zero.

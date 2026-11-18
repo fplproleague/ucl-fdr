@@ -1,4 +1,25 @@
 @tailwind base;
+
+/* Archivo Expanded: the width-118 instance used for titles and section
+   labels, subset to the characters headings need. It replaces loading
+   Archivo's two-axis file (90 kB) for the whole site; body text stays on the
+   35 kB weight-only face (main.jsx). */
+@font-face {
+  font-family: 'Archivo Expanded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600 800;
+  src: url(./assets/fonts/archivo-expanded-latin.woff2) format('woff2');
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+2192, U+2248;
+}
+@font-face {
+  font-family: 'Archivo Expanded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600 800;
+  src: url(./assets/fonts/archivo-expanded-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-017F;
+}
 @tailwind components;
 @tailwind utilities;
 
@@ -7,12 +28,12 @@
     color-scheme: dark;
   }
 
+  /* One flat ground. There used to be two fixed radial glows in brand blue
+     here; with background-attachment: fixed they never moved with the page,
+     so they read as wallpaper behind the tool rather than part of it. The
+     navy was darkened a step instead, so the panels above it still separate. */
   body {
     @apply bg-ucl-navy text-ucl-star font-body antialiased;
-    background-image:
-      radial-gradient(circle at 15% 0%, rgba(67, 97, 255, 0.35), transparent 55%),
-      radial-gradient(circle at 100% 20%, rgba(27, 42, 217, 0.25), transparent 45%);
-    background-attachment: fixed;
   }
 
   /* Buttons had outline:none with nothing put back, so keyboard users had no
@@ -21,7 +42,7 @@
   :focus-visible {
     outline: 2px solid #7f95ff;
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 4px;
   }
 
   /* Horizontal scrollers keep their momentum feel on iOS and snap to columns
@@ -45,19 +66,38 @@
     width: 8px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(67, 97, 255, 0.5);
-    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
 }
 
+@layer base {
+  /* Three weights on the whole site: 400, 600, 800. Preflight leaves <strong>
+     at `bolder`, which is 700 on body text and 900 inside a semibold line. */
+  b,
+  strong {
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  /* The small-caps label over a section, a panel or a table's columns. It
+     was spelled seven ways (10, 11 or 12px, tracking-wide or -wider). */
+  .section-label {
+    @apply font-display text-meta font-semibold uppercase text-ucl-muted;
+    letter-spacing: 0.14em;
+  }
+}
+
 @layer utilities {
-  /* font-stretch: expanded was a no-op here — the loaded face has no width
-     axis — so it is gone rather than sitting in the stylesheet looking load-bearing. */
+  /* The display voice: Archivo at width 118, from its own small files (see
+     the @font-face rules below and scripts/build-display-font.py). Until
+     they arrive, headings show in the body face. */
   .font-display {
-    font-family: 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Archivo Expanded', 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
 }

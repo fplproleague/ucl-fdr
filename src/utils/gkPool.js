@@ -24,3 +24,38 @@ export function findStoredGoalkeeper(stored, ranked) {
   })
   return byName.length === 1 ? byName[0] : null
 }
+
+// Each club's expected starter in goal: the keeper who played its most
+// recent UCL match (the one with the most minutes in it, if both did, as
+// when one comes off injured). Only he is worth buying for a rotation: a
+// back-up who covered a match or two still has minutes in the sheet, which
+// is how two keepers from one club ended up in the recommendations.
+//
+// The last UCL match, not the last match in any competition, on purpose:
+// some clubs play a different keeper in the league (Bayern: Neuer in the
+// UCL, Urbig in the Bundesliga), and here only the UCL one scores. What it
+// can't see is an injury since that match; the sheet has no injury news.
+//
+//   goalkeepers: from rankGoalkeepers (most UCL minutes first)
+//   uclGames: { [playerId]: [{ md, min }, …] } (DOMESTIC_FORM.uclPlayers)
+// Returns a Set of player ids, one per club. A club with no match data
+// keeps its keeper with the most UCL minutes.
+export function expectedStarters(goalkeepers, uclGames = {}) {
+  const byClub = new Map()
+  for (const gk of goalkeepers) {
+    if (!byClub.has(gk.team)) byClub.set(gk.team, [])
+    byClub.get(gk.team).push(gk)
+  }
+  const starters = new Set()
+  for (const keepers of byClub.values()) {
+    let best = null
+    for (const gk of keepers) {
+      for (const g of uclGames[gk.id] ?? []) {
+        if (!(g.min > 0)) continue
+        if (!best || g.md > best.md || (g.md === best.md && g.min > best.min)) best = { md: g.md, min: g.min, id: gk.id }
+      }
+    }
+    starters.add(best ? best.id : keepers[0].id)
+  }
+  return starters
+}

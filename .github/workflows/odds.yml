@@ -1,0 +1,48 @@
+# Refreshes src/data/odds.js from the bookmakers (scripts/build-odds.mjs) and
+# commits it when it changed, which redeploys the site. Every morning, and
+# again on Tuesday to Thursday afternoons so the odds saved before kick-off
+# are the latest of the day. Needs the repository secret API_FOOTBALL_KEY;
+# ODDS_API_KEY (The Odds API) is optional. Run it by hand from the Actions tab.
+name: Odds
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+    - cron: '23 15 * * 2,3,4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: odds
+  cancel-in-progress: false
+
+jobs:
+  odds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build odds
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: node scripts/build-odds.mjs
+      - name: How close the estimates came
+        run: node scripts/odds-backtest.mjs
+      - name: Commit
+        run: |
+          if git diff --quiet -- src/data/odds.js; then
+            echo "Odds unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
+          git add src/data/odds.js
+          git commit -m "Odds: scheduled update"
+          git pull --rebase --autostash
+          git push

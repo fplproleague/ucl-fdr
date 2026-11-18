@@ -5,6 +5,7 @@ import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import { difficultyBand, formatAvg, ratingColor } from '../utils/difficulty.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
+import StickyHead from './StickyHead.jsx'
 
 const TEAM_COL = 122
 
@@ -24,8 +25,15 @@ export default function FixtureGrid({
 }) {
   const { teamsByAbbr, venueAdjust, showMatchday, dayFilter } = useTeams()
   const scrollerRef = useRef(null)
+  const tableRef = useRef(null)
   const [atEnd, setAtEnd] = useState(true)
   const [scrollable, setScrollable] = useState(false)
+  // Once you swipe into the fixtures the full names have done their job: the
+  // team column shrinks to badge + code so a phone shows another matchday.
+  // Back at the start the names return. Collapse and expand sit at different
+  // offsets (16px / 2px) so the shrink itself, which moves scrollLeft, can't
+  // bounce it back open.
+  const [compact, setCompact] = useState(false)
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -34,56 +42,116 @@ export default function FixtureGrid({
       const overflow = el.scrollWidth - el.clientWidth
       setScrollable(overflow > 8)
       setAtEnd(el.scrollLeft >= overflow - 8)
+      if (el.scrollLeft > 16) setCompact(true)
+      // When the compact table fits outright there is nothing left to scroll,
+      // so scrollLeft sits at 0 — that mustn't count as "back at the start".
+      else if (el.scrollLeft <= 2 && overflow > 8) setCompact(false)
+    }
+    // ...which leaves a swipe back from the start as the way to get the names
+    // back in that case.
+    let startX = null
+    const onTouchStart = (e) => {
+      startX = e.touches[0].clientX
+    }
+    const onTouchMove = (e) => {
+      if (startX != null && el.scrollLeft <= 2 && e.touches[0].clientX - startX > 24) setCompact(false)
+    }
+    const onWheel = (e) => {
+      if (el.scrollLeft <= 2 && e.deltaX < -4) setCompact(false)
     }
     update()
     el.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: true })
+    // Watches the table as well as the viewport: the column animating narrower
+    // or wider changes the overflow without any scroll or resize event.
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    if (el.firstElementChild) observer.observe(el.firstElementChild)
     return () => {
       el.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('wheel', onWheel)
+      observer.disconnect()
     }
   }, [mds.length, rows.length])
 
+  // The column is sized by its content (TEAM_COL is only a floor), so the
+  // shrink is driven from inside the cell: the name's max-width and the
+  // star/× group's both animate down, and the column follows them frame by
+  // frame. Compact, the floor drops away and the column is badge + code.
+  const teamColStyle = compact ? { minWidth: 0, width: 0 } : { minWidth: TEAM_COL, width: TEAM_COL }
+
+  // The empty last column (in both rows below) takes the spare width. It used to be there
+  // only under four matchdays; at four on a desktop the matchday columns
+  // shared out ~1,000px between them, each chip centred in a ~245px column,
+  // which left ~110px of nothing between the team names and the MD5 chips
+  // that read as a rendering fault. Now the chips sit right after the names
+  // and the slack goes to the far end. In a table wider than its box (a
+  // phone) the spacer simply gets no width.
+  // Rendered twice: in the table, and in the sticky copy that stays under
+  // the site header on long tables.
+  const headRow = (
+    <tr>
+      <th
+        scope="col"
+        className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left section-label transition-[min-width,width] duration-300 ease-out"
+        style={teamColStyle}
+      >
+        Team
+      </th>
+      {mds.map((md) => (
+        <th
+          key={md}
+          scope="col"
+          className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center section-label sm:min-w-[72px]"
+        >
+          <span className="block leading-tight">MD{md}</span>
+          <span className="block whitespace-nowrap text-[10px] font-normal normal-case leading-tight tracking-normal text-ucl-star/35">
+            {MATCHDAY_LABEL[md]}
+          </span>
+        </th>
+      ))}
+      <th aria-hidden="true" className="w-full bg-ucl-deep p-0" />
+    </tr>
+  )
   return (
     <>
+      <StickyHead scrollerRef={scrollerRef} tableRef={tableRef}>
+        {headRow}
+      </StickyHead>
       <div className="relative">
-        <div ref={scrollerRef} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
-          <table className="w-full border-separate border-spacing-0 text-sm">
+        <div ref={scrollerRef} className="overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
+          <table ref={tableRef} className="w-full border-separate border-spacing-0 text-table">
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className="sticky left-0 z-20 bg-ucl-deep px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ucl-muted"
-                  style={{ minWidth: TEAM_COL, width: TEAM_COL }}
-                >
-                  Team
-                </th>
-                {mds.map((md) => (
-                  <th
-                    key={md}
-                    scope="col"
-                    className="min-w-[56px] bg-ucl-deep px-1 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ucl-muted sm:min-w-[72px]"
-                  >
-                    <span className="block leading-tight">MD{md}</span>
-                    <span className="block text-[9px] font-medium normal-case leading-tight text-ucl-star/35">
-                      {MATCHDAY_LABEL[md]}
-                    </span>
-                  </th>
-                ))}
-              </tr>
+              {headRow}
             </thead>
             <tbody>
               {rows.map(({ team, cells, avg }, idx) => {
                 const band = ratingColor(difficultyBand(avg))
                 const identity = (
                   <>
-                    <span className="block truncate text-xs font-semibold sm:text-sm">
-                      {fullNames ? team.name : (team.shortName ?? team.name)}
+                    <span className="relative block text-xs font-semibold sm:text-table">
+                      <span
+                        className={`block truncate transition-[max-width,opacity] duration-300 ease-out ${
+                          compact ? 'max-w-[30px] opacity-0 sm:max-w-[36px]' : 'max-w-[150px]'
+                        }`}
+                      >
+                        {fullNames ? team.name : (team.shortName ?? team.name)}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-0 truncate transition-opacity duration-200 ${compact ? '' : 'opacity-0'}`}
+                      >
+                        {team.abbr}
+                      </span>
                     </span>
                     {showAvg && (
                       <span
-                        className="mt-0.5 inline-block rounded px-1 py-px text-[10px] font-black leading-tight"
+                        className="mt-0.5 inline-block self-start rounded px-1 py-px text-[10px] font-extrabold leading-tight"
                         style={{ backgroundColor: band.bg, color: band.text }}
                         title="Average fixture difficulty over the selected matchdays"
                       >
@@ -102,8 +170,8 @@ export default function FixtureGrid({
                   >
                     <th
                       scope="row"
-                      className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal"
-                      style={{ minWidth: TEAM_COL, width: TEAM_COL }}
+                      className="sticky left-0 z-10 border-t border-white/5 bg-ucl-navy px-2 py-1.5 text-left font-normal transition-[min-width,width] duration-300 ease-out"
+                      style={teamColStyle}
                     >
                       <div className="flex items-center gap-1.5">
                         <TeamBadge abbr={team.abbr} size={20} />
@@ -115,41 +183,56 @@ export default function FixtureGrid({
                               onTeamClick(team)
                             }}
                             aria-label={`View ${team.name} details`}
-                            className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
+                            className="-my-1.5 flex min-h-[44px] min-w-0 flex-1 flex-col justify-center rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ucl-accent"
                           >
                             {identity}
                           </button>
                         ) : (
                           <div className="min-w-0 flex-1">{identity}</div>
                         )}
-                        {onTogglePin && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onTogglePin(team.id)
-                            }}
-                            aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
-                            aria-pressed={team.pinned}
-                            className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
-                              team.pinned ? 'text-ucl-accent' : 'text-ucl-muted/60 hover:text-ucl-star'
+                        {/* 16px targets: fine for a mouse, not for a finger. Below
+                            sm, and on any touch screen, they're left out and the
+                            row's tap opens the team panel, which has the pin and
+                            the remove at full size. (At 390px they sat right
+                            beside the full-height name button, in a row that is
+                            itself a tap target; the narrow team column is better
+                            spent on the name.) */}
+                        {(onTogglePin || onRemove) && (
+                          <span
+                            className={`hidden shrink-0 items-center gap-1.5 overflow-hidden sm:flex coarse:hidden transition-[max-width,opacity,visibility,margin] duration-300 ease-out ${
+                              compact ? 'invisible -ml-1.5 max-w-0 opacity-0' : 'max-w-[48px]'
                             }`}
                           >
-                            <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
-                          </button>
-                        )}
-                        {onRemove && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRemove(team.id)
-                            }}
-                            aria-label={`Remove ${team.name} from the table`}
-                            className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
-                          >
-                            <X size={12} aria-hidden="true" />
-                          </button>
+                            {onTogglePin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onTogglePin(team.id)
+                                }}
+                                aria-label={team.pinned ? `Unpin ${team.name} from My teams` : `Pin ${team.name} to My teams`}
+                                aria-pressed={team.pinned}
+                                className={`shrink-0 rounded p-0.5 transition hover:bg-white/10 ${
+                                  team.pinned ? 'text-ucl-brass' : 'text-ucl-muted/60 hover:text-ucl-star'
+                                }`}
+                              >
+                                <Star size={12} aria-hidden="true" fill={team.pinned ? 'currentColor' : 'none'} />
+                              </button>
+                            )}
+                            {onRemove && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onRemove(team.id)
+                                }}
+                                aria-label={`Remove ${team.name} from the table`}
+                                className="shrink-0 rounded p-0.5 text-ucl-muted/60 transition hover:bg-white/10 hover:text-ucl-star"
+                              >
+                                <X size={12} aria-hidden="true" />
+                              </button>
+                            )}
+                          </span>
                         )}
                       </div>
                     </th>
@@ -173,6 +256,7 @@ export default function FixtureGrid({
                         )}
                       </td>
                     ))}
+                    <td aria-hidden="true" className="w-full border-t border-white/5 p-0" />
                   </tr>
                 )
               })}
@@ -183,13 +267,13 @@ export default function FixtureGrid({
         {scrollable && !atEnd && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-ucl-navy to-transparent"
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-ucl-navy to-transparent"
           />
         )}
       </div>
 
       {scrollable && !atEnd && (
-        <p className="mt-2 text-center text-[11px] font-medium text-ucl-muted">Swipe the table for later matchdays →</p>
+        <p className="mt-2 text-center text-[11px] font-normal text-ucl-muted">Swipe the table for later matchdays →</p>
       )}
     </>
   )

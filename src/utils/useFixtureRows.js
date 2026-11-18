@@ -16,7 +16,8 @@ export function useFixtureRows(teams, teamsByAbbr, mds, venueAdjust) {
         fixtures: inRange,
         avg: averageDifficulty(inRange, teamsByAbbr, venueAdjust),
         homes: homeCount(inRange),
-        veryHard: inRange.filter(
+        // Fixtures in band 4 or 5: the second tiebreak in compareRuns.
+        hard: inRange.filter(
           (f) =>
             difficultyBand(
               effectiveDifficulty(
@@ -25,7 +26,7 @@ export function useFixtureRows(teams, teamsByAbbr, mds, venueAdjust) {
                 venueAdjust,
                 teamsByAbbr[f.opp]?.awayDifficulty ?? 0,
               ),
-            ) === 5,
+            ) >= 4,
         ).length,
         seasonAvg: averageDifficulty(all, teamsByAbbr, venueAdjust),
       }

@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { INITIAL_TEAMS } from '../data/teams.js'
+import { ODDS_RATINGS } from 'virtual:odds-ratings'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
-import { parseHash, writeHash, TAB_IDS } from '../utils/urlState.js'
+import { parseHash, writeHash, TAB_IDS, PANEL_TABS } from '../utils/urlState.js'
 import { availableDays } from '../utils/matchdaySplit.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { serializePicks } from '../utils/bracket.js'
@@ -15,8 +16,12 @@ const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
 const PINNED_KEY = 'ucl-fdr:pinned-teams:v1'
 const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
 const PICKS_KEY = 'ucl-fdr:bracket-picks:v1'
+// Starred players: one shortlist for every tab (the key predates sharing).
+const STARRED_KEY = 'ucl-fdr:starred-players:v1'
 
 const TeamsContext = createContext(null)
+
+const baseOf = (team) => ODDS_RATINGS[team.abbr] ?? team.rating
 
 function readStoredOverrides() {
   try {
@@ -66,6 +71,15 @@ function readStoredPinned() {
   try {
     const raw = localStorage.getItem(PINNED_KEY)
     const ids = raw ? JSON.parse(raw) : []
+    return Array.isArray(ids) ? ids : []
+  } catch {
+    return []
+  }
+}
+
+function readStoredStarred() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(STARRED_KEY) ?? '[]')
     return Array.isArray(ids) ? ids : []
   } catch {
     return []
@@ -122,6 +136,9 @@ function initialState() {
     // no longer sits inside the range is dropped rather than silently kept.
     skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
     compare: url.teams,
+    // The team whose panel is open, in the link (&team=VIL) so the back
+    // button closes it and a panel can be shared.
+    detail: validDetail(url),
     overrides: url.ratings ?? readStoredOverrides(),
     venueAdjust: url.venueAdjust ?? readStoredVenueAdjust(),
     // Which teams to leave off the table/rankings — a per-device declutter
@@ -149,6 +166,34 @@ function initialState() {
     demo: url.demo,
     koView: url.koView,
     ...picksFromUrl(url),
+    // Players picked for the side-by-side comparison: in the link, so a
+    // comparison can be shared like a team comparison.
+    comparePlayers: url.players,
+    // Starred players — a personal shortlist like pinned teams, local-only,
+    // shared by the Players and Odds tabs.
+    starred: readStoredStarred(),
+    // The searches on the Players and Odds tabs, and the Odds tab's view:
+    // in the link, so another tab (or someone else) can open them as set.
+    ...linkedViewState(url),
+  }
+}
+
+function validDetail(url) {
+  return url.team && PANEL_TABS.includes(url.tab) && INITIAL_TEAMS.some((t) => t.abbr === url.team) ? url.team : null
+}
+
+// The history entry an opened team panel pushes carries this, so closing
+// the panel knows it can step back to the entry before it (the same view,
+// no panel) instead of adding one more.
+const PANEL_ENTRY = { teamPanel: true }
+
+function linkedViewState(url) {
+  return {
+    playersQuery: url.tab === 'players' ? url.query : '',
+    oddsQuery: url.tab === 'odds' ? url.query : '',
+    oddsView: url.oddsView ?? 'teams',
+    oddsMetric: url.oddsMetric ?? 'cs',
+    oddsSortMd: url.oddsSortMd,
   }
 }
 
@@ -160,6 +205,7 @@ export function TeamsProvider({ children }) {
     to,
     skipMd,
     compare,
+    detail,
     overrides,
     venueAdjust,
     hidden,
@@ -172,6 +218,13 @@ export function TeamsProvider({ children }) {
     koView,
     picks,
     viewingShared,
+    comparePlayers,
+    starred,
+    playersQuery,
+    oddsQuery,
+    oddsView,
+    oddsMetric,
+    oddsSortMd,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
@@ -192,7 +245,8 @@ export function TeamsProvider({ children }) {
         from,
         to,
         skip: skipMd,
-        teams: tab === 'compare' ? compare : [],
+        teams: tab === 'table' ? compare : [],
+        team: detail,
         venueAdjust,
         showMatchday,
         dayFilter,
@@ -200,21 +254,51 @@ export function TeamsProvider({ children }) {
         picks,
         demo,
         koView,
+        players: comparePlayers,
+        query: tab === 'odds' ? oddsQuery : playersQuery,
+        oddsView,
+        oddsMetric,
+        oddsSortMd,
       },
-      { push: pushNext.current },
+      { push: Boolean(pushNext.current), state: pushNext.current === 'panel' ? PANEL_ENTRY : null },
     )
     pushNext.current = false
     const id = window.setTimeout(() => {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
-  }, [tab, from, to, skipMd, compare, overrides, venueAdjust, showMatchday, dayFilter, picks, demo, koView])
+  }, [
+    tab,
+    from,
+    to,
+    skipMd,
+    compare,
+    detail,
+    overrides,
+    venueAdjust,
+    showMatchday,
+    dayFilter,
+    picks,
+    demo,
+    koView,
+    comparePlayers,
+    playersQuery,
+    oddsQuery,
+    oddsView,
+    oddsMetric,
+    oddsSortMd,
+  ])
 
   useEffect(() => {
     function onNav() {
       if (selfWrite.current) return
       const url = parseHash()
       setState((prev) => {
+        // Back out of an open panel on the same view: only the panel closes.
+        // The entry behind it still holds the range from before it opened,
+        // and a range changed while the panel was up mustn't be undone by
+        // closing it (the URL is rewritten from this state right after).
+        if (prev.detail && !validDetail(url) && url.tab === prev.tab) return { ...prev, detail: null }
         const floor = currentMatchday()
         const from = Math.max(url.from ?? prev.from, floor)
         const to = Math.max(url.to ?? prev.to, from)
@@ -225,6 +309,8 @@ export function TeamsProvider({ children }) {
           to,
           skipMd: url.skip != null && url.skip > from && url.skip < to ? url.skip : null,
           compare: url.teams,
+          // Back closes an open panel, forward opens it again.
+          detail: validDetail(url),
           venueAdjust: url.venueAdjust ?? prev.venueAdjust,
           showMatchday: url.showMatchday ?? prev.showMatchday,
           dayFilter: url.dayFilter ?? prev.dayFilter,
@@ -237,6 +323,8 @@ export function TeamsProvider({ children }) {
           ...(url.demo !== prev.demo || (url.picks && !samePicks(url.picks, prev.picks))
             ? picksFromUrl(url)
             : {}),
+          comparePlayers: url.players,
+          ...linkedViewState(url),
         }
       })
     }
@@ -257,12 +345,13 @@ export function TeamsProvider({ children }) {
       localStorage.setItem(MY_TEAMS_KEY, myTeamsOnly ? '1' : '0')
       localStorage.setItem(MATCHDAY_SPLIT_KEY, showMatchday ? '1' : '0')
       localStorage.setItem(AWAY_DIFFICULTY_KEY, JSON.stringify(awayDifficulty))
+      localStorage.setItem(STARRED_KEY, JSON.stringify(starred))
     } catch {
       // private mode or quota — the URL still carries the whole state
       // (hidden/pinned teams and away difficulty excepted: those are
       // local-only, see initialState)
     }
-  }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty])
+  }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty, starred])
 
   useEffect(() => {
     if (demo || viewingShared) return
@@ -273,6 +362,7 @@ export function TeamsProvider({ children }) {
     }
   }, [picks, demo, viewingShared])
 
+  // push: true for a new history entry, 'panel' for one that opens a team.
   const patch = useCallback((next, { push = false } = {}) => {
     pushNext.current = push
     setState((prev) => ({ ...prev, ...next }))
@@ -294,17 +384,24 @@ export function TeamsProvider({ children }) {
   }, [dayFilter, availableDayOptions, patch])
 
   const hiddenSet = useMemo(() => new Set(hidden), [hidden])
+  const starredSet = useMemo(() => new Set(starred), [starred])
   const pinnedSet = useMemo(() => new Set(pinned), [pinned])
 
   const teams = useMemo(
     () =>
       INITIAL_TEAMS.map((t) => ({
         ...t,
-        rating: overrides[t.id] ?? t.rating,
-        // Seed rating: a stable sort key so editing a team doesn't make its row
-        // jump, and the value behind the "was 4" hint in the Strength tab.
-        baseRating: t.rating,
-        modified: overrides[t.id] != null && overrides[t.id] !== t.rating,
+        rating: overrides[t.id] ?? baseOf(t),
+        // The default: where the bookmakers' odds put the team (see
+        // oddsRatings in vite.config.js), or the seed rating if there are no
+        // odds. A rating someone set themselves is an override and stays as
+        // they set it, whatever the odds do next; Reset goes back to this.
+        // Also a stable sort key, so editing a team doesn't make its row jump.
+        baseRating: baseOf(t),
+        // The hand-set rating from src/data/teams.js, which fixes how many
+        // teams sit in each band when the odds are turned into ratings.
+        seedRating: t.rating,
+        modified: overrides[t.id] != null && overrides[t.id] !== baseOf(t),
         hidden: hiddenSet.has(t.id),
         // "My teams" — a personal shortlist, independent of (and the inverse
         // intent of) hiding: hiding declutters, pinning focuses.
@@ -356,7 +453,43 @@ export function TeamsProvider({ children }) {
       // drop it and go back to the one saved on this device.
       adoptSharedPicks: () => patch({ viewingShared: false }),
       discardSharedPicks: () => patch({ picks: readStoredPicks(), viewingShared: false }),
-      setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table' }, { push: true }),
+      comparePlayers,
+      setComparePlayers: (ids) => patch({ comparePlayers: ids }),
+      starred: starredSet,
+      toggleStar: (id) =>
+        setState((prev) => ({
+          ...prev,
+          starred: prev.starred.includes(id) ? prev.starred.filter((x) => x !== id) : [...prev.starred, id],
+        })),
+      playersQuery,
+      setPlayersQuery: (q) => patch({ playersQuery: q }),
+      oddsQuery,
+      setOddsQuery: (q) => patch({ oddsQuery: q }),
+      oddsView,
+      setOddsView: (v) => patch({ oddsView: v }),
+      oddsMetric,
+      setOddsMetric: (m) => patch({ oddsMetric: m }),
+      oddsSortMd,
+      setOddsSortMd: (md) => patch({ oddsSortMd: md }),
+      // Another tab, opened as set: e.g. the Odds tab's players searched for
+      // one club. A history entry, like any tab change.
+      // A tab change leaves any open panel behind (it stays in the entry
+      // before, so back returns to it).
+      openTab: (id, next = {}) =>
+        patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
+      setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
+      detail,
+      // Opening a team is a history entry, so the back button (the way out
+      // of anything full-screen on a phone) closes the panel instead of
+      // leaving the site.
+      openTeam: (abbr) => patch({ detail: abbr }, { push: 'panel' }),
+      // Closing steps back over that entry when there is one, which keeps
+      // forward meaning "open it again"; a panel that came with the link
+      // (no entry of ours behind it) just closes in place.
+      closeTeam: () => {
+        if (window.history.state?.teamPanel) window.history.back()
+        else patch({ detail: null })
+      },
       setShowMatchday: (on) => patch({ showMatchday: on }),
       setDayFilter: (day) => patch({ dayFilter: day }),
       hideTeam: (id) =>
@@ -384,8 +517,7 @@ export function TeamsProvider({ children }) {
       setSkipMd: (md) => patch({ skipMd: md }),
       setCompare: (ids) => patch({ compare: ids }),
       setVenueAdjust: (on) => patch({ venueAdjust: on }),
-      setRating: (id, rating) =>
-        setState((prev) => ({ ...prev, overrides: { ...prev.overrides, [id]: rating } })),
+      setRating: (id, rating) => setState((prev) => ({ ...prev, overrides: { ...prev.overrides, [id]: rating } })),
       resetTeam: (id) =>
         setState((prev) => {
           const next = { ...prev.overrides }
@@ -419,10 +551,18 @@ export function TeamsProvider({ children }) {
       to,
       skipMd,
       compare,
+      detail,
       demo,
       koView,
       picks,
       viewingShared,
+      comparePlayers,
+      starredSet,
+      playersQuery,
+      oddsQuery,
+      oddsView,
+      oddsMetric,
+      oddsSortMd,
       patch,
     ],
   )

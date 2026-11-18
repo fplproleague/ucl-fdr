@@ -9,7 +9,8 @@ import { clubMatchesPlayed, positionRates, projectPlayer, relativeScores } from 
 import { windowLabel } from '../utils/koWindow.js'
 import TeamBadge from './TeamBadge.jsx'
 import KnockoutPlanPicker from './KnockoutPlanPicker.jsx'
-import { PRICE_STEP, PriceSlider, ScoreBar } from './PlayerProjections.jsx'
+import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
+import { ScoreValue } from './ScoreValue.jsx'
 
 const ROUND = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r]))
 const PREVIEW = 40
@@ -220,7 +221,10 @@ export default function KnockoutPlayers({ ko, demo, plan, presets, setPlan, club
                 </td>
                 <td className="px-1.5 py-1.5 text-right tabular-nums text-ucl-star/75">{p.matches.toFixed(1)}</td>
                 <td className="px-2 py-1.5">
-                  <ScoreBar value={sortBy === 'value' ? p.valueScore : p.score} />
+                  <ScoreValue
+                    value={sortBy === 'value' ? p.valueScore : p.score}
+                    highlight={(sortBy === 'value' ? p.valueScore : p.score) >= 99.5}
+                  />
                 </td>
               </tr>
             ))}

@@ -27,7 +27,7 @@ export default function StrengthPicker({ team, onSetRating, compact = false }) {
             aria-label={`Set ${team.name} to ${r} — ${color.label}`}
             aria-pressed={active}
             onClick={() => onSetRating(team.id, r)}
-            className={`flex items-center justify-center rounded-lg font-bold transition active:scale-90 ${size}`}
+            className={`flex items-center justify-center rounded font-extrabold transition active:scale-90 ${size}`}
             style={{
               backgroundColor: active ? color.bg : 'rgba(255,255,255,0.06)',
               color: active ? color.text : 'rgba(230,233,255,0.55)',
@@ -45,7 +45,7 @@ export default function StrengthPicker({ team, onSetRating, compact = false }) {
           aria-pressed={half}
           disabled={whole === 5}
           onClick={() => onSetRating(team.id, half ? whole : whole + 0.5)}
-          className={`flex h-10 w-8 items-center justify-center rounded-lg text-[11px] font-bold transition active:scale-90 disabled:opacity-25 ${
+          className={`flex h-10 w-8 items-center justify-center rounded text-[11px] font-bold transition active:scale-90 disabled:opacity-25 ${
             half ? 'bg-ucl-accent text-white' : 'bg-white/[0.06] text-ucl-star/55 hover:bg-white/10'
           }`}
         >

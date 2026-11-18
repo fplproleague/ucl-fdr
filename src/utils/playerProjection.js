@@ -74,36 +74,54 @@ export function fixtureFactor(difficulty) {
   return 1 + Math.max(-FIXTURE_CAP, Math.min(FIXTURE_CAP, f))
 }
 
-// Points per match: points per 90 pulled towards `positionRate` (his
-// position's average per 90, from positionRates), times his share of the
-// club's minutes. Without a rate there's no regression and it's simply
-// points ÷ club matches.
-function pointsPerMatch(player, clubMatches, positionRate) {
-  const minutesShare = clubMatches > 0 ? Math.min(1, player.minutes / (clubMatches * 90)) : 0
-  const rawPpm = clubMatches > 0 ? player.points / clubMatches : 0
-  const ppm =
-    positionRate == null
-      ? rawPpm
-      : ((player.points + (PRIOR_MINUTES / 90) * positionRate) / (player.minutes + PRIOR_MINUTES)) * 90 * minutesShare
-  return { ppm, rawPpm, minutesShare }
+// Points per match from a points/minutes total over `matches` club matches,
+// pulled towards `positionRate` (his position's average points per 90) the
+// way PRIOR_MINUTES describes, and scaled by the share of those matches'
+// minutes he played. Without a rate there's no regression: points ÷ matches.
+export function formPpm(points, minutes, matches, positionRate) {
+  if (!(matches > 0)) return 0
+  if (positionRate == null) return points / matches
+  const minutesShare = Math.min(1, minutes / (matches * 90))
+  return ((points + (PRIOR_MINUTES / 90) * positionRate) / (minutes + PRIOR_MINUTES)) * 90 * minutesShare
 }
 
-// League phase. `difficulties`: the effective difficulty (1–5,
-// venue-adjusted, as the FDR chips show it) of each of his fixtures in the
-// range.
+// Points per match over each fixture in the range, mildly adjusted for it.
+export function projectPpm(ppm, difficulties, price) {
+  const xPts = difficulties.reduce((sum, d) => sum + ppm * fixtureFactor(d), 0)
+  return { ppm, matches: difficulties.length, xPts, value: xPts / price }
+}
+
+// `difficulties`: the effective difficulty (1–5, venue-adjusted, as the FDR
+// chips show it) of each of his fixtures in the range. `positionRate`: his
+// position's average points per 90 (positionRates); without it there's no
+// regression and points per match is simply points ÷ club matches.
 export function projectLeaguePlayer(player, difficulties, clubMatches, positionRate) {
-  const rate = pointsPerMatch(player, clubMatches, positionRate)
-  const xPts = difficulties.reduce((sum, d) => sum + rate.ppm * fixtureFactor(d), 0)
-  return { ...rate, matches: difficulties.length, xPts, value: xPts / player.price }
+  const minutesShare = clubMatches > 0 ? Math.min(1, player.minutes / (clubMatches * 90)) : 0
+  const rawPpm = clubMatches > 0 ? player.points / clubMatches : 0
+  const ppm = formPpm(player.points, player.minutes, clubMatches, positionRate)
+  return { rawPpm, minutesShare, ...projectPpm(ppm, difficulties, player.price) }
+}
+
+// Which form the score runs on: UCL points per match, domestic league form
+// (domesticForm.js, as points per match), or both counted equally. A player
+// with no domestic data keeps his UCL form under "both" rather than being
+// halved for a gap in the data; under "domestic" alone he has nothing to go on.
+export const FORM_SOURCES = ['ucl', 'domestic', 'both']
+export function blendForm(source, uclPpm, domesticPpm) {
+  if (source === 'ucl') return uclPpm
+  if (source === 'domestic') return domesticPpm ?? 0
+  return domesticPpm == null ? uclPpm : (uclPpm + domesticPpm) / 2
 }
 
 // Knockouts. `club` is the club's window stats ({ matches, oppAvg } from
 // koWindow.js): expected matches rather than known fixtures, and the
 // average strength of the likely opponents as the difficulty.
 export function projectPlayer(player, club, clubMatches, positionRate) {
-  const rate = pointsPerMatch(player, clubMatches, positionRate)
-  const xPts = rate.ppm * club.matches * fixtureFactor(club.oppAvg)
-  return { ...rate, matches: club.matches, oppAvg: club.oppAvg, xPts, value: xPts / player.price }
+  const minutesShare = clubMatches > 0 ? Math.min(1, player.minutes / (clubMatches * 90)) : 0
+  const rawPpm = clubMatches > 0 ? player.points / clubMatches : 0
+  const ppm = formPpm(player.points, player.minutes, clubMatches, positionRate)
+  const xPts = ppm * club.matches * fixtureFactor(club.oppAvg)
+  return { ppm, rawPpm, minutesShare, matches: club.matches, oppAvg: club.oppAvg, xPts, value: xPts / player.price }
 }
 
 // The Players tab shows a relative score rather than a points total: this
