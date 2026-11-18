@@ -40,7 +40,9 @@ In de Claude-app start `.claude/launch.json` de dev-server (naam `dev`).
 
 - **PR #17 "Knockouts"** (branch `claude/eloquent-ramanujan-em891s`, lokale kopie `knockouts-na-md8`):
   bracket, knock-out-odds en planners. **Pas mergen na MD8** (27 jan 2027), als de stand van de competitiefase
-  bekend is. Niet verwijderen. Hij ligt ver achter op `main` en moet vóór het mergen gerebased worden.
+  bekend is. Niet verwijderen. Op 18 nov 2026 is `main` erin gemerged (met een merge-commit, dus niet rebasen:
+  dat herschrijft de geschiedenis van de branch). Vóór het mergen na MD8: nog één keer `main` erin mergen, en de
+  knock-out-schermen aanpassen aan de design pass (kaarten, labels).
 
 ## Werkafspraken
 
