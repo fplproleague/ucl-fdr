@@ -163,8 +163,15 @@ export default function GkRotation() {
     },
     [mds, teamsByAbbr, venueAdjust, csByTeam],
   )
+  // Different days come first: a pair that plays on different days every
+  // matchday lets you start the better keeper each time. Only then do the
+  // clean-sheet odds decide, and after that the FDR facts (favourable
+  // fixtures) and the name.
   const byRotationValue = useCallback(
-    (a, b) => (csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b),
+    (a, b) =>
+      b.summary.differentDays - a.summary.differentDays ||
+      (csByTeam ? b.bestCs - a.bestCs : 0) ||
+      compareComplementSummaries(a, b),
     [csByTeam],
   )
 
@@ -293,9 +300,11 @@ export default function GkRotation() {
           </h2>
           <p className="mb-3 text-xs text-ucl-muted">
             {!selectedGk && 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners. '}
-            One keeper per club: the one who played its last UCL match. Ranked on the clean sheets you&rsquo;d
-            expect by starting the better of the two every matchday (bookmaker odds, estimates where a match
-            isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your current settings.
+            One keeper per club: the one who played its last UCL match. Ranked first on different days (the
+            more matchdays the two play on different days, the more often you can start the better one), then on
+            the clean sheets you&rsquo;d expect by starting the better of the two every matchday (bookmaker odds,
+            estimates where a match isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your
+            current settings.
           </p>
 
           <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
