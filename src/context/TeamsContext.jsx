@@ -6,6 +6,7 @@ import { currentMatchday } from '../data/matchdays.js'
 import { parseHash, writeHash, TAB_IDS, PANEL_TABS } from '../utils/urlState.js'
 import { availableDays } from '../utils/matchdaySplit.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
+import { serializePicks } from '../utils/bracket.js'
 
 const STORAGE_KEY = 'ucl-fdr:ratings:v1'
 const VENUE_KEY = 'ucl-fdr:venue-adjust:v1'
@@ -14,6 +15,7 @@ const MATCHDAY_SPLIT_KEY = 'ucl-fdr:matchday-split:v1'
 const AWAY_DIFFICULTY_KEY = 'ucl-fdr:away-difficulty:v1'
 const PINNED_KEY = 'ucl-fdr:pinned-teams:v1'
 const MY_TEAMS_KEY = 'ucl-fdr:my-teams-only:v1'
+const PICKS_KEY = 'ucl-fdr:bracket-picks:v1'
 // Starred players: one shortlist for every tab (the key predates sharing).
 const STARRED_KEY = 'ucl-fdr:starred-players:v1'
 
@@ -92,6 +94,29 @@ function readStoredMyTeamsOnly() {
   }
 }
 
+function readStoredPicks() {
+  try {
+    const raw = localStorage.getItem(PICKS_KEY)
+    const picks = raw ? JSON.parse(raw) : {}
+    return picks && typeof picks === 'object' && !Array.isArray(picks) ? picks : {}
+  } catch {
+    return {}
+  }
+}
+
+const samePicks = (a, b) => serializePicks(a ?? {}) === serializePicks(b ?? {})
+
+// Bracket picks from a link. Unlike ratings, someone else's bracket must not
+// overwrite your own just by opening their link: a link that differs from
+// what this device has saved opens as a read-only "shared" bracket, and only
+// becomes yours if you say so. Demo picks are never saved at all.
+function picksFromUrl(url) {
+  if (url.demo) return { picks: url.picks ?? {}, viewingShared: false }
+  const stored = readStoredPicks()
+  if (!url.picks) return { picks: stored, viewingShared: false }
+  return { picks: url.picks, viewingShared: !samePicks(url.picks, stored) }
+}
+
 // A link always beats local storage: someone opening a shared ticker should see
 // the ticker they were sent, not the ratings they last set on their own phone.
 function initialState() {
@@ -136,8 +161,11 @@ function initialState() {
     // effect below) — a link or a stale localStorage value might name a day
     // that isn't even played on this range's matchdays.
     dayFilter: url.dayFilter ?? 'ALL',
-    // Preview with made-up data (#/players?demo=1). Link-only, never stored.
+    // Preview with made-up data (#/bracket?demo=…, #/players?demo=1).
+    // Link-only, never stored.
     demo: url.demo,
+    koView: url.koView,
+    ...picksFromUrl(url),
     // Players picked for the side-by-side comparison: in the link, so a
     // comparison can be shared like a team comparison.
     comparePlayers: url.players,
@@ -187,6 +215,9 @@ export function TeamsProvider({ children }) {
     showMatchday,
     dayFilter,
     demo,
+    koView,
+    picks,
+    viewingShared,
     comparePlayers,
     starred,
     playersQuery,
@@ -220,7 +251,9 @@ export function TeamsProvider({ children }) {
         showMatchday,
         dayFilter,
         ratings: overrides,
+        picks,
         demo,
+        koView,
         players: comparePlayers,
         query: tab === 'odds' ? oddsQuery : playersQuery,
         oddsView,
@@ -245,7 +278,9 @@ export function TeamsProvider({ children }) {
     venueAdjust,
     showMatchday,
     dayFilter,
+    picks,
     demo,
+    koView,
     comparePlayers,
     playersQuery,
     oddsQuery,
@@ -281,6 +316,13 @@ export function TeamsProvider({ children }) {
           dayFilter: url.dayFilter ?? prev.dayFilter,
           overrides: url.ratings ?? prev.overrides,
           demo: url.demo,
+          koView: url.koView,
+          // A pasted or edited link with different picks (or a switch in or
+          // out of the demo) re-runs the shared-bracket check; anything else
+          // leaves the bracket alone.
+          ...(url.demo !== prev.demo || (url.picks && !samePicks(url.picks, prev.picks))
+            ? picksFromUrl(url)
+            : {}),
           comparePlayers: url.players,
           ...linkedViewState(url),
         }
@@ -310,6 +352,15 @@ export function TeamsProvider({ children }) {
       // local-only, see initialState)
     }
   }, [overrides, venueAdjust, hidden, pinned, myTeamsOnly, showMatchday, awayDifficulty, starred])
+
+  useEffect(() => {
+    if (demo || viewingShared) return
+    try {
+      localStorage.setItem(PICKS_KEY, JSON.stringify(picks))
+    } catch {
+      // private mode or quota — the link still carries the bracket
+    }
+  }, [picks, demo, viewingShared])
 
   // push: true for a new history entry, 'panel' for one that opens a team.
   const patch = useCallback((next, { push = false } = {}) => {
@@ -392,6 +443,16 @@ export function TeamsProvider({ children }) {
       skipMd,
       compare,
       demo,
+      koView,
+      // A sub-view switch is a step the back button should undo, like a tab.
+      setKoView: (view) => patch({ koView: view }, { push: true }),
+      picks,
+      viewingShared,
+      setPicks: (next) => setState((prev) => (prev.viewingShared ? prev : { ...prev, picks: next })),
+      // Keep the shared bracket as your own (it's saved from here on), or
+      // drop it and go back to the one saved on this device.
+      adoptSharedPicks: () => patch({ viewingShared: false }),
+      discardSharedPicks: () => patch({ picks: readStoredPicks(), viewingShared: false }),
       comparePlayers,
       setComparePlayers: (ids) => patch({ comparePlayers: ids }),
       starred: starredSet,
@@ -492,6 +553,9 @@ export function TeamsProvider({ children }) {
       compare,
       detail,
       demo,
+      koView,
+      picks,
+      viewingShared,
       comparePlayers,
       starredSet,
       playersQuery,

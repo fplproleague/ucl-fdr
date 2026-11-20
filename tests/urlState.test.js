@@ -1,7 +1,33 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildHash, parseHash } from '../src/utils/urlState.js'
+import { buildHash, parseHash, parseRatings, serializeRatings } from '../src/utils/urlState.js'
 
+test('links made before half steps read exactly as before', () => {
+  assert.deepEqual(parseRatings('ARS4BVB2'), { ARS: 4, BVB: 2 })
+})
+
+test('half-step ratings survive a round trip through the link', () => {
+  const ratings = { ARS: 4.5, BVB: 2, INT: 1.5, LIV: 5, RMA: 3.5 }
+  const str = serializeRatings(ratings)
+  assert.equal(str, 'ARSdBVB2INTaLIV5RMAc')
+  assert.deepEqual(parseRatings(str), ratings)
+})
+
+test('ratings that are not whole or half steps are dropped', () => {
+  assert.equal(serializeRatings({ ARS: 4.25, BVB: 6, INT: 0.5 }), '')
+  assert.equal(parseRatings('ARSeBVB9'), null)
+})
+
+test('bracket picks, sub-view and demo stage ride in a Bracket link only', () => {
+  const hash = buildHash({ tab: 'bracket', picks: { PO1: 'ARS' }, koView: 'odds', demo: 'playoffs' })
+  assert.equal(hash, '#/bracket?p=ARS&v=odds&demo=playoffs')
+  const back = parseHash(hash)
+  assert.equal(back.tab, 'bracket')
+  assert.equal(back.koView, 'odds')
+  assert.equal(back.demo, 'playoffs')
+  assert.deepEqual(back.picks, { PO1: 'ARS' })
+  assert.equal(buildHash({ tab: 'table', picks: { PO1: 'ARS' }, koView: 'odds' }), '#/table')
+})
 test('the Odds tab view, metric, sorted matchday and search ride in the link', () => {
   const hash = buildHash({ tab: 'odds', from: 5, to: 8, oddsView: 'players', oddsMetric: 'xgFor', oddsSortMd: 6, query: 'arsenal' })
   assert.equal(hash, '#/odds?from=5&to=8&ov=players&om=xgFor&os=6&q=arsenal')

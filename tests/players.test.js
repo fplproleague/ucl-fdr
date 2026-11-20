@@ -4,12 +4,15 @@ import { INITIAL_TEAMS } from '../src/data/teams.js'
 import { demoPlayers } from '../src/data/playersDemo.js'
 import { buildClubLookup } from '../src/utils/parseGoalkeepersCsv.js'
 import { parsePlayerRows } from '../src/utils/parsePlayersCsv.js'
+import { demoKnockout } from '../src/data/knockoutDemo.js'
 import {
   PRIOR_MINUTES,
+  clubMatchesPlayed,
   fixtureFactor,
   leagueMatchesPlayed,
   positionRates,
   projectLeaguePlayer,
+  projectPlayer,
 } from '../src/utils/playerProjection.js'
 
 const lookup = buildClubLookup(INITIAL_TEAMS)
@@ -145,6 +148,28 @@ test('regression to the mean: a cameo haul is pulled back, a regular barely move
   assert.ok(regular.xPts > cameo.xPts * 5)
   // Without a position rate there's no regression at all.
   assert.equal(projectLeaguePlayer({ points: 36, minutes: 270, price: 8 }, [3], 3).ppm, 12)
+})
+
+test('knockout club matches count ended matchdays and real knockout legs only', () => {
+  const ko = demoKnockout('bracket')
+  // Mid-March: the league phase (8) and both play-off legs are done, and
+  // the R16 first leg (9–10 Mar) too.
+  const { byClub, league } = clubMatchesPlayed(ko, new Date('2027-03-12'))
+  assert.equal(league, 8)
+  assert.equal(byClub[ko.standings[0]], 9) // bye, then R16 leg 1
+  assert.equal(byClub[ko.results.PO1], 11) // two play-off legs + R16 leg 1
+})
+
+test('knockout projection: points per match × expected matches, with the same regression', () => {
+  const player = { points: 40, minutes: 720, price: 8 }
+  const raw = projectPlayer(player, { matches: 2, oppAvg: 3 }, 8)
+  assert.equal(raw.ppm, 5)
+  assert.equal(raw.xPts, 10)
+  assert.equal(raw.value, 10 / 8)
+  const pulled = projectPlayer(player, { matches: 2, oppAvg: 3 }, 8, 4)
+  // (40 + 2 × 4) / (720 + 180) × 90 = 4.8 per match: a bit closer to the average of 4.
+  assert.ok(Math.abs(pulled.ppm - 4.8) < 1e-9)
+  assert.ok(projectPlayer(player, { matches: 2, oppAvg: 1.5 }, 8).xPts > 10)
 })
 
 test('scores are relative: 100 for the best, and per €m judged separately', async () => {

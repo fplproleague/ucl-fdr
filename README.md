@@ -12,7 +12,14 @@ Live: [ucl-fdr.vercel.app](https://ucl-fdr.vercel.app/)
 - **Players** — a form-and-fixtures guide per player over the selected matchdays: a 0–100 score (100 = best player for those matchdays) from points per match so far, minutes played and the fixtures in the range. Deliberately not shown as expected points: the model knows form and fixtures, not injuries, team news or expected goals. Filter by position, max price (a slider in €0.5m steps) and ownership; sort by score, score per €m or form. A **Form: UCL / Domestic / Both** switch (once domestic data exists, see below; *Both* by default) adds each club's last 5 league matches: form as points per match (missed matches count as zeros, so cameos don't top the Form sort), goals + assists per 90, and minutes plus per-match lines in a player's details; under *Both* UCL and domestic form count equally in the score. Players can be starred into a shortlist (kept in the browser, shared with the Odds tab) and filtered on from the *Show* menu, with *My teams* and Differentials. Tap **VS** on up to 5 players (3 on a phone, so the table never scrolls sideways) to compare them side by side: stats as rows (overview, fixtures per matchday, UCL, last 5 league matches, rates per 90), the best value in each row highlighted, bars where more is better, and a "best in N" count per player. A stat with match-by-match data opens to show where it comes from (which matches the clean sheets, goals or minutes came in). The comparison is in the link (`#/players?cmp=…`), so it can be shared. Appears in the menu once a player sheet is connected (see below); `#/players?demo=1` previews it with made-up players.
 - **Odds** — the bookmakers' view, independent of the 1–5 ratings (they're opinions anyone can change, so they never feed it). *Teams*: every team × matchday with a switch between clean-sheet chance, expected goals for and expected goals against; one sequential ramp, lighter = better for a fantasy pick; tap a matchday to sort on it. A match the bookmakers haven't priced yet (they start about three weeks ahead) is an estimate, drawn with a dashed edge: each club's Elo rating (clubelo.com, saved with the odds) plus every team's attack and defence fitted to all priced matches together (`src/utils/oddsView.js`), so the estimates sharpen as matchdays are priced. *Players*: one matchday shows each sheet player's chances of a goal, an assist, either, and his team's clean sheet, from the odds; several show expected totals, later matchdays estimated from his share of his team's goals — a line above the table says which, all if he plays. Long tables (FDR, Odds, Players) keep a slim copy of their header row under the site header while scrolling. Data: see *Betting odds* below.
 - **Across tabs** — the Odds data shows up where it helps, without extra toolbar rows: the team panel (tap a team anywhere, the Odds grid included) shows its clean-sheet chances and expected goals per matchday and links to that club's players on the Players and Odds tabs; a player's name on the Odds tab opens him on the Players tab, and a player's details there show his goal-or-assist chances with a link back; the side-by-side comparison gets *Bookmaker odds* rows; Best Runs and GK Rotation ranks on clean-sheet odds (the FDR facts break ties), recommending one keeper per club: whoever played its last UCL match. Best Runs can rank on expected goals from a switch beside the title. Every team's default strength rating is the one the odds point to, worked out at build time (`virtual:odds-ratings` in `vite.config.js`); a rating changed on the Strength tab stays as set. Starred players are one shortlist for every tab, and starred players and *My teams* filter the Players and Odds tabs from one small *Show* menu that only appears once you star or pin something. The Odds tab's view, metric, sorted matchday and the searches on Players and Odds ride in the link (`ov`, `om`, `os`, `q`).
-- **Team Strength** — override any team's 1–5 rating. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Team Strength** — override any team's 1–5 rating, in half steps (+½) for sides between two levels. Searchable, changed teams are flagged with their original value, and everything recalculates live.
+- **Knockouts** — four views for the knockout phase, plus the UCL Fantasy rules per round (club limit, free transfers):
+  - *Bracket*: predict every tie up to the final, using the real draws as they happen. Picks are saved on the device and travel in the link; opening someone else's link shows their bracket read-only without touching your own.
+  - *Outlook*: each club's chance to reach every round, and its expected matches and average opponent strength over the rounds you plan for (by default, until the next round with unlimited transfers: a squad picked then has to last that long), with a stacking note per window and a per-club path (likely opponents, their average strength, second-leg venue). Draws that haven't happened yet are averaged over every possible outcome.
+  - *Players*: the same 0–100 form-and-fixtures score as the Players tab, over the same window: form × the club's expected matches, nudged by opponent strength.
+  - *Legs*: the FDR table for one knockout round — opponent and venue per leg, easiest first, with the top 8's play-off bye called out.
+
+  Outlook and Legs run on the *Model* (strength ratings only) or on *My bracket* (your picks treated as certain).
 
 ## How difficulty is calculated
 
@@ -32,6 +39,7 @@ The whole view lives in the hash, so any state is linkable:
 #/runs?from=2&to=5
 #/table?from=1&to=8&teams=ARS,INT,BAY   # the FDR table comparing three teams (#/compare… still works)
 #/table?r=ARS4BVB2          # custom ratings, packed 4 chars per team
+#/table?r=ARSdBVB2          # half steps as a–d (1½–4½), so older links read the same
 #/players?cmp=p250016833,p250176450   # players compared side by side (up to 5)
 ```
 
@@ -61,6 +69,25 @@ Bump `DATA_UPDATED` in the same file when the data changes.
 
 Matchday dates live in `src/data/matchdays.js`.
 
+## Knockout data
+
+`src/data/knockout.js` drives the Bracket tab. It starts empty and is filled in by hand as the season goes; each block
+unlocks the next step:
+
+| When | Fill in | Unlocks |
+|---|---|---|
+| After MD8 (27 Jan) | `LEAGUE_STANDINGS` — club ids 1st to 36th | Tab appears in the menu; qualified clubs and play-off pairings |
+| After the play-off draw | `PLAYOFF_DRAW` — `[seeded, unseeded]` per tie | Play-off picks |
+| After the R16 draw | `R16_DRAW` — `{ seed, playoff }` per tie, in bracket order | The full bracket to the final |
+| After each tie | `RESULTS` — `{ tieId: winner }` | Locks that tie |
+
+Also update the draw dates, and the `KO_ROUNDS` fantasy rules once UEFA publishes the 2026/27 ones
+(then set `FANTASY_RULES_CONFIRMED = true`).
+
+`npm test` checks this file against the format rules (seeding pairs, bracket slots, known club ids), so run it after
+every edit. Until `LEAGUE_STANDINGS` is set the tab is hidden from the menu but reachable at `#/bracket`;
+`#/bracket?demo=standings|playoffs|bracket` previews each step with made-up data.
+
 ## Player sheet
 
 The Players tab and GK Rotation both read this one published Google Sheet (GK Rotation uses its goalkeepers, with their minutes, points, price and ownership).
@@ -80,6 +107,13 @@ From then on edits to the sheet show up live; every deploy also saves a fallback
 (`scripts/build-players.mjs`, run by `npm run build`), which the browser only downloads when the Players tab opens. Rows the site can't read (unknown club, bad position or price)
 are skipped and listed in the browser console and the build log. Update the totals after every matchday: points per
 match divide by the matchdays played *by today*, so a sheet that lags behind under-rates everyone (evenly).
+
+## Knockout odds
+
+`src/utils/koOdds.js` turns the strength ratings into tie odds with a logistic curve (`MODEL`: one rating step ≈ 68% over
+two legs, a bit flatter for the one-off final, a tenth of a step for hosting the second leg) and propagates them through
+the bracket exactly — no simulation. Before a draw, every way it can come out is averaged in (up to 16 play-off × 128
+R16 outcomes). Expected matches only count legs still to be played.
 
 ## Domestic form (API-Football)
 
@@ -214,7 +248,7 @@ npm run dev       # local dev server
 npm run build     # production build (dist/)
 npm run preview   # preview the build
 npm run lint
-npm test          # player sheet parsing, projection, domestic form and odds checks
+npm test          # bracket logic, knockout data, player sheet, projection, domestic form and odds checks
 ```
 
 ## Deploy

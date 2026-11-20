@@ -1,4 +1,5 @@
-// Expected fantasy points per player over a range of matchdays.
+// Expected fantasy points per player over a range of matchdays (league
+// phase) or a window of knockout rounds.
 //
 //   points per 90     = season points per 90 minutes, pulled towards the
 //                       average for his position (see PRIOR_MINUTES)
@@ -11,6 +12,8 @@
 // the same points per 90 don't project the same. The fixture adjustment is
 // deliberately small — the points so far already reflect who he has faced.
 import { MATCHDAYS } from '../data/matchdays.js'
+import { KO_ROUNDS } from '../data/knockout.js'
+import { buildBracket, ROUND_ORDER } from './bracket.js'
 
 // ±8% per step a fixture's difficulty sits away from 3 (average), capped
 // at ±20%.
@@ -42,6 +45,27 @@ export function positionRates(players) {
     t.minutes += p.minutes
   }
   return Object.fromEntries(Object.entries(totals).map(([pos, t]) => [pos, (t.points / t.minutes) * 90]))
+}
+
+const LEGS = Object.fromEntries(KO_ROUNDS.map((r) => [r.id, r.legs]))
+
+// The knockout version of leagueMatchesPlayed, per club: every league-phase
+// matchday that has ended, plus every knockout leg that has ended in a tie
+// the club is really in (results and draws only — never someone's bracket
+// picks).
+export function clubMatchesPlayed(ko, today = new Date()) {
+  const iso = today.toISOString().slice(0, 10)
+  const league = leagueMatchesPlayed(today)
+  const out = {}
+  for (const abbr of ko.standings ?? []) out[abbr] = league
+  const bracket = buildBracket(ko, {})
+  for (const round of ROUND_ORDER) {
+    const played = LEGS[round].filter((l) => l.end < iso).length
+    if (!played) continue
+    for (const tie of bracket.rounds[round])
+      for (const side of tie.sides) if (side.abbr) out[side.abbr] = (out[side.abbr] ?? league) + played
+  }
+  return { byClub: out, league }
 }
 
 export function fixtureFactor(difficulty) {
@@ -87,6 +111,17 @@ export function blendForm(source, uclPpm, domesticPpm) {
   if (source === 'ucl') return uclPpm
   if (source === 'domestic') return domesticPpm ?? 0
   return domesticPpm == null ? uclPpm : (uclPpm + domesticPpm) / 2
+}
+
+// Knockouts. `club` is the club's window stats ({ matches, oppAvg } from
+// koWindow.js): expected matches rather than known fixtures, and the
+// average strength of the likely opponents as the difficulty.
+export function projectPlayer(player, club, clubMatches, positionRate) {
+  const minutesShare = clubMatches > 0 ? Math.min(1, player.minutes / (clubMatches * 90)) : 0
+  const rawPpm = clubMatches > 0 ? player.points / clubMatches : 0
+  const ppm = formPpm(player.points, player.minutes, clubMatches, positionRate)
+  const xPts = ppm * club.matches * fixtureFactor(club.oppAvg)
+  return { ppm, rawPpm, minutesShare, matches: club.matches, oppAvg: club.oppAvg, xPts, value: xPts / player.price }
 }
 
 // The Players tab shows a relative score rather than a points total: this
