@@ -41,7 +41,7 @@ export default function ControlBar({ children, tiles = [], chips = [], onReset, 
         )}
       </Toolbar>
       {open && (
-        <OptionsPanel id={panelId} onClose={() => setOpen(false)} onReset={changed > 0 ? reset : undefined}>
+        <OptionsPanel id={panelId}>
           {allTiles}
         </OptionsPanel>
       )}

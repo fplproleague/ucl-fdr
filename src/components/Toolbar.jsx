@@ -134,63 +134,54 @@ export function OptionsButton({ open, onToggle, count, controls }) {
   )
 }
 
-// What sits behind Options: a grid of labelled tiles, one setting each.
-export function OptionsPanel({ id, onClose, onReset, children }) {
+// What sits behind Options: one compact row per setting, label on the left
+// and its control on the right. A row's longer explanation is its label's
+// tooltip, so the panel stays a few rows high: one column with dividers on a
+// phone, a grid from a tablet up. The Options button closes it again, and
+// the chips under the bar undo what's changed (with "Clear all" for several).
+export function OptionsPanel({ id, children }) {
   return (
-    <div id={id} className="mb-3 rounded-lg border border-white/10 bg-ucl-deep/70 p-3 shadow-card">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-      <div className="mt-3 flex items-center justify-end gap-2">
-        {onReset && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="min-h-[36px] rounded px-3 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
-          >
-            Reset all
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="min-h-[36px] rounded bg-ucl-select px-4 text-xs font-semibold text-ucl-selectInk transition hover:bg-white/90"
-        >
-          Done
-        </button>
-      </div>
+    <div id={id} className="mb-2 rounded-lg border border-white/10 bg-ucl-deep/70 px-3 py-1 sm:py-1.5">
+      <div className="grid sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3">{children}</div>
     </div>
   )
 }
 
-// One tile: a label, a line on what it does, and its control underneath.
-export function OptionTile({ label, hint, children, wide = false }) {
+const ROW = 'flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] py-1 sm:border-0'
+
+// One row: a label (its hint as the tooltip) and its control.
+export function OptionTile({ label, hint, children }) {
   return (
-    <div className={`rounded border border-white/10 bg-white/[0.02] p-2.5 ${wide ? 'sm:col-span-2' : ''}`}>
-      <p className="text-xs font-semibold text-ucl-star">{label}</p>
-      {hint && <p className="mt-0.5 text-meta text-ucl-muted">{hint}</p>}
-      <div className="mt-2">{children}</div>
+    <div className={ROW}>
+      <span title={hint} className="shrink-0 text-xs font-semibold text-ucl-star sm:w-28">
+        {label}
+      </span>
+      {/* Right-aligned on a phone (one column), right beside its label in
+          the grid, where a control pushed to the far edge of its cell sat
+          closer to the next cell's label than to its own. */}
+      <div className="ml-auto flex min-w-0 flex-1 justify-end sm:ml-0 sm:justify-start">{children}</div>
     </div>
   )
 }
 
-// An on/off tile: the switch sits beside its label, so the whole tile is the
-// target.
+// An on/off row: the whole row is the switch. children: what only applies
+// while it's on (Matchday split's day filter): beside it in the grid, on a
+// line of its own on a phone.
 export function SwitchTile({ label, hint, on, onChange, children }) {
   return (
-    <div className="rounded border border-white/10 bg-white/[0.02] p-2.5">
+    <div className={ROW}>
       <button
         type="button"
         role="switch"
         aria-checked={on}
         onClick={() => onChange(!on)}
-        className="flex w-full items-start gap-3 text-left"
+        title={hint}
+        className="flex min-h-[36px] w-full items-center gap-3 text-left sm:w-auto"
       >
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-semibold text-ucl-star">{label}</span>
-          {hint && <span className="mt-0.5 block text-meta text-ucl-muted">{hint}</span>}
-        </span>
+        <span className="min-w-0 flex-1 text-xs font-semibold text-ucl-star sm:w-28 sm:flex-none">{label}</span>
         <span
           aria-hidden="true"
-          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition ${on ? 'bg-ucl-select' : 'bg-white/15'}`}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? 'bg-ucl-select' : 'bg-white/15'}`}
         >
           <span
             className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${
@@ -199,19 +190,19 @@ export function SwitchTile({ label, hint, on, onChange, children }) {
           />
         </span>
       </button>
-      {children && <div className="mt-2">{children}</div>}
+      {children && <div className="flex w-full justify-end pb-1 sm:w-auto sm:pb-0">{children}</div>}
     </div>
   )
 }
 
-// A select at the toolbar's size, for use inside a tile.
+// A select at the toolbar's height, for use in a row.
 export function TileSelect({ label, value, onChange, children }) {
   return (
     <select
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-10 w-full rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+      className="h-9 min-w-[96px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
     >
       {children}
     </select>

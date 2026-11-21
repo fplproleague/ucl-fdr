@@ -7,8 +7,8 @@ import { Segmented } from './Toolbar.jsx'
 // be set below "From" (the old pair let you pick MD5→MD2 and the whole table
 // vanished), and the presets exist because with two transfers per matchday
 // the next four is the window people can actually act on. Leaving one
-// matchday out ("Ignore MD") moved behind Options: it's for a Limitless or
-// wildcard week, not something to look past every visit.
+// matchday out ("Ignore MD") moved behind Options: it's for a Limitless
+// week, not something to look past every visit.
 export default function MdRangePicker({ from, to, onChange, className = '' }) {
   const now = currentMatchday()
   // "All" means all *remaining* matchdays — a played one has already dropped

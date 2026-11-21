@@ -70,10 +70,13 @@ export function useSharedOptions({ venue = false, split = false, myTeams = false
         {showMatchday && availableDayOptions.length > 1 && (
           <Segmented
             label="Filter fixtures by day"
-            stretch
             value={dayFilter}
             onChange={setDayFilter}
-            options={['ALL', ...availableDayOptions].map((d) => ({ id: d, label: d === 'ALL' ? 'All days' : DAY_LABEL[d] }))}
+            options={['ALL', ...availableDayOptions].map((d) => ({
+              id: d,
+              label: d === 'ALL' ? 'All' : DAY_LABEL[d].slice(0, 3),
+              title: d === 'ALL' ? 'All days' : DAY_LABEL[d],
+            }))}
           />
         )}
       </SwitchTile>,
@@ -94,7 +97,7 @@ export function useSharedOptions({ venue = false, split = false, myTeams = false
       <OptionTile
         key="skip"
         label="Ignore a matchday"
-        hint="Leave one out of every average, for a Limitless or wildcard week."
+        hint="Leave one matchday out of every average, for example the week you play Limitless."
       >
         <TileSelect label="Ignore matchday" value={skipMd ?? ''} onChange={(v) => setSkipMd(v ? Number(v) : null)}>
           <option value="">None</option>

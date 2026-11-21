@@ -14,7 +14,7 @@ export function PriceSlider({
 }) {
   const current = value ?? bounds.max
   return (
-    <label className={`flex items-center gap-3 ${className}`}>
+    <label className={`flex items-center gap-3 ${inTile ? 'w-full max-w-xs' : ''} ${className}`}>
       <span className={inTile ? 'sr-only' : 'shrink-0 section-label'}>Max price</span>
       <input
         type="range"

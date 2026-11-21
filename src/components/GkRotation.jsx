@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
@@ -256,20 +256,33 @@ export default function GkRotation() {
         <p className="mb-1.5 section-label">Your goalkeeper</p>
 
         {selectedGk && !pickerOpen ? (
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left shadow-card transition hover:bg-white/[0.06] sm:p-3"
-          >
-            <TeamBadge abbr={selectedGk.team} size={32} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold sm:text-base">{selectedGk.name}</p>
-              <p className="text-[11px] text-ucl-muted">
-                {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
-              </p>
-            </div>
-            <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
-          </button>
+          // Change him for another keeper, or remove him (✕) to go back to
+          // the best pairs overall.
+          <div className="flex items-stretch rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-l-lg p-2.5 text-left transition hover:bg-white/[0.06] sm:p-3"
+            >
+              <TeamBadge abbr={selectedGk.team} size={32} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold sm:text-base">{selectedGk.name}</p>
+                <p className="text-[11px] text-ucl-muted">
+                  {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => selectGk(null)}
+              aria-label={`Remove ${selectedGk.name} and show the best pairs`}
+              title="Remove, and show the best pairs overall"
+              className="flex w-12 shrink-0 items-center justify-center rounded-r-lg border-l border-white/10 text-ucl-star/60 transition hover:bg-white/[0.06] hover:text-ucl-star"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
         ) : (
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
             <input
