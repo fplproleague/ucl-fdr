@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { RotateCcw, Search } from 'lucide-react'
+import { Info, RotateCcw, Search } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import TeamBadge from './TeamBadge.jsx'
 import RatingLegend from './RatingLegend.jsx'
 import StrengthPicker from './StrengthPicker.jsx'
 import ViewHeading from './ViewHeading.jsx'
+import { IconButton, MetaRow, SubTabs } from './Toolbar.jsx'
 import { ODDS_RATINGS, ODDS_RATINGS_MATCHES } from 'virtual:odds-ratings'
 
 const AWAY_DIFFICULTY_LEVELS = [0, 1, 2]
@@ -20,6 +21,7 @@ export default function TeamStrengthSettings() {
   // A sub-tab, not two stacked sections — most people never scroll far enough
   // to find Away Difficulty if it just sits below all 36 strength rows.
   const [subTab, setSubTab] = useState('strength')
+  const [showInfo, setShowInfo] = useState(false)
   // The defaults come from the odds (see oddsRatings in vite.config.js).
   // There used to be an "Odds ≈ 4" hint under each team beside a hand-set
   // default; the default is now that number, so the hint went with it.
@@ -42,12 +44,17 @@ export default function TeamStrengthSettings() {
       <ViewHeading
         title="Team Strength"
         subtitle="Set what each team is worth as an opponent. Everything else recalculates live."
+        tools={
+          <IconButton label="How the ratings work" pressed={showInfo} onClick={() => setShowInfo((v) => !v)}>
+            <Info size={16} aria-hidden="true" />
+          </IconButton>
+        }
         action={
           modifiedCount > 0 && (
             <button
               type="button"
               onClick={resetRatings}
-              className="flex min-h-[40px] shrink-0 items-center gap-1.5 rounded border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 active:scale-95"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded border border-white/10 bg-white/5 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 active:scale-95"
             >
               <RotateCcw size={14} aria-hidden="true" />
               Reset {modifiedCount}
@@ -56,35 +63,24 @@ export default function TeamStrengthSettings() {
         }
       />
 
-      <div className="mb-3 flex rounded-lg border border-white/10 p-0.5" role="tablist">
-        {SUB_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={subTab === t.id}
-            onClick={() => setSubTab(t.id)}
-            className={`min-h-[36px] flex-1 rounded text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
-              subTab === t.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {showInfo && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
+          <RatingLegend variant="full" className="mb-2 !border-0 !bg-transparent !p-0" />
+          {fromOdds ? (
+            <p>The default ratings follow the bookmakers&apos; prices (and Elo club ratings where a club isn&apos;t
+              priced): all 36 ranked, in bands as big as a hand-set list would have, from {ODDS_RATINGS_MATCHES} priced
+              matches so far. They move as new odds come in. A rating you change is yours and stays as you set it until
+              you reset it.</p>
+          ) : (
+            <p>Each team&apos;s rating is how hard it is to play against, from 1 (very easy) to 5 (very hard).</p>
+          )}
+        </div>
+      )}
+
+      <SubTabs label="Strength settings" value={subTab} onChange={setSubTab} options={SUB_TABS} />
 
       {subTab === 'strength' && (
         <>
-          <RatingLegend variant="full" className="mb-3" />
-          {fromOdds && (
-            <p className="mb-3 text-xs text-ucl-muted">
-              The default ratings follow the bookmakers&apos; prices (and Elo club ratings where a club isn&apos;t
-              priced): all 36 ranked, in bands as big as a hand-set list would have, from {ODDS_RATINGS_MATCHES} priced
-              matches so far. They move as new odds come in. A rating you change is yours and stays as you set it until
-              you reset it.
-            </p>
-          )}
-
           <div className="relative mb-3">
             <Search
               size={16}
@@ -97,9 +93,13 @@ export default function TeamStrengthSettings() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search 36 teams"
               aria-label="Search teams"
-              className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+              className="h-10 w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
             />
           </div>
+
+          <MetaRow aside={<RatingLegend />}>
+            {filtered.length} team{filtered.length === 1 ? '' : 's'}, strongest first. Tap a number to change a rating.
+          </MetaRow>
 
           <ul className="space-y-2">
             {filtered.map((team) => (

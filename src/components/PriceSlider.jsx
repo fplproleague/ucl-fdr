@@ -9,11 +9,13 @@ export function PriceSlider({
   value,
   onChange,
   className = 'mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2',
+  // Inside an Options tile, which already says "Max price" above it.
+  inTile = false,
 }) {
   const current = value ?? bounds.max
   return (
-    <label className={`flex items-center gap-3 ${className}`}>
-      <span className="shrink-0 section-label">Max price</span>
+    <label className={`flex items-center gap-3 ${inTile ? 'w-full max-w-xs' : ''} ${className}`}>
+      <span className={inTile ? 'sr-only' : 'shrink-0 section-label'}>Max price</span>
       <input
         type="range"
         min={bounds.min}

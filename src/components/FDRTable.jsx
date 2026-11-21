@@ -1,11 +1,13 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
-import { Scale } from 'lucide-react'
+import { Info, Scale } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { compareRuns } from '../utils/difficulty.js'
 import { useFixtureRows } from '../utils/useFixtureRows.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
-import ControlBar from './ControlBar.jsx'
+import ControlBar, { DifficultyInfo } from './ControlBar.jsx'
+import RatingLegend from './RatingLegend.jsx'
+import { CopyLinkButton, IconButton, MetaRow, OptionTile, Segmented, SubTabs } from './Toolbar.jsx'
 import FixtureGrid from './FixtureGrid.jsx'
 import MyTeamsEmpty from './MyTeamsEmpty.jsx'
 import ViewHeading from './ViewHeading.jsx'
@@ -36,6 +38,9 @@ export default function FDRTable() {
     skipMd,
     compare,
     setCompare,
+    step,
+    openStep,
+    closeStep,
   } = useTeams()
   const [sortBy, setSortBy] = useState('avg')
   const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false)
@@ -51,14 +56,15 @@ export default function FDRTable() {
 
   // Compare mode: the table shows only the teams picked to compare (in the
   // link as ?teams=), easiest run first. Opened from "Compare teams" here,
-  // from a team's panel, or by an old #/compare link. `comparing` covers the
-  // moment before the first team is picked.
-  const [comparing, setComparing] = useState(false)
-  const inCompare = comparing || compare.length > 0
+  // from a team's panel, or by an old #/compare link. The 'fdrCompare' step
+  // covers the moment before the first team is picked; started from the
+  // button, compare mode is a history entry of its own (see STEP_RESETS),
+  // so the back button leaves it.
+  const inCompare = step === 'fdrCompare' || compare.length > 0
   const comparedTeams = compare.map((abbr) => teamsByAbbr[abbr]).filter(Boolean)
   function stopComparing() {
     setCompare([])
-    setComparing(false)
+    if (step === 'fdrCompare') closeStep()
   }
 
   const shownTeams = inCompare ? comparedTeams : myTeamsOnly ? visibleTeams.filter((t) => t.pinned) : visibleTeams
@@ -74,57 +80,92 @@ export default function FDRTable() {
   }, [rows, sortBy, inCompare])
   const showMatches = viewMode === 'matches' && !inCompare
 
+  const { modifiedCount, setTab } = useTeams()
+  const [showInfo, setShowInfo] = useState(false)
+
+  // Behind Options: the order, plus the shared fixture options. Hidden teams
+  // and custom ratings aren't options here but they do change the table, so
+  // they get a chip that opens where they're set.
+  const tiles = inCompare
+    ? []
+    : [
+        <OptionTile key="order" label="Order" hint="Easiest run first, or alphabetical to find a team.">
+          <Segmented
+            label="Order"
+            stretch
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { id: 'avg', label: 'Best fixtures' },
+              { id: 'name', label: 'A–Z' },
+            ]}
+          />
+        </OptionTile>,
+      ]
+  const chips = []
+  if (!inCompare && sortBy !== 'avg') chips.push({ key: 'order', label: 'A–Z', onRemove: () => setSortBy('avg') })
+  if (!inCompare && hiddenCount > 0)
+    chips.push({ key: 'hidden', label: `${hiddenCount} hidden · show`, onClick: () => setHiddenPanelOpen(true) })
+  if (modifiedCount > 0)
+    chips.push({
+      key: 'custom',
+      label: `${modifiedCount} custom rating${modifiedCount === 1 ? '' : 's'}`,
+      onClick: () => setTab('strength'),
+    })
+
+  const range = `${mdRange(from, to)}${skipMd ? `, MD${skipMd} ignored` : ''}`
+  const meta = inCompare
+    ? `Comparing ${shownTeams.length} team${shownTeams.length === 1 ? '' : 's'}, ${range}, easiest run first.`
+    : showMatches
+      ? `Every match of ${mdRange(from, to)}.`
+      : `${shownTeams.length} of 36 teams, ${range}, ${sortBy === 'avg' ? 'easiest run first' : 'A–Z'}. Tap a team for details.`
+
   return (
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="FDR Table"
-        subtitle={
-          inCompare
-            ? `Comparing ${shownTeams.length} team${shownTeams.length === 1 ? '' : 's'}, ${mdRange(from, to)}${
-                skipMd ? ` (ignoring MD${skipMd})` : ''
-              }, easiest run first.`
-            : myTeamsOnly && shownTeams.length === 0
-              ? `My teams, ${mdRange(from, to)}: nothing to show yet.`
-              : `Fixture ticker for ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${shownTeams.length} of 36 teams. Tap a row to see or drop a team.`
-        }
-        action={
-          !inCompare &&
-          !showMatches && (
-            <div className="flex gap-2 sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setComparing(true)}
-                className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded border border-white/10 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 hover:text-ucl-star"
-              >
-                <Scale size={14} aria-hidden="true" />
-                <span>
-                  Compare<span className="hidden sm:inline"> teams</span>
-                </span>
-              </button>
-              <div className="flex flex-1 rounded-lg border border-white/10 p-0.5 text-xs font-semibold sm:flex-none">
-                {[
-                  { id: 'avg', label: 'Best fixtures' },
-                  { id: 'name', label: 'A–Z' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setSortBy(opt.id)}
-                    aria-pressed={sortBy === opt.id}
-                    className={`min-h-[44px] flex-1 rounded px-3 transition sm:flex-none ${
-                      sortBy === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
+        subtitle="How hard every team's Champions League fixtures are, matchday by matchday."
+        tools={
+          <>
+            <IconButton label="How difficulty works" pressed={showInfo} onClick={() => setShowInfo((v) => !v)}>
+              <Info size={16} aria-hidden="true" />
+            </IconButton>
+            <CopyLinkButton />
+          </>
         }
       />
 
-      <ControlBar className="mb-3" showMyTeamsFilter={!inCompare} />
+      {singleMd && !inCompare && (
+        <SubTabs
+          label="FDR view"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { id: 'teams', label: 'Teams' },
+            { id: 'matches', label: 'Matches' },
+          ]}
+        />
+      )}
+
+      <ControlBar
+        tiles={tiles}
+        chips={chips}
+        onReset={() => setSortBy('avg')}
+        shared={{ venue: true, split: true, myTeams: !inCompare }}
+      >
+        {!inCompare && !showMatches && (
+          <button
+            type="button"
+            onClick={() => openStep('fdrCompare')}
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded border border-white/10 px-3 text-xs font-semibold text-ucl-star/80 transition hover:bg-white/10 hover:text-ucl-star"
+          >
+            <Scale size={14} aria-hidden="true" />
+            Compare
+          </button>
+        )}
+      </ControlBar>
+
+      {showInfo && <DifficultyInfo onClose={() => setShowInfo(false)} />}
 
       {inCompare && (
         <Suspense fallback={null}>
@@ -132,40 +173,7 @@ export default function FDRTable() {
         </Suspense>
       )}
 
-      {singleMd && !inCompare && (
-        <div className="mb-3 flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold" role="tablist">
-          {[
-            { id: 'teams', label: 'Teams' },
-            { id: 'matches', label: 'Matches' },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="tab"
-              aria-selected={viewMode === opt.id}
-              onClick={() => setViewMode(opt.id)}
-              className={`min-h-[36px] flex-1 rounded px-3 transition ${
-                viewMode === opt.id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {hiddenCount > 0 && !inCompare && (
-        <p className="mb-3 flex items-center gap-2 text-xs text-ucl-muted">
-          {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
-          <button
-            type="button"
-            onClick={() => setHiddenPanelOpen(true)}
-            className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
-          >
-            Show hidden teams
-          </button>
-        </p>
-      )}
+      {!(inCompare && shownTeams.length === 0) && <MetaRow aside={!showMatches && <RatingLegend />}>{meta}</MetaRow>}
 
       {inCompare && shownTeams.length === 0 ? (
         <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-10 text-center">
