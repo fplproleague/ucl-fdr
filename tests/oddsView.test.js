@@ -85,8 +85,8 @@ test('team rows: priced where possible, estimated elsewhere, sorted by the metri
   assert.equal(rows[0].cells[1].estimated, true)
   assert.equal(rows[1].cells[0].estimated, true)
   near(rows[0].avg, (0.3 + rows[0].cells[1].cs) / 2, 1e-9, 'average')
-  const sorted = [...rows].sort(compareRows('xgAgainst'))
-  assert.ok(sorted[0].avg <= sorted[1].avg)
+  const sorted = [...rows].sort(compareRows('cs'))
+  assert.ok(sorted[0].avg >= sorted[1].avg)
 })
 
 test('player rows: priced where he has prices, else his share of the team estimate', () => {
@@ -132,7 +132,6 @@ test('sorting on one matchday instead of the average', () => {
   assert.deepEqual([...rows].sort(compareRows('cs', 0)).map((r) => r.team.name), ['B', 'A'])
   // No fixture that matchday: last.
   assert.deepEqual([...rows].sort(compareRows('cs', 1)).map((r) => r.team.name), ['A', 'B'])
-  assert.deepEqual([...rows].sort(compareRows('xgAgainst', 0)).map((r) => r.team.name), ['A', 'B'])
 })
 
 test('implied ratings: teams ranked on the odds, in bands the size of the seeded ones', async () => {

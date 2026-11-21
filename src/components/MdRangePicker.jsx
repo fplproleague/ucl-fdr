@@ -1,132 +1,90 @@
-import { MATCHDAY_LABEL, currentMatchday } from '../data/matchdays.js'
+import { ChevronDown } from 'lucide-react'
+import { currentMatchday } from '../data/matchdays.js'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
+import { Segmented } from './Toolbar.jsx'
 
-// One shared range control, used by every view. Two things changed from the old
-// picker: the "To" list can no longer be set below "From" (the old pair let you
-// pick MD5→MD2 and the entire table vanished behind "Pick a valid GW range"),
-// and the presets exist because with two transfers per matchday the next four
-// is the window people can actually act on.
-export default function MdRangePicker({ from, to, onChange, skipMd, onSkipChange, className = '' }) {
+// One shared range control, first in every view's toolbar. The "To" list can't
+// be set below "From" (the old pair let you pick MD5→MD2 and the whole table
+// vanished), and the presets exist because with two transfers per matchday
+// the next four is the window people can actually act on. Leaving one
+// matchday out ("Ignore MD") moved behind Options: it's for a Limitless or
+// wildcard week, not something to look past every visit.
+export default function MdRangePicker({ from, to, onChange, className = '' }) {
   const now = currentMatchday()
   // "All" means all *remaining* matchdays — a played one has already dropped
-  // off the site, so the count here shrinks as the season goes. A "Next N"
-  // preset only shows while N is smaller than that: once it would be clamped
-  // to the same range as "All" (Next 6 with five left), it's a duplicate
-  // button that lights up together with "All" and just reads as a bug.
+  // off the site. A "Next N" preset only shows while N is smaller than that:
+  // once it would be the same range as "All" it's a duplicate that lights up
+  // together with it and reads as a bug.
   const remaining = TOTAL_MATCHDAYS - now + 1
   const presets = [
-    ...[4, 6]
-      .filter((n) => n < remaining)
-      .map((n) => ({ label: `Next ${n}`, from: now, to: now + n - 1 })),
-    { label: `All ${remaining}`, from: now, to: TOTAL_MATCHDAYS },
+    ...[4, 6].filter((n) => n < remaining).map((n) => ({ id: `next${n}`, label: `Next ${n}`, from: now, to: now + n - 1 })),
+    { id: 'all', label: `All ${remaining}`, from: now, to: TOTAL_MATCHDAYS },
   ]
+  const active = presets.find((p) => p.from === from && p.to === to)?.id ?? null
 
-  // A matchday whose window has closed is gone from every selector, not just
-  // the default — there's nothing to plan for there any more.
+  // A matchday whose window has closed is gone from every selector.
   const all = Array.from({ length: TOTAL_MATCHDAYS }, (_, i) => i + 1).filter((md) => md >= now)
-  // Only matchdays strictly inside the range can be "skipped" — skipping an
-  // edge one is exactly the same as narrowing from/to, so those don't need a
-  // separate control (and, per the note this shipped for: skipping MD1 or
-  // the season's last matchday never makes sense in the first place).
-  const skippable = all.filter((md) => md > from && md < to)
 
-  function handleFrom(next) {
-    onChange(next, Math.max(next, to))
-  }
+  const select =
+    'h-full cursor-pointer appearance-none rounded bg-transparent pl-2.5 pr-6 text-sm font-semibold text-ucl-star outline-none hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ucl-link [&>option]:bg-ucl-deep'
 
-  // No box of its own: it sits in a toolbar beside other controls. The
-  // presets are shortcuts that set the two selects, so they are drawn at the
-  // selects' size and weight. On a phone they used to get a full-width row
-  // of their own, which turned "All 4" (often the only preset left) into a
-  // solid bar with the weight of a primary call to action. Now everything
-  // wraps in reading order, at its own width.
+  // The two selects share one rail, so the range reads as one value
+  // ("MD5 → MD8") rather than two loose dropdowns; the presets sit beside it
+  // as a segmented choice, lit when the range matches one.
   return (
-    <div className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 ${className}`}>
-      <div className="flex items-center gap-1.5">
+    <div className={`flex items-center gap-2 ${className}`}>
+      <div className="flex h-10 items-center rounded-lg border border-white/10 bg-ucl-deep p-0.5">
         <label className="sr-only" htmlFor="md-from">
           From matchday
         </label>
-        <select
-          id="md-from"
-          value={from}
-          onChange={(e) => handleFrom(Number(e.target.value))}
-          className="min-h-[44px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
-        >
-          {all.map((md) => (
-            <option key={md} value={md}>
-              MD{md}
-            </option>
-          ))}
-        </select>
-        <span aria-hidden="true" className="text-ucl-muted">
-          →
-        </span>
-        <label className="sr-only" htmlFor="md-to">
-          To matchday
-        </label>
-        <select
-          id="md-to"
-          value={to}
-          onChange={(e) => onChange(from, Number(e.target.value))}
-          className="min-h-[44px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
-        >
-          {all
-            .filter((md) => md >= from)
-            .map((md) => (
-              <option key={md} value={md}>
-                MD{md}
-              </option>
-            ))}
-        </select>
-      </div>
-
-      {remaining > 1 && (
-        <div className="flex gap-1">
-          {presets.map((p) => {
-            const active = from === p.from && to === p.to
-            return (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => onChange(p.from, p.to)}
-                aria-pressed={active}
-                className={`min-h-[44px] rounded border px-2.5 text-sm font-semibold transition ${
-                  active
-                    ? 'border-white/40 bg-white/10 text-ucl-star'
-                    : 'border-white/10 bg-ucl-deep text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star'
-                }`}
-              >
-                {p.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {skippable.length > 0 && (
-        <div className="flex shrink-0 items-center gap-1.5">
-          <label className="text-[11px] font-normal text-ucl-muted" htmlFor="md-skip">
-            Ignore MD
-          </label>
+        <span className="relative h-full">
           <select
-            id="md-skip"
-            value={skipMd ?? ''}
-            onChange={(e) => onSkipChange(e.target.value ? Number(e.target.value) : null)}
-            title="Leave one matchday out of the table and every average — handy for a Limitless/wildcard matchday you're building a separate team for"
-            className={`min-h-[44px] rounded border px-2 text-sm font-semibold ${
-              skipMd
-                ? 'border-white/40 bg-white/10 text-ucl-star'
-                : 'border-white/10 bg-ucl-deep text-ucl-star/80'
-            }`}
+            id="md-from"
+            value={from}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              onChange(next, Math.max(next, to))
+            }}
+            className={select}
           >
-            <option value="">None</option>
-            {skippable.map((md) => (
+            {all.map((md) => (
               <option key={md} value={md}>
                 MD{md}
               </option>
             ))}
           </select>
-        </div>
+          <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ucl-muted" />
+        </span>
+        <span aria-hidden="true" className="px-0.5 text-ucl-muted">
+          →
+        </span>
+        <label className="sr-only" htmlFor="md-to">
+          To matchday
+        </label>
+        <span className="relative h-full">
+          <select id="md-to" value={to} onChange={(e) => onChange(from, Number(e.target.value))} className={select}>
+            {all
+              .filter((md) => md >= from)
+              .map((md) => (
+                <option key={md} value={md}>
+                  MD{md}
+                </option>
+              ))}
+          </select>
+          <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ucl-muted" />
+        </span>
+      </div>
+
+      {remaining > 1 && (
+        <Segmented
+          label="Range presets"
+          value={active}
+          onChange={(id) => {
+            const p = presets.find((x) => x.id === id)
+            onChange(p.from, p.to)
+          }}
+          options={presets}
+        />
       )}
     </div>
   )

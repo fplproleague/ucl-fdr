@@ -193,10 +193,13 @@ export function fitEstimator(odds) {
   }
 }
 
+// What the Teams view can show. Goals against was a third option, dropped:
+// it ranked teams almost exactly like the clean-sheet chance (which is
+// worked out from it), so it was one more button with nothing new behind
+// it. Its numbers stay in each cell's tooltip.
 export const METRICS = {
   cs: { label: 'Clean sheet', short: 'CS', better: 'high', format: (x) => `${Math.round(x * 100)}%` },
   xgFor: { label: 'Goals for', short: 'xG for', better: 'high', format: (x) => x.toFixed(2) },
-  xgAgainst: { label: 'Goals against', short: 'xG against', better: 'low', format: (x) => x.toFixed(2) },
 }
 
 // One row per team over the matchdays shown: a cell per matchday (priced

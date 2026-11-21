@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Star, TrendingUp, X } from 'lucide-react'
+import { Info, Star, TrendingUp, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { RUNS_TIEBREAK, compareRuns, formatAvg } from '../utils/difficulty.js'
@@ -9,7 +9,9 @@ import { useOdds } from '../utils/useOdds.js'
 import { teamOddsRows } from '../utils/oddsView.js'
 import { useTeamDetail } from '../utils/useTeamDetail.js'
 import TeamBadge from './TeamBadge.jsx'
-import ControlBar from './ControlBar.jsx'
+import ControlBar, { DifficultyInfo } from './ControlBar.jsx'
+import RatingLegend from './RatingLegend.jsx'
+import { CopyLinkButton, IconButton, MetaRow, Segmented } from './Toolbar.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import HiddenTeamsPanel from './HiddenTeamsPanel.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
@@ -82,59 +84,49 @@ export default function BestFixtureRuns() {
 
   const visible = showAll ? ranked : ranked.slice(0, PREVIEW)
 
+  const { modifiedCount, setTab } = useTeams()
+  const [showInfo, setShowInfo] = useState(false)
+  const chips = []
+  if (hiddenCount > 0)
+    chips.push({ key: 'hidden', label: `${hiddenCount} hidden · show`, onClick: () => setHiddenPanelOpen(true) })
+  if (modifiedCount > 0)
+    chips.push({
+      key: 'custom',
+      label: `${modifiedCount} custom rating${modifiedCount === 1 ? '' : 's'}`,
+      onClick: () => setTab('strength'),
+    })
+
   return (
     <div className="mx-auto max-w-5xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Best Fixture Runs"
-        subtitle={`${
-          // Say what the table shows: "36 teams" above a table of eight read
-          // as if rows were missing.
-          ranked.length > PREVIEW && !showAll ? `Top ${PREVIEW} of ${ranked.length}` : `All ${ranked.length}`
-        } teams over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}, ${
-          byOdds
-            ? rankBy === 'cs'
-              ? 'best clean-sheet odds first'
-              : 'most expected goals first'
-            : `easiest average first; ${RUNS_TIEBREAK}`
-        }.`}
-        action={
-          <div
-            role="group"
-            aria-label="Rank by"
-            className="flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold"
-          >
-            {RANK_BY.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setRankBy(id)}
-                aria-pressed={rankBy === id}
-                title={id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)'}
-                className={`min-h-[36px] flex-1 rounded px-3 transition sm:flex-none ${
-                  rankBy === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        subtitle="The teams with the kindest run of fixtures, ranked: the ones to stack up on."
+        tools={
+          <>
+            <IconButton label="How difficulty works" pressed={showInfo} onClick={() => setShowInfo((v) => !v)}>
+              <Info size={16} aria-hidden="true" />
+            </IconButton>
+            <CopyLinkButton />
+          </>
         }
       />
 
-      <ControlBar className="mb-3" showMyTeamsFilter />
+      <ControlBar chips={chips} shared={{ venue: true, split: true, myTeams: true }}>
+        {/* The ranking itself, so it stays in the bar: by the FDR, or by the
+            bookmakers' clean-sheet chances or expected goals. */}
+        <Segmented
+          label="Rank by"
+          value={rankBy}
+          onChange={setRankBy}
+          options={RANK_BY.map(([id, label]) => ({
+            id,
+            label,
+            title: id === 'fdr' ? 'Rank by fixture difficulty' : id === 'cs' ? 'Rank by clean-sheet odds' : 'Rank by expected goals (odds)',
+          }))}
+        />
+      </ControlBar>
 
-      {hiddenCount > 0 && (
-        <p className="mb-3 flex items-center gap-2 text-xs text-ucl-muted">
-          {hiddenCount} team{hiddenCount === 1 ? '' : 's'} hidden
-          <button
-            type="button"
-            onClick={() => setHiddenPanelOpen(true)}
-            className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
-          >
-            Show hidden teams
-          </button>
-        </p>
-      )}
+      {showInfo && <DifficultyInfo onClose={() => setShowInfo(false)} />}
 
       {!byOdds && swings.length > 0 && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
@@ -154,6 +146,22 @@ export default function BestFixtureRuns() {
             ))}
           </ul>
         </div>
+      )}
+
+      {visibleTeams.length > 0 && !(myTeamsOnly && ranked.length === 0) && (
+        <MetaRow aside={!byOdds && <RatingLegend />}>
+          {/* Say what the table shows: "36 teams" above a table of eight read
+              as if rows were missing. */}
+          {ranked.length > PREVIEW && !showAll ? `Top ${PREVIEW} of ${ranked.length}` : `All ${ranked.length}`} teams,{' '}
+          {mdRange(from, to)}
+          {skipMd ? `, MD${skipMd} ignored` : ''},{' '}
+          {byOdds
+            ? rankBy === 'cs'
+              ? 'best clean-sheet odds first'
+              : 'most expected goals first'
+            : `easiest average first; ${RUNS_TIEBREAK}`}
+          .
+        </MetaRow>
       )}
 
       {visibleTeams.length === 0 ? (

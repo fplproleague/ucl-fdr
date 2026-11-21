@@ -23,7 +23,9 @@ export const PANEL_TABS = ['table', 'runs', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
 export const ODDS_VIEWS = ['teams', 'players']
-export const ODDS_METRICS = ['cs', 'xgFor', 'xgAgainst']
+// An old link with om=xgAgainst (goals against, since dropped) opens on
+// clean sheets.
+export const ODDS_METRICS = ['cs', 'xgFor']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')

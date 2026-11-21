@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
@@ -12,7 +12,8 @@ import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
 import FixtureChip from './FixtureChip.jsx'
-import MdRangePicker from './MdRangePicker.jsx'
+import ControlBar from './ControlBar.jsx'
+import { IconButton, OptionTile } from './Toolbar.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import { mdRange } from '../utils/mdLabel.js'
@@ -89,6 +90,7 @@ export default function GkRotation() {
   const [query, setQuery] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
+  const [showInfo, setShowInfo] = useState(false)
   // null = no cap. A budget filter on the complement list only — it never
   // affects who you can pick as "your goalkeeper".
   const [maxPrice, setMaxPrice] = useState(null)
@@ -213,9 +215,36 @@ export default function GkRotation() {
         subtitle={`Pick a goalkeeper you own to see who complements their fixtures over ${mdRange(from, to)}${
           skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
+        tools={
+          <IconButton label="How the pairs are ranked" pressed={showInfo} onClick={() => setShowInfo((v) => !v)}>
+            <Info size={16} aria-hidden="true" />
+          </IconButton>
+        }
       />
 
-      <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
+      {/* The price cap lives behind Options with "ignore a matchday", like
+          on the other tabs; a chip shows it while it's set. */}
+      <ControlBar
+        className="mb-3"
+        range={{ from, to, setRange, skipMd, setSkipMd }}
+        tiles={[
+          <OptionTile key="price" label="Max price" hint="For the partner keeper.">
+            <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="" inTile />
+          </OptionTile>,
+        ]}
+        chips={maxPrice != null ? [{ key: 'price', label: `Max €${maxPrice.toFixed(1)}m`, onRemove: () => setMaxPrice(null) }] : []}
+        onReset={() => setMaxPrice(null)}
+      />
+
+      {showInfo && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
+          One keeper per club: the one who played its last UCL match. Ranked first on different days (the
+          more matchdays the two play on different days, the more often you can start the better one), then on
+          the clean sheets you&rsquo;d expect by starting the better of the two every matchday (bookmaker odds,
+          estimates where a match isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your
+          current settings.
+        </div>
+      )}
 
       {!gkLoading && !gkLive && GOALKEEPERS.length > 0 && (
         <p className="mb-3 text-[11px] text-ucl-muted">
@@ -299,15 +328,10 @@ export default function GkRotation() {
             {selectedGk ? `Best complements for ${selectedGk.name}` : `Best rotation pairs, ${mdRange(from, to)}`}
           </h2>
           <p className="mb-3 text-xs text-ucl-muted">
-            {!selectedGk && 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners. '}
-            One keeper per club: the one who played its last UCL match. Ranked first on different days (the
-            more matchdays the two play on different days, the more often you can start the better one), then on
-            the clean sheets you&rsquo;d expect by starting the better of the two every matchday (bookmaker odds,
-            estimates where a match isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your
-            current settings.
+            {selectedGk
+              ? 'The keepers whose fixtures fit around yours best.'
+              : 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners.'}
           </p>
-
-          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
           {list.length === 0 && (
             <p className="rounded-lg border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
