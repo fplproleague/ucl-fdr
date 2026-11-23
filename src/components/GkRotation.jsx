@@ -11,6 +11,7 @@ import { expectedStarters, findStoredGoalkeeper, rankGoalkeepers } from '../util
 import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import ControlBar from './ControlBar.jsx'
 import { IconButton, OptionTile } from './Toolbar.jsx'
@@ -266,7 +267,10 @@ export default function GkRotation() {
             >
               <TeamBadge abbr={selectedGk.team} size={32} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold sm:text-base">{selectedGk.name}</p>
+                <p className="flex min-w-0 items-center gap-1 text-sm font-semibold sm:text-base">
+                  <span className="truncate">{selectedGk.name}</span>
+                  <AvailabilityDot id={selectedGk.id} />
+                </p>
                 <p className="text-[11px] text-ucl-muted">
                   {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
                 </p>
@@ -310,6 +314,7 @@ export default function GkRotation() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate">
                           <span className="font-semibold">{gk.name}</span>
+                          <AvailabilityDot id={gk.id} className="ml-1 align-middle" />
                           <span className="text-ucl-muted">
                             {' '}
                             · {clubName(gk)} · {formatPrice(gk.price)}
@@ -367,7 +372,10 @@ export default function GkRotation() {
                       <>
                         <TeamBadge abbr={gk.team} size={28} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold sm:text-base">{gk.name}</p>
+                          <p className="flex min-w-0 items-center gap-1 text-sm font-semibold sm:text-base">
+                            <span className="truncate">{gk.name}</span>
+                            <AvailabilityDot id={gk.id} />
+                          </p>
                           <p className="text-[11px] text-ucl-muted">
                             {clubName(gk)} · {formatPrice(gk.price)} · {sheetFacts(gk)}
                           </p>
@@ -381,7 +389,9 @@ export default function GkRotation() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold sm:text-base">
-                            {left.name} + {gk.name}
+                            {left.name}
+                            <AvailabilityDot id={left.id} className="ml-1 align-middle" /> + {gk.name}
+                            <AvailabilityDot id={gk.id} className="ml-1 align-middle" />
                           </p>
                           <p className="truncate text-[11px] text-ucl-muted">
                             {clubName(left)} + {clubName(gk)} · {formatPrice(left.price + gk.price)} together

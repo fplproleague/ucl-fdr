@@ -21,6 +21,7 @@ import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { effectiveDifficulty } from '../utils/difficulty.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import FixtureChip from './FixtureChip.jsx'
 import ControlBar from './ControlBar.jsx'
 import { CopyLinkButton, IconButton, MetaRow, OptionTile, Segmented } from './Toolbar.jsx'
@@ -557,7 +558,10 @@ export default function PlayerProjections() {
                             >
                               <TeamBadge abbr={p.team} size={22} />
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-table font-semibold">{p.name}</span>
+                                <span className="flex min-w-0 items-center gap-1">
+                                  <span className="truncate text-table font-semibold">{p.name}</span>
+                                  <AvailabilityDot id={p.id} />
+                                </span>
                                 <span className="block truncate text-[11px] text-ucl-muted">
                                   {/* Minutes live in the details: this line stays short. */}
                                   {p.position} · {nameOf(p.team)}

@@ -13,6 +13,7 @@ import ControlBar from './ControlBar.jsx'
 import { CopyLinkButton, MetaRow, OptionTile, Segmented, SubTabs, SwitchTile } from './Toolbar.jsx'
 import { mdRange } from '../utils/mdLabel.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import StickyHead from './StickyHead.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
@@ -399,7 +400,10 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                       >
                         <TeamBadge abbr={r.player.team} size={18} />
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-semibold sm:text-table">{r.player.name}</span>
+                          <span className="flex min-w-0 items-center gap-1">
+                            <span className="truncate text-xs font-semibold sm:text-table">{r.player.name}</span>
+                            <AvailabilityDot id={r.player.id} />
+                          </span>
                           <span className="block truncate text-[10px] text-ucl-muted">
                             {/* On a phone the opponent moves in here (no vs column) and the
                                 position, which the chips filter on, steps out. */}
