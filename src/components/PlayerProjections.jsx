@@ -241,7 +241,7 @@ export default function PlayerProjections() {
   const optionTiles = [
     ...(hasDomestic
       ? [
-          <OptionTile key="form" label="Form from" hint="UCL matches, the last league matches, or both counted equally.">
+          <OptionTile key="form" group="calc" label="Form from" hint="UCL matches, the last league matches, or both counted equally.">
             <Segmented
               label="Form"
               stretch
