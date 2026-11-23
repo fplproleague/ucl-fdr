@@ -14,7 +14,7 @@ export function PriceSlider({
 }) {
   const current = value ?? bounds.max
   return (
-    <label className={`flex items-center gap-3 ${inTile ? 'w-full max-w-xs' : ''} ${className}`}>
+    <label className={`flex items-center gap-3 ${inTile ? 'w-full max-w-xs sm:w-56' : ''} ${className}`}>
       <span className={inTile ? 'sr-only' : 'shrink-0 section-label'}>Max price</span>
       <input
         type="range"
@@ -29,7 +29,7 @@ export function PriceSlider({
         aria-valuetext={value == null ? 'Any price' : `€${current.toFixed(1)}m`}
         className="h-10 min-w-0 flex-1 accent-ucl-select"
       />
-      <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums">
+      <span className={`w-12 shrink-0 font-semibold tabular-nums ${inTile ? 'text-xs' : 'text-right text-sm'}`}>
         {value == null ? 'Any' : `€${current.toFixed(1)}m`}
       </span>
     </label>

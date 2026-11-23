@@ -134,39 +134,71 @@ export function OptionsButton({ open, onToggle, count, controls }) {
   )
 }
 
-// What sits behind Options: one compact row per setting, label on the left
-// and its control on the right. A row's longer explanation is its label's
-// tooltip, so the panel stays a few rows high: one column with dividers on a
-// phone, a grid from a tablet up. The Options button closes it again, and
-// the chips under the bar undo what's changed (with "Clear all" for several).
+// What sits behind Options, in two groups so it reads in order:
+//   View         what the table shows (order, which rows, the day split)
+//   Calculation  how its numbers are worked out (home/away, form, a left-out
+//                matchday)
+// A tile says which with group="calc"; the rest are View.
+// On a phone: one list, a row per setting, label left and control right.
+// From a tablet up: a line per group, its name in a narrow column on the
+// left, the settings after it at their own width (label, then its control
+// right beside it), so nothing floats in a wide empty cell. A row's longer
+// explanation is its label's tooltip. The Options button closes the panel;
+// the chips under the bar undo what's changed.
+const GROUPS = [
+  ['view', 'View'],
+  ['calc', 'Calculation'],
+]
+
 export function OptionsPanel({ id, children }) {
+  const items = [children].flat(Infinity).filter(Boolean)
+  const groups = GROUPS.map(([key, title]) => ({
+    key,
+    title,
+    items: items.filter((c) => (c.props?.group === 'calc' ? 'calc' : 'view') === key),
+  })).filter((g) => g.items.length)
   return (
-    <div id={id} className="mb-2 rounded-lg border border-white/10 bg-ucl-deep/70 px-3 py-1 sm:py-1.5">
-      <div className="grid sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3">{children}</div>
+    <div id={id} className="mb-2 rounded-lg border border-white/10 bg-ucl-deep/70 px-3 py-1 sm:px-4">
+      {groups.map((g, i) => (
+        <div
+          key={g.key}
+          role="group"
+          aria-label={g.title}
+          className={`sm:flex sm:items-center sm:gap-6 sm:py-2 ${i > 0 ? 'sm:border-t sm:border-white/[0.06]' : ''}`}
+        >
+          <p className="hidden w-24 shrink-0 text-[11px] font-bold uppercase tracking-[0.08em] text-ucl-muted sm:block">
+            {g.title}
+          </p>
+          <div className="sm:flex sm:flex-wrap sm:items-center sm:gap-x-8 sm:gap-y-2">{g.items}</div>
+        </div>
+      ))}
     </div>
   )
 }
 
-const ROW = 'flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] py-1 sm:border-0'
+const ROW =
+  'flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] py-1 sm:min-h-10 sm:flex-nowrap sm:gap-x-2.5 sm:border-0 sm:py-0'
+const LABEL = 'text-xs font-semibold text-ucl-star sm:whitespace-nowrap sm:text-ucl-star/80'
 
 // One row: a label (its hint as the tooltip) and its control.
+// group="calc" (read by the panel): a setting that changes how the numbers
+// are worked out.
 export function OptionTile({ label, hint, children }) {
   return (
     <div className={ROW}>
-      <span title={hint} className="shrink-0 text-xs font-semibold text-ucl-star sm:w-28">
+      <span title={hint} className={`shrink-0 ${LABEL}`}>
         {label}
       </span>
-      {/* Right-aligned on a phone (one column), right beside its label in
-          the grid, where a control pushed to the far edge of its cell sat
-          closer to the next cell's label than to its own. */}
-      <div className="ml-auto flex min-w-0 flex-1 justify-end sm:ml-0 sm:justify-start">{children}</div>
+      {/* Pushed right on a phone (one column), right beside its label from
+          a tablet up. */}
+      <div className="ml-auto flex min-w-0 flex-1 justify-end sm:ml-0 sm:flex-none sm:justify-start">{children}</div>
     </div>
   )
 }
 
 // An on/off row: the whole row is the switch. children: what only applies
-// while it's on (Matchday split's day filter): beside it in the grid, on a
-// line of its own on a phone.
+// while it's on (Matchday split's day filter): right after the switch from a
+// tablet up, on a line of its own on a phone.
 export function SwitchTile({ label, hint, on, onChange, children }) {
   return (
     <div className={ROW}>
@@ -176,9 +208,9 @@ export function SwitchTile({ label, hint, on, onChange, children }) {
         aria-checked={on}
         onClick={() => onChange(!on)}
         title={hint}
-        className="flex min-h-[36px] w-full items-center gap-3 text-left sm:w-auto"
+        className="flex min-h-[36px] w-full items-center gap-3 text-left sm:w-auto sm:gap-2.5"
       >
-        <span className="min-w-0 flex-1 text-xs font-semibold text-ucl-star sm:w-28 sm:flex-none">{label}</span>
+        <span className={`min-w-0 flex-1 sm:flex-none ${LABEL}`}>{label}</span>
         <span
           aria-hidden="true"
           className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? 'bg-ucl-select' : 'bg-white/15'}`}
@@ -190,7 +222,7 @@ export function SwitchTile({ label, hint, on, onChange, children }) {
           />
         </span>
       </button>
-      {children && <div className="flex w-full justify-end pb-1 sm:w-auto sm:pb-0">{children}</div>}
+      {children && <div className="flex w-full justify-end pb-1 sm:ml-1 sm:w-auto sm:pb-0">{children}</div>}
     </div>
   )
 }
@@ -202,7 +234,7 @@ export function TileSelect({ label, value, onChange, children }) {
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 min-w-[96px] rounded border border-white/10 bg-ucl-deep px-2 text-sm font-semibold text-ucl-star"
+      className="h-10 min-w-[96px] rounded border border-white/10 bg-ucl-deep px-2.5 text-xs font-semibold text-ucl-star"
     >
       {children}
     </select>

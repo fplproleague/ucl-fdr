@@ -46,6 +46,7 @@ export function useSharedOptions({ venue = false, split = false, myTeams = false
     tiles.push(
       <SwitchTile
         key="venue"
+        group="calc"
         label="Home/away"
         hint="Away fixtures count as a little harder, home ones as easier."
         on={venueAdjust}
@@ -96,6 +97,7 @@ export function useSharedOptions({ venue = false, split = false, myTeams = false
     tiles.push(
       <OptionTile
         key="skip"
+        group="calc"
         label="Ignore a matchday"
         hint="Leave one matchday out of every average, for example the week you play Limitless."
       >
