@@ -7,6 +7,7 @@ import {
   domesticPoints,
   domesticSummary,
   gamesFor,
+  latestFixtures,
   uclMatchday,
   matchApiTeam,
   matchSquadPlayer,
@@ -281,4 +282,12 @@ test('UCL games carry their matchday, shots and key passes', () => {
   assert.deepEqual(gamesFor(team, 7), [
     { d: '2026-09-09', opp: 'Them', v: 'H', gc: 0, md: 1, min: 90, g: 1, a: 0, sh: 4, kp: 2 },
   ])
+})
+
+test('a match the API dates in the future is skipped, the rest stay newest first', () => {
+  const f = (id, date) => ({ fixture: { id, date } })
+  const fixtures = [f(1, '2026-11-08T15:00:00+00:00'), f(2, '2027-05-22T15:00:00+00:00'), f(3, '2026-11-22T15:00:00+00:00'), f(4, '2026-11-01T15:00:00+00:00')]
+  const now = new Date('2026-11-23T08:00:00Z')
+  assert.deepEqual(latestFixtures(fixtures, 5, now).map((x) => x.fixture.id), [3, 1, 4])
+  assert.deepEqual(latestFixtures(fixtures, 2, now).map((x) => x.fixture.id), [3, 1])
 })
