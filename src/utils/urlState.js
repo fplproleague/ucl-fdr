@@ -29,7 +29,9 @@ export const PANEL_TABS = ['table', 'runs', 'odds']
 // How many players the Players tab compares side by side.
 export const MAX_COMPARE_PLAYERS = 5
 export const ODDS_VIEWS = ['teams', 'players']
-export const ODDS_METRICS = ['cs', 'xgFor', 'xgAgainst']
+// An old link with om=xgAgainst (goals against, since dropped) opens on
+// clean sheets.
+export const ODDS_METRICS = ['cs', 'xgFor']
 // The Bracket tab's sub-views (?v=…): the bracket, its Outlook (knockout
 // odds — not the Odds tab), its Players view and the leg planner.
 export const KO_VIEWS = ['bracket', 'odds', 'players', 'legs']

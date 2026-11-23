@@ -175,6 +175,9 @@ function initialState() {
     // The searches on the Players and Odds tabs, and the Odds tab's view:
     // in the link, so another tab (or someone else) can open them as set.
     ...linkedViewState(url),
+    // A step inside the view (see STEP_RESETS). A shared link with players
+    // in it opens straight on their comparison.
+    step: url.tab === 'players' && url.players.length > 0 ? 'playersCompare' : null,
   }
 }
 
@@ -186,6 +189,39 @@ function validDetail(url) {
 // the panel knows it can step back to the entry before it (the same view,
 // no panel) instead of adding one more.
 const PANEL_ENTRY = { teamPanel: true }
+
+// A step inside a view that the back button should undo without leaving
+// the view: the player comparison on Players, compare mode on the FDR
+// table. Not in the link (the link already carries the players or teams);
+// opening one pushes a history entry with the same URL and { step } as its
+// state, and back steps off it again. Going back out of a step also undoes
+// what only made sense inside it.
+const STEP_RESETS = {
+  playersCompare: {},
+  fdrCompare: { compare: [] },
+}
+
+// Where the page was scrolled, kept with each history entry, so back lands
+// where you left a view instead of wherever the next one happened to be.
+function saveScroll() {
+  try {
+    window.history.replaceState({ ...(window.history.state ?? {}), scrollY: window.scrollY }, '')
+  } catch {
+    // a browser that refuses state writes just doesn't restore the scroll
+  }
+}
+
+// The view behind a back step may still be rendering (a long table, or
+// code that's loading), so the page can be too short to scroll to the
+// saved spot at first: try again for up to a second.
+function restoreScroll(y) {
+  let tries = 0
+  const go = () => {
+    window.scrollTo(0, y)
+    if (Math.abs(window.scrollY - y) > 2 && tries++ < 20) window.setTimeout(go, 50)
+  }
+  window.requestAnimationFrame(go)
+}
 
 function linkedViewState(url) {
   return {
@@ -225,14 +261,32 @@ export function TeamsProvider({ children }) {
     oddsView,
     oddsMetric,
     oddsSortMd,
+    step,
   } = state
 
   // Whether the next hash write should create a history entry. Only tab
-  // changes do, so the phone's back button steps through views instead of
-  // being buried under one entry per rating tap.
+  // changes (and opening a panel, a step or the Odds tab's other view) do,
+  // so the phone's back button steps through views instead of being buried
+  // under one entry per rating tap.
   const pushNext = useRef(false)
+  // A new tab starts at its top; a back step puts the scroll back.
+  const scrollTopNext = useRef(false)
+  const pendingScroll = useRef(null)
   // Guards the popstate listener against reacting to our own writes.
   const selfWrite = useRef(false)
+  // The URL the last back/forward step was handled for: the hashchange the
+  // browser fires right after that popstate is the same step, not a new one.
+  const lastPop = useRef(null)
+
+  // Scroll positions are put back by hand (restoreScroll): the browser's
+  // own attempt comes before the view it belongs to has rendered.
+  useEffect(() => {
+    try {
+      window.history.scrollRestoration = 'manual'
+    } catch {
+      // not supported: the browser keeps doing its own
+    }
+  }, [])
 
   // The URL is derived from state, written in an effect rather than inside a
   // state updater — updaters have to stay pure to be safe under StrictMode and
@@ -263,10 +317,13 @@ export function TeamsProvider({ children }) {
       { push: Boolean(pushNext.current), state: pushNext.current === 'panel' ? PANEL_ENTRY : null },
     )
     pushNext.current = false
+    lastPop.current = null
     const id = window.setTimeout(() => {
       selfWrite.current = false
     }, 0)
     return () => window.clearTimeout(id)
+    // `step` isn't in the link, but closing one must rewrite it: the entry
+    // behind a step can hold a range from before the step was opened.
   }, [
     tab,
     from,
@@ -287,13 +344,41 @@ export function TeamsProvider({ children }) {
     oddsView,
     oddsMetric,
     oddsSortMd,
+    step,
   ])
 
+  // After every render: a push asked for that changed nothing (tapping the
+  // tab you're on) mustn't linger and turn the next filter tap into a
+  // history entry; and the scroll moves once the view is on screen.
   useEffect(() => {
-    function onNav() {
-      if (selfWrite.current) return
+    pushNext.current = false
+    if (scrollTopNext.current) {
+      scrollTopNext.current = false
+      window.scrollTo(0, 0)
+    }
+    if (pendingScroll.current != null) {
+      restoreScroll(pendingScroll.current)
+      pendingScroll.current = null
+    }
+  })
+
+  useEffect(() => {
+    function onNav(e) {
+      // A popstate is never one of our writes (pushState and replaceState
+      // don't fire it), and closing a step or panel can come right after a
+      // write: clearing the comparison, then stepping back.
+      if (selfWrite.current && e.type !== 'popstate') return
+      if (e.type === 'popstate') lastPop.current = window.location.href
+      else if (window.location.href === lastPop.current) return
       const url = parseHash()
+      const entry = window.history.state ?? {}
+      if (e.type === 'popstate' && typeof entry.scrollY === 'number') pendingScroll.current = entry.scrollY
       setState((prev) => {
+        // Back out of a step on the same view: only the step closes, the
+        // same way the panel does below.
+        if (prev.step && entry.step !== prev.step && url.tab === prev.tab) {
+          return { ...prev, step: null, ...STEP_RESETS[prev.step] }
+        }
         // Back out of an open panel on the same view: only the panel closes.
         // The entry behind it still holds the range from before it opened,
         // and a range changed while the panel was up mustn't be undone by
@@ -325,6 +410,8 @@ export function TeamsProvider({ children }) {
             : {}),
           comparePlayers: url.players,
           ...linkedViewState(url),
+          // Forward into a step opens it again.
+          step: entry.step in STEP_RESETS ? entry.step : null,
         }
       })
     }
@@ -363,8 +450,12 @@ export function TeamsProvider({ children }) {
   }, [picks, demo, viewingShared])
 
   // push: true for a new history entry, 'panel' for one that opens a team.
-  const patch = useCallback((next, { push = false } = {}) => {
+  // top: show the view from its top (a tab change).
+  const patch = useCallback((next, { push = false, top = false } = {}) => {
+    // The scroll is saved now, before the next view renders and moves it.
+    if (push) saveScroll()
     pushNext.current = push
+    scrollTopNext.current = top
     setState((prev) => ({ ...prev, ...next }))
   }, [])
 
@@ -466,7 +557,9 @@ export function TeamsProvider({ children }) {
       oddsQuery,
       setOddsQuery: (q) => patch({ oddsQuery: q }),
       oddsView,
-      setOddsView: (v) => patch({ oddsView: v }),
+      // Teams or Players reads as a page of its own, so switching is a
+      // history entry: back returns to the other one.
+      setOddsView: (v) => patch({ oddsView: v }, { push: v !== oddsView }),
       oddsMetric,
       setOddsMetric: (m) => patch({ oddsMetric: m }),
       oddsSortMd,
@@ -476,8 +569,23 @@ export function TeamsProvider({ children }) {
       // A tab change leaves any open panel behind (it stays in the entry
       // before, so back returns to it).
       openTab: (id, next = {}) =>
-        patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
-      setTab: (id) => patch({ tab: TAB_IDS.includes(id) ? id : 'table', detail: null }, { push: true }),
+        patch({ ...next, tab: TAB_IDS.includes(id) ? id : 'table', detail: null, step: null }, { push: true, top: true }),
+      setTab: (id) =>
+        patch({ tab: TAB_IDS.includes(id) ? id : 'table', detail: null, step: null }, { push: true, top: true }),
+      step,
+      // Open a step (see STEP_RESETS): an entry of its own, same URL.
+      openStep: (key) => {
+        if (step === key) return
+        saveScroll()
+        window.history.pushState({ step: key }, '', window.location.href)
+        patch({ step: key })
+      },
+      // Close it by stepping back over that entry when we're on it (so
+      // forward opens it again); a step that came with the link just closes.
+      closeStep: () => {
+        if (window.history.state?.step) window.history.back()
+        else patch({ step: null })
+      },
       detail,
       // Opening a team is a history entry, so the back button (the way out
       // of anything full-screen on a phone) closes the panel instead of
@@ -563,6 +671,7 @@ export function TeamsProvider({ children }) {
       oddsView,
       oddsMetric,
       oddsSortMd,
+      step,
       patch,
     ],
   )

@@ -19,6 +19,17 @@ import { MATCHDAYS } from '../data/matchdays.js'
 // How many of each club's latest league matches count as "form".
 export const DOMESTIC_MATCHES = 5
 
+// A club's last `count` finished league matches, newest first. A match the API
+// dates after `now` is skipped: it has been seen with a placeholder date
+// (Shakhtar–Livyi Bereh, dated May 2027), which would also push the file's
+// `updated` date into the future.
+export function latestFixtures(fixtures, count = DOMESTIC_MATCHES, now = new Date()) {
+  return fixtures
+    .filter((f) => new Date(f.fixture.date) <= now)
+    .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+    .slice(0, count)
+}
+
 // UCL Fantasy's main scoring rules, applied to a domestic match so its form
 // can sit next to (and be averaged with) UCL points per match. An estimate:
 // balls recovered and Player of the Match aren't in the API, so a domestic

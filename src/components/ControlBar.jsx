@@ -1,183 +1,92 @@
-import { useState } from 'react'
-import { Check, Info, Link2 } from 'lucide-react'
-import { RATING_METHOD } from '../data/teams.js'
+import { useId, useState } from 'react'
 import { useTeams } from '../context/TeamsContext.jsx'
-import { DAY_LABEL } from '../utils/matchdaySplit.js'
+import { RATING_METHOD } from '../data/teams.js'
 import MdRangePicker from './MdRangePicker.jsx'
-import RatingLegend from './RatingLegend.jsx'
+import { ActiveChips, OptionsButton, OptionsPanel, Toolbar } from './Toolbar.jsx'
+import { useSharedOptions } from '../utils/useSharedOptions.jsx'
 
-// Every view shares one control bar, so the matchday range you pick on the table
-// is still the range you're looking at on Best Runs and Compare. Three groups,
-// each on its own line on a phone: what you're looking at (range, plus the
-// view toggles beside it on a wide screen), the day filter when the split is
-// on, and the reference bits (legend, how it works, share).
-export default function ControlBar({ showRange = true, showMyTeamsFilter = false, className = '' }) {
-  const {
-    from,
-    to,
-    skipMd,
-    setRange,
-    setSkipMd,
-    venueAdjust,
-    setVenueAdjust,
-    modifiedCount,
-    setTab,
-    showMatchday,
-    setShowMatchday,
-    dayFilter,
-    setDayFilter,
-    availableDayOptions,
-    pinnedCount,
-    myTeamsOnly,
-    setMyTeamsOnly,
-  } = useTeams()
-  const [openMethod, setOpenMethod] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard blocked (permissions, insecure context) — nothing to show
-    }
+// Every view with a matchday range shares this bar, laid out the same way:
+// the range first, the view's own controls (children) after it, Options last
+// on the right. What's behind Options is the view's tiles plus the shared
+// ones (`shared`: which of home/away, the day split, my teams and "ignore a
+// matchday" apply here); each one that's changed shows as a chip under the
+// bar, so the bar can stay short without hiding what's switched on.
+//   tiles / chips / onReset: the view's own options, chips and reset
+//   range: { from, to, setRange, skipMd, setSkipMd } for a view with a range
+//          of its own (GK Rotation) instead of the shared one
+export default function ControlBar({ children, tiles = [], chips = [], onReset, shared = {}, range, className = '' }) {
+  const ctx = useTeams()
+  const { from, to, setRange } = range ?? ctx
+  const [open, setOpen] = useState(false)
+  const panelId = useId()
+  const common = useSharedOptions(shared, range)
+  const allTiles = [...tiles, ...common.tiles]
+  const allChips = [...chips, ...common.chips]
+  const changed = allChips.filter((c) => c.onRemove).length
+  const reset = () => {
+    onReset?.()
+    common.reset()
   }
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      {/* The range and the view toggles share one line from a tablet up. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {showRange && (
-          <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} />
+    <div className={className}>
+      <Toolbar>
+        {/* A row of its own on a phone when the view has controls of its own,
+            so they and Options share the next one instead of Options
+            wrapping alone; with none, Options sits beside the range. */}
+        <MdRangePicker from={from} to={to} onChange={setRange} className={children ? 'w-full sm:w-auto' : ''} />
+        {children}
+        {allTiles.length > 0 && (
+          <OptionsButton open={open} onToggle={() => setOpen((v) => !v)} count={changed} controls={panelId} />
         )}
-
-        {/* Chips with a tick rather than full switches: three switches with
-            their labels don't fit across a 390px phone, three chips do. */}
-        <div role="group" aria-label="Table options" className="flex flex-wrap items-center gap-1.5">
-          <OptionToggle on={venueAdjust} onChange={setVenueAdjust}>
-            Home/away
-          </OptionToggle>
-          <OptionToggle on={showMatchday} onChange={setShowMatchday}>
-            Matchday Split
-          </OptionToggle>
-          {showMyTeamsFilter && (
-            <OptionToggle on={myTeamsOnly} onChange={setMyTeamsOnly}>
-              My teams{pinnedCount > 0 ? ` (${pinnedCount})` : ''}
-            </OptionToggle>
-          )}
-        </div>
-      </div>
-
-      {showMatchday && (
-        <div className="flex w-fit rounded-lg border border-white/10 p-0.5" role="group" aria-label="Filter fixtures by day">
-          {['ALL', ...availableDayOptions].map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={dayFilter === d}
-              onClick={() => setDayFilter(d)}
-              className={`min-h-[44px] rounded px-3 text-[11px] font-semibold transition ${
-                dayFilter === d ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
-              }`}
-            >
-              {d === 'ALL' ? 'All days' : DAY_LABEL[d]}
-            </button>
-          ))}
-        </div>
+      </Toolbar>
+      {open && (
+        <OptionsPanel id={panelId}>
+          {allTiles}
+        </OptionsPanel>
       )}
-
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <RatingLegend />
-
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-          {modifiedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setTab('strength')}
-              title="Ratings you changed on the Strength tab"
-              className="min-h-[44px] rounded bg-ucl-accent/20 px-2.5 text-[11px] font-semibold text-ucl-star transition hover:bg-ucl-accent/30"
-            >
-              {modifiedCount} custom rating{modifiedCount === 1 ? '' : 's'}
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setOpenMethod((v) => !v)}
-            aria-expanded={openMethod}
-            className="flex min-h-[44px] items-center gap-1.5 rounded px-2 text-xs font-semibold text-ucl-muted transition hover:text-ucl-star"
-          >
-            <Info size={14} aria-hidden="true" />
-            <span className="sm:hidden">How it works</span>
-            <span className="hidden sm:inline">How difficulty works</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex min-h-[44px] items-center gap-1.5 rounded border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-ucl-star/70 transition hover:bg-white/10 hover:text-ucl-star"
-          >
-            {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
-            {copied ? 'Copied!' : 'Copy link'}
-          </button>
-        </div>
-      </div>
-
-      {openMethod && (
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
-          <ul className="space-y-1.5">
-            {RATING_METHOD.map((line, i) => (
-              <li key={line} className="flex gap-2">
-                <span aria-hidden="true" className="text-ucl-muted">
-                  •
-                </span>
-                <span>
-                  {line}
-                  {i === 0 && (
-                    <>
-                      {' '}
-                      <button
-                        type="button"
-                        onClick={() => setTab('strength')}
-                        className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
-                      >
-                        Go to Strength tab
-                      </button>
-                    </>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <ActiveChips chips={allChips} onClearAll={reset} />
     </div>
   )
 }
 
-function OptionToggle({ on, onChange, children }) {
+// How a fixture's difficulty is worked out: opened from the ⓘ beside the
+// title of the FDR table and Best Runs.
+export function DifficultyInfo({ onClose }) {
+  const { setTab } = useTeams()
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      className={`flex min-h-[44px] items-center gap-1.5 rounded border px-2.5 text-xs font-semibold transition ${
-        on
-          ? 'border-white/40 bg-white/10 text-ucl-star'
-          : 'border-white/10 bg-white/5 text-ucl-star/60 hover:text-ucl-star'
-      }`}
-    >
-      <span
-        aria-hidden="true"
-        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded transition ${
-          on ? 'bg-ucl-select text-ucl-selectInk' : 'border border-white/30'
-        }`}
+    <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
+      <ul className="space-y-1.5">
+        {RATING_METHOD.map((line, i) => (
+          <li key={line} className="flex gap-2">
+            <span aria-hidden="true" className="text-ucl-muted">
+              •
+            </span>
+            <span>
+              {line}
+              {i === 0 && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => setTab('strength')}
+                    className="font-semibold text-ucl-link underline underline-offset-2 hover:text-ucl-star"
+                  >
+                    Go to Strength tab
+                  </button>
+                </>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-2 min-h-[32px] text-xs font-semibold text-ucl-link underline-offset-2 hover:underline"
       >
-        {on && <Check size={10} strokeWidth={3.5} />}
-      </span>
-      {children}
-    </button>
+        Close
+      </button>
+    </div>
   )
 }

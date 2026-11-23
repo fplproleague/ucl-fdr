@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ChevronDown, ChevronUp, Info, Search, SlidersHorizontal, Star, X } from 'lucide-react'
+import { ArrowDown, ChevronDown, ChevronUp, Info, Search, Star, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { FIXTURES } from '../data/fixtures.js'
 import { demoPlayers } from '../data/playersDemo.js'
@@ -21,11 +21,12 @@ import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { effectiveDifficulty } from '../utils/difficulty.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import FixtureChip from './FixtureChip.jsx'
-import MdRangePicker from './MdRangePicker.jsx'
+import ControlBar from './ControlBar.jsx'
+import { CopyLinkButton, IconButton, MetaRow, OptionTile, Segmented } from './Toolbar.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import ComparePlayers from './ComparePlayers.jsx'
-import ShowFilter from './ShowFilter.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import { ScoreValue } from './ScoreValue.jsx'
 import StickyHead from './StickyHead.jsx'
@@ -70,8 +71,6 @@ export default function PlayerProjections() {
     from,
     to,
     skipMd,
-    setRange,
-    setSkipMd,
     demo,
     comparePlayers,
     setComparePlayers,
@@ -81,12 +80,17 @@ export default function PlayerProjections() {
     setPlayersQuery: setQuery,
     openTab,
     pinnedCount,
+    step,
+    openStep,
+    closeStep,
   } = useTeams()
   // Picking players and looking at them are two steps: tapping VS only
   // collects players, the comparison opens from the bar. A shared link
-  // with players in it opens straight on the comparison.
-  const [compareOpen, setCompareOpen] = useState(() => comparePlayers.length > 0)
-  const closeCompare = useCallback(() => setCompareOpen(false), [])
+  // with players in it opens straight on the comparison. Open, it is a
+  // history entry, so the back button closes it (see STEP_RESETS).
+  const compareOpen = step === 'playersCompare'
+  const setCompareOpen = (open) => (open ? openStep('playersCompare') : closeStep())
+  const closeCompare = useCallback(() => closeStep(), [closeStep])
   const live = useLivePlayers()
   const domesticForm = useDomesticForm()
   // Both by default: UCL form alone is three or four matches deep.
@@ -99,7 +103,6 @@ export default function PlayerProjections() {
   const [show, setShow] = useState('all')
   const [openId, setOpenId] = useState(null)
   const [showInfo, setShowInfo] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
   // A search arriving from another tab (a player's name, a club) opens
   // that player's details when it finds exactly one.
   const [autoOpened, setAutoOpened] = useState(null)
@@ -229,14 +232,46 @@ export default function PlayerProjections() {
   const starredCount = players.filter((p) => starred.has(p.id)).length
 
   const visible = showAll ? rows : rows.slice(0, PREVIEW)
-  // How many of the filters behind the Filters button are narrowing the list.
-  const activeFilters = (maxPrice != null ? 1 : 0) + (show !== 'all' ? 1 : 0)
+  // Behind Options: where the form comes from, which shortlist, the price cap.
+  const showOptions = [
+    { id: 'all', label: 'All' },
+    { id: 'starred', label: `Starred (${starredCount})`, count: starredCount },
+    { id: 'mine', label: `My teams (${pinnedCount})`, count: pinnedCount },
+    ...(hasOwnership ? [{ id: 'diff', label: `≤${DIFFERENTIAL_MAX}% owned` }] : []),
+  ].filter((o) => o.count == null || o.count > 0)
+  const showLabel = { starred: 'Starred', mine: 'My teams', diff: `Differentials ≤${DIFFERENTIAL_MAX}%` }
+  const optionTiles = [
+    ...(hasDomestic
+      ? [
+          <OptionTile key="form" group="calc" label="Form from" hint="UCL matches, the last league matches, or both counted equally.">
+            <Segmented
+              label="Form"
+              stretch
+              value={source}
+              onChange={setFormSource}
+              options={FORM_LABELS.map(([id, label]) => ({ id, label }))}
+            />
+          </OptionTile>,
+        ]
+      : []),
+    ...(showOptions.length > 1
+      ? [
+          <OptionTile key="show" label="Show" hint="Your starred players, your teams' players, or low-owned ones.">
+            <Segmented label="Show" stretch value={show} onChange={setShow} options={showOptions} />
+          </OptionTile>,
+        ]
+      : []),
+    <OptionTile key="price" label="Max price">
+      <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="" inTile />
+    </OptionTile>,
+  ]
+  const optionChips = []
+  if (hasDomestic && source !== 'both')
+    optionChips.push({ key: 'form', label: `${source === 'ucl' ? 'UCL' : 'Domestic'} form`, onRemove: () => setFormSource('both') })
+  if (show !== 'all') optionChips.push({ key: 'show', label: showLabel[show], onRemove: () => setShow('all') })
+  if (maxPrice != null)
+    optionChips.push({ key: 'price', label: `Max €${maxPrice.toFixed(1)}m`, onRemove: () => setMaxPrice(null) })
   const nameOf = (abbr) => teamsByAbbr[abbr]?.shortName ?? teamsByAbbr[abbr]?.name ?? abbr
-  const chip = (active) =>
-    `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
-      active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
-    }`
-
   const dataSource = demo
     ? 'Demo players: made up, named by club and role.'
     : live.live
@@ -292,21 +327,7 @@ export default function PlayerProjections() {
             : 'Form and fixtures, 100 = best player over these matchdays'
         }
       >
-        {/* The explanation opens from here. The caveat sits just above the
-            table instead (see below): in this header it crowded the column. */}
-        <span className="inline-flex items-center gap-1">
-          {sortBy === 'value' ? 'Score / €m' : 'Score'}
-          <button
-            type="button"
-            aria-expanded={showInfo}
-            aria-controls="players-info"
-            onClick={() => setShowInfo(!showInfo)}
-            className="-my-2 inline-flex h-8 w-8 items-center justify-center rounded text-ucl-star/60 hover:bg-white/10 hover:text-ucl-star"
-          >
-            <Info size={13} aria-hidden="true" />
-            <span className="sr-only">{showInfo ? 'Hide how the score works' : 'How the score works'}</span>
-          </button>
-        </span>
+        {sortBy === 'value' ? 'Score / €m' : 'Score'}
       </th>
     </tr>
   )
@@ -315,7 +336,15 @@ export default function PlayerProjections() {
     <div className="mx-auto max-w-6xl px-3 pb-6 pt-3 sm:px-4 sm:pt-4">
       <ViewHeading
         title="Players"
-        subtitle={`Form and fixtures per player over ${mdRange(from, to)}${skipMd ? ` (ignoring MD${skipMd})` : ''}.`}
+        subtitle="Form and fixtures per player, as one score: who you want for the matchdays ahead."
+        tools={
+          <>
+            <IconButton label="How the score works" pressed={showInfo} controls="players-info" onClick={() => setShowInfo(!showInfo)}>
+              <Info size={16} aria-hidden="true" />
+            </IconButton>
+            <CopyLinkButton />
+          </>
+        }
       />
 
       {demo && (
@@ -330,15 +359,6 @@ export default function PlayerProjections() {
         </p>
       ) : (
         <>
-          <MdRangePicker
-            from={from}
-            to={to}
-            onChange={setRange}
-            skipMd={skipMd}
-            onSkipChange={setSkipMd}
-            className="mb-3"
-          />
-
           {compareOpen && compared.length > 0 && (
             <ComparePlayers
               players={compared}
@@ -358,71 +378,47 @@ export default function PlayerProjections() {
             />
           )}
 
-          {/* One toolbar: what to show (position, form), how to order it, and a
-              search. The rest (price cap, shortlists) sits behind Filters,
-              closed by default, with a count on the button while any of it
-              is narrowing the list. These used to be five full-width rows. */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
-              {['ALL', ...POSITIONS].map((pos) => (
-                <button
-                  key={pos}
-                  type="button"
-                  aria-pressed={position === pos}
-                  onClick={() => setPosition(pos)}
-                  className={chip(position === pos)}
-                >
-                  {pos === 'ALL' ? 'All' : pos}
-                </button>
-              ))}
-            </div>
-            {hasDomestic && (
-              <div role="group" aria-label="Form" className="flex items-center rounded-lg border border-white/10 p-0.5">
-                <span className="px-2 section-label">Form</span>
-                {FORM_LABELS.map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={source === id}
-                    onClick={() => setFormSource(id)}
-                    className={chip(source === id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {/* The order of the list, not a filter on it, so it doesn't look like
-                one: no rail and no white fill (All and Both already wear that),
-                but a label and an underlined, arrowed choice, the way a sorted
-                column head reads. Three white pills side by side read as one
-                control. */}
-            <div role="group" aria-label="Sort by" className="flex items-center">
-              <span aria-hidden="true" className="px-1.5 section-label">
-                Sort
-              </span>
-              {[
+          {/* The bar: range, then position and order (what people change on
+              every visit) and the search. Form source, shortlists and the
+              price cap sit behind Options, each shown as a chip while it's
+              changed. These used to be five full-width rows. */}
+          <ControlBar
+            tiles={optionTiles}
+            chips={optionChips}
+            onReset={() => {
+              setFormSource('both')
+              setShow('all')
+              setMaxPrice(null)
+            }}
+          >
+            <Segmented
+              label="Position"
+              stretch
+              className="w-full sm:w-auto"
+              value={position}
+              onChange={setPosition}
+              options={['ALL', ...POSITIONS].map((pos) => ({ id: pos, label: pos === 'ALL' ? 'All' : pos }))}
+            />
+            {/* The order of the list: a sorted column head's arrow marks it. */}
+            <Segmented
+              label="Sort by"
+              value={sortBy}
+              onChange={setSortBy}
+              options={[
                 ['score', 'Score'],
                 ['value', 'Per €m'],
                 ['form', 'Form'],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={sortBy === id}
-                  onClick={() => setSortBy(id)}
-                  className={`flex min-h-[36px] items-center gap-0.5 border-b-2 px-2 text-xs font-semibold transition ${
-                    sortBy === id
-                      ? 'border-ucl-star text-ucl-star'
-                      : 'border-transparent text-ucl-star/60 hover:text-ucl-star'
-                  }`}
-                >
-                  {label}
-                  {sortBy === id && <ArrowDown size={12} aria-hidden="true" />}
-                </button>
-              ))}
-            </div>
-            <div className="relative min-w-[200px] flex-1">
+              ].map(([id, label]) => ({
+                id,
+                label: (
+                  <span className="inline-flex items-center gap-0.5">
+                    {label}
+                    {sortBy === id && <ArrowDown size={12} aria-hidden="true" />}
+                  </span>
+                ),
+              }))}
+            />
+            <div className="relative order-last w-full sm:order-none sm:w-auto sm:min-w-[180px] sm:flex-1">
               <Search
                 size={16}
                 aria-hidden="true"
@@ -434,43 +430,10 @@ export default function PlayerProjections() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search player or club"
                 aria-label="Search player or club"
-                className="min-h-[40px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+                className="h-10 w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
               />
             </div>
-            <button
-              type="button"
-              aria-expanded={filtersOpen}
-              aria-controls="players-filters"
-              onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`flex min-h-[40px] items-center gap-1.5 rounded border px-3 text-xs font-semibold transition ${
-                activeFilters > 0
-                  ? 'border-white/40 bg-white/10 text-ucl-star'
-                  : 'border-white/10 text-ucl-star/70 hover:bg-white/10 hover:text-ucl-star'
-              }`}
-            >
-              <SlidersHorizontal size={14} aria-hidden="true" />
-              Filters{activeFilters > 0 && ` · ${activeFilters}`}
-            </button>
-          </div>
-
-          {filtersOpen && (
-            <div
-              id="players-filters"
-              className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/10 p-2"
-            >
-              <ShowFilter
-                value={show}
-                onChange={setShow}
-                options={[
-                  { id: 'all', label: 'All players' },
-                  { id: 'starred', label: 'Starred', count: starredCount },
-                  { id: 'mine', label: 'My teams', count: pinnedCount },
-                  ...(hasOwnership ? [{ id: 'diff', label: `Differentials ≤${DIFFERENTIAL_MAX}%` }] : []),
-                ]}
-              />
-              <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="min-w-[260px] flex-1" />
-            </div>
-          )}
+          </ControlBar>
 
           {showInfo && (
             <div
@@ -515,11 +478,10 @@ export default function PlayerProjections() {
             </div>
           )}
 
-          {/* The caveat, one line above the table at every width, right over
-              the Score column it qualifies. */}
-          <p className="mb-1.5 text-right text-meta text-ucl-muted">
-            Score: form and fixtures, 100 = best for {mdRange(from, to)}. <NotAPrediction />
-          </p>
+          <MetaRow aside={<NotAPrediction />}>
+            {rows.length} player{rows.length === 1 ? '' : 's'}, {mdRange(from, to)}
+            {skipMd ? `, MD${skipMd} ignored` : ''}. Score: form and fixtures, 100 = best.
+          </MetaRow>
 
           <StickyHead scrollerRef={tableScrollerRef} tableRef={tableRef} className="rounded-t-lg">
             {headRow}
@@ -597,7 +559,10 @@ export default function PlayerProjections() {
                             >
                               <TeamBadge abbr={p.team} size={22} />
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-table font-semibold">{p.name}</span>
+                                <span className="flex min-w-0 items-center gap-1">
+                                  <span className="truncate text-table font-semibold">{p.name}</span>
+                                  <AvailabilityDot id={p.id} />
+                                </span>
                                 <span className="block truncate text-[11px] text-ucl-muted">
                                   {/* Minutes live in the details: this line stays short. */}
                                   {p.position} · {nameOf(p.team)}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, X } from 'lucide-react'
 import { useTeams } from '../context/TeamsContext.jsx'
 import { TOTAL_MATCHDAYS } from '../data/fixtures.js'
 import { currentMatchday } from '../data/matchdays.js'
@@ -11,8 +11,10 @@ import { expectedStarters, findStoredGoalkeeper, rankGoalkeepers } from '../util
 import { useDomesticForm } from '../utils/useDomesticForm.js'
 import { compareComplementSummaries, compareTeamFixtures, summarizeComparison } from '../utils/teamComplement.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import FixtureChip from './FixtureChip.jsx'
-import MdRangePicker from './MdRangePicker.jsx'
+import ControlBar from './ControlBar.jsx'
+import { IconButton, OptionTile } from './Toolbar.jsx'
 import ViewHeading from './ViewHeading.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
 import { mdRange } from '../utils/mdLabel.js'
@@ -89,6 +91,7 @@ export default function GkRotation() {
   const [query, setQuery] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
+  const [showInfo, setShowInfo] = useState(false)
   // null = no cap. A budget filter on the complement list only — it never
   // affects who you can pick as "your goalkeeper".
   const [maxPrice, setMaxPrice] = useState(null)
@@ -163,8 +166,15 @@ export default function GkRotation() {
     },
     [mds, teamsByAbbr, venueAdjust, csByTeam],
   )
+  // Different days come first: a pair that plays on different days every
+  // matchday lets you start the better keeper each time. Only then do the
+  // clean-sheet odds decide, and after that the FDR facts (favourable
+  // fixtures) and the name.
   const byRotationValue = useCallback(
-    (a, b) => (csByTeam ? b.bestCs - a.bestCs : 0) || compareComplementSummaries(a, b),
+    (a, b) =>
+      b.summary.differentDays - a.summary.differentDays ||
+      (csByTeam ? b.bestCs - a.bestCs : 0) ||
+      compareComplementSummaries(a, b),
     [csByTeam],
   )
 
@@ -206,9 +216,36 @@ export default function GkRotation() {
         subtitle={`Pick a goalkeeper you own to see who complements their fixtures over ${mdRange(from, to)}${
           skipMd ? ` (ignoring MD${skipMd})` : ''
         }.`}
+        tools={
+          <IconButton label="How the pairs are ranked" pressed={showInfo} onClick={() => setShowInfo((v) => !v)}>
+            <Info size={16} aria-hidden="true" />
+          </IconButton>
+        }
       />
 
-      <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
+      {/* The price cap lives behind Options with "ignore a matchday", like
+          on the other tabs; a chip shows it while it's set. */}
+      <ControlBar
+        className="mb-3"
+        range={{ from, to, setRange, skipMd, setSkipMd }}
+        tiles={[
+          <OptionTile key="price" label="Max price" hint="For the partner keeper.">
+            <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="" inTile />
+          </OptionTile>,
+        ]}
+        chips={maxPrice != null ? [{ key: 'price', label: `Max €${maxPrice.toFixed(1)}m`, onRemove: () => setMaxPrice(null) }] : []}
+        onReset={() => setMaxPrice(null)}
+      />
+
+      {showInfo && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-relaxed text-ucl-star/75">
+          One keeper per club: the one who played its last UCL match. Ranked first on different days (the
+          more matchdays the two play on different days, the more often you can start the better one), then on
+          the clean sheets you&rsquo;d expect by starting the better of the two every matchday (bookmaker odds,
+          estimates where a match isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your
+          current settings.
+        </div>
+      )}
 
       {!gkLoading && !gkLive && GOALKEEPERS.length > 0 && (
         <p className="mb-3 text-[11px] text-ucl-muted">
@@ -220,20 +257,36 @@ export default function GkRotation() {
         <p className="mb-1.5 section-label">Your goalkeeper</p>
 
         {selectedGk && !pickerOpen ? (
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left shadow-card transition hover:bg-white/[0.06] sm:p-3"
-          >
-            <TeamBadge abbr={selectedGk.team} size={32} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold sm:text-base">{selectedGk.name}</p>
-              <p className="text-[11px] text-ucl-muted">
-                {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
-              </p>
-            </div>
-            <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
-          </button>
+          // Change him for another keeper, or remove him (✕) to go back to
+          // the best pairs overall.
+          <div className="flex items-stretch rounded-lg border border-white/10 bg-white/[0.03] shadow-card">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-l-lg p-2.5 text-left transition hover:bg-white/[0.06] sm:p-3"
+            >
+              <TeamBadge abbr={selectedGk.team} size={32} />
+              <div className="min-w-0 flex-1">
+                <p className="flex min-w-0 items-center gap-1 text-sm font-semibold sm:text-base">
+                  <span className="truncate">{selectedGk.name}</span>
+                  <AvailabilityDot id={selectedGk.id} />
+                </p>
+                <p className="text-[11px] text-ucl-muted">
+                  {clubName(selectedGk)} · {formatPrice(selectedGk.price)} · {sheetFacts(selectedGk)}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-ucl-link">Change</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => selectGk(null)}
+              aria-label={`Remove ${selectedGk.name} and show the best pairs`}
+              title="Remove, and show the best pairs overall"
+              className="flex w-12 shrink-0 items-center justify-center rounded-r-lg border-l border-white/10 text-ucl-star/60 transition hover:bg-white/[0.06] hover:text-ucl-star"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
         ) : (
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
             <input
@@ -261,6 +314,7 @@ export default function GkRotation() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate">
                           <span className="font-semibold">{gk.name}</span>
+                          <AvailabilityDot id={gk.id} className="ml-1 align-middle" />
                           <span className="text-ucl-muted">
                             {' '}
                             · {clubName(gk)} · {formatPrice(gk.price)}
@@ -292,13 +346,10 @@ export default function GkRotation() {
             {selectedGk ? `Best complements for ${selectedGk.name}` : `Best rotation pairs, ${mdRange(from, to)}`}
           </h2>
           <p className="mb-3 text-xs text-ucl-muted">
-            {!selectedGk && 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners. '}
-            One keeper per club: the one who played its last UCL match. Ranked on the clean sheets you&rsquo;d
-            expect by starting the better of the two every matchday (bookmaker odds, estimates where a match
-            isn&rsquo;t priced yet); a favourable fixture is FDR band 1&ndash;2 under your current settings.
+            {selectedGk
+              ? 'The keepers whose fixtures fit around yours best.'
+              : 'Every expected starter paired with every other; pick your goalkeeper above (or from a pair) to see only his partners.'}
           </p>
-
-          <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
 
           {list.length === 0 && (
             <p className="rounded-lg border border-dashed border-white/15 px-4 py-8 text-center text-sm text-ucl-muted">
@@ -321,7 +372,10 @@ export default function GkRotation() {
                       <>
                         <TeamBadge abbr={gk.team} size={28} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold sm:text-base">{gk.name}</p>
+                          <p className="flex min-w-0 items-center gap-1 text-sm font-semibold sm:text-base">
+                            <span className="truncate">{gk.name}</span>
+                            <AvailabilityDot id={gk.id} />
+                          </p>
                           <p className="text-[11px] text-ucl-muted">
                             {clubName(gk)} · {formatPrice(gk.price)} · {sheetFacts(gk)}
                           </p>
@@ -335,7 +389,9 @@ export default function GkRotation() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold sm:text-base">
-                            {left.name} + {gk.name}
+                            {left.name}
+                            <AvailabilityDot id={left.id} className="ml-1 align-middle" /> + {gk.name}
+                            <AvailabilityDot id={gk.id} className="ml-1 align-middle" />
                           </p>
                           <p className="truncate text-[11px] text-ucl-muted">
                             {clubName(left)} + {clubName(gk)} · {formatPrice(left.price + gk.price)} together

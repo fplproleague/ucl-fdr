@@ -9,10 +9,12 @@ import { useTeamDetail } from '../utils/useTeamDetail.js'
 import { useVisibleMds } from '../utils/useVisibleMds.js'
 import { METRICS, compareRows, playerOddsRows, teamOddsRows } from '../utils/oddsView.js'
 import { RAMP_INK, goodness, rampDomain, rampFill } from '../utils/oddsRamp.js'
-import MdRangePicker from './MdRangePicker.jsx'
+import ControlBar from './ControlBar.jsx'
+import { CopyLinkButton, MetaRow, OptionTile, Segmented, SubTabs, SwitchTile } from './Toolbar.jsx'
+import { mdRange } from '../utils/mdLabel.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import { PRICE_STEP, PriceSlider } from './PriceSlider.jsx'
-import ShowFilter from './ShowFilter.jsx'
 import StickyHead from './StickyHead.jsx'
 import TeamDetailPanel from './TeamDetailPanel.jsx'
 import ViewHeading from './ViewHeading.jsx'
@@ -29,7 +31,7 @@ const chance = (rate) => 1 - Math.exp(-rate)
 // Each cell's fill: see src/utils/oddsRamp.js. The ramp is stretched over
 // the values on screen, never over less than these spans (a clean-sheet
 // column all between 30% and 33% shouldn't look like 0% vs 100%).
-const MIN_SPAN = { cs: 0.15, xgFor: 0.6, xgAgainst: 0.6 }
+const MIN_SPAN = { cs: 0.15, xgFor: 0.6 }
 function cellStyle(t, estimated) {
   return {
     backgroundColor: rampFill(t),
@@ -45,26 +47,6 @@ function formatUpdated(iso) {
   return Number.isNaN(d.getTime())
     ? null
     : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-function Segmented({ options, value, onChange, label, className = '' }) {
-  return (
-    <div role="group" aria-label={label} className={`flex rounded-lg border border-white/10 p-0.5 text-xs font-semibold ${className}`}>
-      {options.map(([id, text]) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={value === id}
-          onClick={() => onChange(id)}
-          className={`min-h-[36px] flex-1 whitespace-nowrap rounded px-3 transition ${
-            value === id ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/60 hover:text-ucl-star'
-          }`}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 function OddsGrid({ mds, rows, metric, teamsByAbbr, sortMd, onSortMd, onTeamClick }) {
@@ -228,6 +210,11 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
   const [show, setShow] = useState('all')
   const starredCount = rows.filter((r) => starred.has(r.player.id)).length
   const pinnedCount = rows.filter((r) => teamsByAbbr[r.player.team]?.pinned).length
+  const showOptions = [
+    { id: 'all', label: 'All' },
+    { id: 'starred', label: `Starred (${starredCount})`, count: starredCount },
+    { id: 'mine', label: `My teams (${pinnedCount})`, count: pinnedCount },
+  ].filter((o) => o.count == null || o.count > 0)
 
   const priceBounds = useMemo(() => {
     const prices = rows.map((r) => r.player.price)
@@ -263,10 +250,6 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
     )
   }
 
-  const chip = (active) =>
-    `min-h-[36px] rounded px-2.5 text-xs font-semibold transition ${
-      active ? 'bg-ucl-select text-ucl-selectInk' : 'text-ucl-star/70 hover:bg-white/10'
-    }`
   // One matchday: chances. Several: expected totals over them.
   const fmt = (rate) => (rate == null ? '–' : single ? pct(chance(rate)) : rate.toFixed(2))
   const csShow = (r) => (single ? pct(r.cs) : r.cs.toFixed(1))
@@ -311,54 +294,72 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
 
   return (
     <>
-      {/* What the numbers are, up front: one matchday and several read differently. */}
-      <p className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ucl-muted">
+      <ControlBar
+        tiles={[
+          ...(showOptions.length > 1
+            ? [
+                <OptionTile key="show" label="Show" hint="Your starred players, or your teams' players.">
+                  <Segmented label="Show" stretch value={show} onChange={setShow} options={showOptions} />
+                </OptionTile>,
+              ]
+            : []),
+          <OptionTile key="price" label="Max price">
+            <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} className="" inTile />
+          </OptionTile>,
+        ]}
+        chips={[
+          ...(show !== 'all' ? [{ key: 'show', label: show === 'starred' ? 'Starred' : 'My teams', onRemove: () => setShow('all') }] : []),
+          ...(maxPrice != null ? [{ key: 'price', label: `Max €${maxPrice.toFixed(1)}m`, onRemove: () => setMaxPrice(null) }] : []),
+        ]}
+        onReset={() => {
+          setShow('all')
+          setMaxPrice(null)
+        }}
+      >
+        <Segmented
+          label="Position"
+          stretch
+          className="w-full sm:w-auto"
+          value={position}
+          onChange={setPosition}
+          options={['ALL', ...POSITIONS].map((pos) => ({ id: pos, label: pos === 'ALL' ? 'All' : pos }))}
+        />
+        {/* Search and Options share a row on a phone. */}
+        <div className="relative min-w-[160px] flex-1">
+          <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search player or club"
+            aria-label="Search player or club"
+            className="h-10 w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
+          />
+        </div>
+      </ControlBar>
+
+      {/* What the numbers are, right above them: one matchday and several
+          read differently. */}
+      <MetaRow
+        aside={
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="text-ucl-star/60">0.42</span> dimmed = estimate
+          </span>
+        }
+      >
         {single ? (
           <>
             <strong className="text-ucl-star/90">1 matchday</strong>: each player&apos;s chances from the bookmakers&apos;
-            odds. Pick more matchdays for expected totals.
+            odds.
           </>
         ) : (
           <>
-            <strong className="text-ucl-star/90">{rowsMds} matchdays</strong>: expected goals and assists added up. Only
-            the next matchday has odds; later ones are estimated (lighter). Pick 1 matchday for the odds themselves.
+            <strong className="text-ucl-star/90">{rowsMds} matchdays</strong>: expected goals and assists added up; pick 1
+            matchday for the odds themselves.
           </>
         )}{' '}
         All <strong className="text-ucl-star/80">if he plays</strong>: tap a name to check his minutes.
-      </p>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Position" className="flex rounded-lg border border-white/10 p-0.5">
-          {['ALL', ...POSITIONS].map((pos) => (
-            <button key={pos} type="button" aria-pressed={position === pos} onClick={() => setPosition(pos)} className={chip(position === pos)}>
-              {pos === 'ALL' ? 'All' : pos}
-            </button>
-          ))}
-        </div>
-        <ShowFilter
-          value={show}
-          onChange={setShow}
-          options={[
-            { id: 'all', label: 'All players' },
-            { id: 'starred', label: 'Starred', count: starredCount },
-            { id: 'mine', label: 'My teams', count: pinnedCount },
-          ]}
-        />
-      </div>
-
-      <PriceSlider bounds={priceBounds} value={maxPrice} onChange={setMaxPrice} />
-
-      <div className="relative mb-3">
-        <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ucl-muted" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search player or club"
-          aria-label="Search player or club"
-          className="min-h-[44px] w-full rounded border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-ucl-star placeholder:text-ucl-star/30"
-        />
-      </div>
+      </MetaRow>
 
       <StickyHead scrollerRef={scrollerRef} tableRef={tableRef} className="rounded-t-lg">
         {headRow}
@@ -399,7 +400,10 @@ function PlayerOdds({ rows, single, rowsMds, teamsByAbbr }) {
                       >
                         <TeamBadge abbr={r.player.team} size={18} />
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-semibold sm:text-table">{r.player.name}</span>
+                          <span className="flex min-w-0 items-center gap-1">
+                            <span className="truncate text-xs font-semibold sm:text-table">{r.player.name}</span>
+                            <AvailabilityDot id={r.player.id} />
+                          </span>
                           <span className="block truncate text-[10px] text-ucl-muted">
                             {/* On a phone the opponent moves in here (no vs column) and the
                                 position, which the chips filter on, steps out. */}
@@ -452,8 +456,6 @@ export default function OddsView() {
     from,
     to,
     skipMd,
-    setRange,
-    setSkipMd,
     oddsView: view,
     setOddsView: setView,
     oddsMetric: metric,
@@ -485,68 +487,71 @@ export default function OddsView() {
       <ViewHeading
         title="Odds"
         subtitle="What the bookmakers expect: goals and clean sheets per match, and each player's chance of a goal or an assist. Independent of the 1–5 ratings."
+        tools={<CopyLinkButton />}
       />
 
-      <MdRangePicker from={from} to={to} onChange={setRange} skipMd={skipMd} onSkipChange={setSkipMd} className="mb-3" />
+      <SubTabs
+        label="Odds view"
+        value={view}
+        onChange={setView}
+        options={[
+          { id: 'teams', label: 'Teams' },
+          { id: 'players', label: 'Players' },
+        ]}
+      />
 
-      {/* One row of controls: which view, and on Teams which number and which
-          teams. These were two stacked full-width segmented rows. */}
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Segmented
-          label="Odds view"
-          value={view}
-          onChange={setView}
-          options={[
-            ['teams', 'Teams'],
-            ['players', 'Players'],
-          ]}
-        />
-        {view === 'teams' && odds && (
-          <>
-            <Segmented
-              label="Show"
-              value={metric}
-              onChange={setMetric}
-              options={Object.entries(METRICS).map(([id, m]) => [id, m.label])}
-            />
-            <ShowFilter
-              label="Teams"
-              value={teamsShown}
-              onChange={setTeamsShown}
-              options={[
-                { id: 'all', label: 'All teams' },
-                { id: 'mine', label: 'My teams', count: pinnedCount },
-              ]}
-            />
-          </>
-        )}
-      </div>
-
-      {/* The key, above the numbers it explains (it used to sit under all
-          36 rows). The estimate convention is the site's: dashed edge
-          here, as in the team panel. */}
-      {odds && (
-        <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-ucl-muted">
-          {view === 'teams' && (
-            <span className="inline-flex items-center gap-1.5">
-              worse
-              <span
-                aria-hidden="true"
-                className="inline-block h-2.5 w-16 rounded"
-                style={{ background: `linear-gradient(to right, ${rampFill(0)}, ${rampFill(0.5)}, ${rampFill(1)})` }}
+      {view === 'teams' && (
+        <>
+          <ControlBar
+            tiles={
+              pinnedCount > 0
+                ? [
+                    <SwitchTile
+                      key="mine"
+                      label={`My teams only (${pinnedCount})`}
+                      hint="Just the teams you starred."
+                      on={teamsShown === 'mine'}
+                      onChange={(on) => setTeamsShown(on ? 'mine' : 'all')}
+                    />,
+                  ]
+                : []
+            }
+            chips={teamsShown === 'mine' && pinnedCount > 0 ? [{ key: 'mine', label: 'My teams', onRemove: () => setTeamsShown('all') }] : []}
+            onReset={() => setTeamsShown('all')}
+          >
+            {odds && (
+              <Segmented
+                label="Show"
+                value={metric}
+                onChange={setMetric}
+                options={Object.entries(METRICS).map(([id, m]) => ({ id, label: m.label }))}
               />
-              better for a pick
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1.5">
-            {view === 'teams' ? (
-              <span aria-hidden="true" className="inline-block h-3 w-4 rounded border border-dashed border-ucl-star/55" />
-            ) : (
-              <span aria-hidden="true" className="text-ucl-star/60">0.42</span>
             )}
-            {view === 'teams' ? 'Dashed' : 'Dimmed'}: estimate until bookmakers price the match (about three weeks before).
-          </span>
-        </p>
+          </ControlBar>
+
+          {/* The key, right above the numbers it explains. The estimate
+              convention is the site's: dashed edge, as in the team panel. */}
+          {odds && (
+            <MetaRow
+              aside={
+                <span className="inline-flex items-center gap-1.5">
+                  worse
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-2.5 w-16 rounded"
+                    style={{ background: `linear-gradient(to right, ${rampFill(0)}, ${rampFill(0.5)}, ${rampFill(1)})` }}
+                  />
+                  better
+                  <span aria-hidden="true" className="ml-2 inline-block h-3 w-4 rounded border border-dashed border-ucl-star/55" />
+                  estimate
+                </span>
+              }
+            >
+              {METRICS[metric].label} per team and matchday, {mdRange(from, to)}
+              {skipMd ? `, MD${skipMd} ignored` : ''}. Tap a matchday to sort on it.
+            </MetaRow>
+          )}
+        </>
       )}
 
       {!odds ? (

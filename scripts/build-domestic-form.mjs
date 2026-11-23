@@ -35,6 +35,7 @@ import {
   DOMESTIC_MATCHES,
   buildTeamGames,
   gamesFor,
+  latestFixtures,
   matchApiTeam,
   matchSquadPlayer,
   pickDomesticLeague,
@@ -214,9 +215,7 @@ async function run() {
         season: leagueSeason?.year ?? season,
         status: 'FT-AET-PEN',
       })
-      const latest = [...fixtures]
-        .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-        .slice(0, DOMESTIC_MATCHES)
+      const latest = latestFixtures(fixtures)
       await statsFor(latest)
       games = buildTeamGames(teamId, latest, statsByFixture)
     }

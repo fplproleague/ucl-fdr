@@ -1,0 +1,42 @@
+# Refreshes src/data/availability.js (injured, doubtful, suspended players,
+# from the UCL Fantasy feed: scripts/build-availability.mjs) and commits it
+# when a status changed, which redeploys the site. Every three hours, so news
+# from a press conference shows up the same afternoon. Needs no secrets.
+# Run it by hand from the Actions tab.
+name: Availability
+
+on:
+  schedule:
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: availability
+  cancel-in-progress: false
+
+jobs:
+  availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build availability
+        run: node scripts/build-availability.mjs --soft
+      - name: Commit
+        run: |
+          if git diff --quiet -- src/data/availability.js; then
+            echo "Availability unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898279+github-actions[bot]@users.noreply.github.com"
+          git add src/data/availability.js
+          git commit -m "Availability: scheduled update"
+          git pull --rebase --autostash
+          git push
