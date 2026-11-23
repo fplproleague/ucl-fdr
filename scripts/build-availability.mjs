@@ -21,46 +21,40 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(__dirname, '../src/data/availability.js')
 const soft = process.argv.includes('--soft')
 
-// The matchday in the address barely matters (every one answers with the
-// current list); phaseId=1 is the league phase. Different servers sit behind
-// it and some answer with an empty list or an older copy, so ask a few times
-// and keep the newest full answer.
-const FEED = 'https://gaming.uefa.com/en/uclfantasy/services/api/Feed/players?tournamentId=1&phaseId=1'
-const ATTEMPTS = 10
-const ENOUGH = 3
+// The same files the UCL Fantasy site itself loads: services/feeds/config/
+// web.json names the season (tourId, 90 for 2026/27), and the player list
+// is players_<tourId>_en_<matchday>.json. A matchday that isn't open yet
+// answers 403, so the newest one that answers with players is the current
+// one. (The services/api/Feed/players address used before started answering
+// with an empty list.)
+const ROOT = 'https://gaming.uefa.com/en/uclfantasy/services/feeds'
+const HEADERS = { 'user-agent': 'ucl-fdr availability script' }
+const LAST_MATCHDAY = 17
 const MIN_PLAYERS = 500
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+async function getJson(url) {
+  const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(30000) })
+  if (!res.ok) return { status: res.status }
+  return { status: res.status, json: await res.json() }
+}
 
-async function fetchList(md) {
-  const res = await fetch(`${FEED}&matchdayId=${md}&_=${Date.now()}`, {
-    headers: { 'user-agent': 'ucl-fdr availability script' },
-    signal: AbortSignal.timeout(20000),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const list = (await res.json())?.data?.value?.playerList
-  return Array.isArray(list) ? list : null
+async function tourId() {
+  const { json } = await getJson(`${ROOT}/config/web.json`)
+  const id = json?.data?.value?.tourId ?? JSON.stringify(json ?? {}).match(/"tourId":"?(\d+)/)?.[1]
+  if (!id) throw new Error('no tourId in config/web.json')
+  return id
 }
 
 async function newestList() {
-  let best = null
-  let good = 0
-  const problems = []
-  for (let i = 0; i < ATTEMPTS && good < ENOUGH; i++) {
-    try {
-      const list = await fetchList(8 - (i % 8))
-      if (list && list.length >= MIN_PLAYERS) {
-        good++
-        const md = feedMatchday(list)
-        if (!best || md > best.md) best = { md, list }
-      }
-    } catch (err) {
-      problems.push(err.message)
-    }
-    await sleep(400)
+  const tour = await tourId()
+  const seen = []
+  for (let md = LAST_MATCHDAY; md >= 1; md--) {
+    const { status, json } = await getJson(`${ROOT}/players/players_${tour}_en_${md}.json`)
+    const list = json?.data?.value?.playerList
+    if (Array.isArray(list) && list.length >= MIN_PLAYERS) return { md: feedMatchday(list) || md, list }
+    seen.push(`MD${md}: ${status}`)
   }
-  if (!best) throw new Error(`no usable answer from the feed (${problems.join(', ') || 'empty lists'})`)
-  return best
+  throw new Error(`no player list for season ${tour} (${seen.slice(-3).join(', ')})`)
 }
 
 function savedPlayers() {
