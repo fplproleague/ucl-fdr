@@ -3,6 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import { compareRows, winCounts } from '../utils/playerCompare.js'
 import { MATCHDAY_LABEL } from '../data/matchdays.js'
 import TeamBadge from './TeamBadge.jsx'
+import { AvailabilityDot } from './AvailabilityDot.jsx'
 import FixtureChip from './FixtureChip.jsx'
 
 // Players side by side: stats as rows, players as columns, the best value
@@ -123,7 +124,10 @@ export default function ComparePlayers({
                       <X size={13} aria-hidden="true" />
                     </button>
                     <TeamBadge abbr={p.team} size={24} />
-                    <span className="w-full truncate text-xs font-semibold leading-tight">{p.name}</span>
+                    <span className="flex w-full min-w-0 items-center justify-center gap-1">
+                      <span className="truncate text-xs font-semibold leading-tight">{p.name}</span>
+                      <AvailabilityDot id={p.id} />
+                    </span>
                     <span className="w-full truncate text-[10px] leading-tight text-ucl-muted">
                       {p.position} · {nameOf(p.team)}
                     </span>
