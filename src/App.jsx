@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Calendar, TrendingUp, Repeat, Users, Percent } from 'lucide-react'
+import { SlidersHorizontal, Calendar, TrendingUp, Repeat, Users, Percent, Trophy } from 'lucide-react'
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -6,6 +6,8 @@ import { TeamsProvider, useTeams } from './context/TeamsContext.jsx'
 import FDRTable from './components/FDRTable.jsx'
 import Footer from './components/Footer.jsx'
 import BrandMark from './components/BrandMark.jsx'
+import { KNOCKOUT } from './data/knockout.js'
+import { koStage } from './utils/bracket.js'
 import { PLAYERS_SHEET_URL } from './utils/useLivePlayers.js'
 import { keepUtmParams } from './utils/utm.js'
 
@@ -18,12 +20,14 @@ const LOADERS = {
   players: () => import('./components/PlayerProjections.jsx'),
   odds: () => import('./components/OddsView.jsx'),
   strength: () => import('./components/TeamStrengthSettings.jsx'),
+  bracket: () => import('./components/KnockoutBracket.jsx'),
 }
 const BestFixtureRuns = lazy(LOADERS.runs)
 const GkRotation = lazy(LOADERS.gk)
 const PlayerProjections = lazy(LOADERS.players)
 const OddsView = lazy(LOADERS.odds)
 const TeamStrengthSettings = lazy(LOADERS.strength)
+const KnockoutBracket = lazy(LOADERS.bracket)
 
 // Players comes second: fixtures joined to form, price and ownership is the
 // thing no other free UCL tool does well, so it sits right after the table.
@@ -33,14 +37,21 @@ const TABS = [
   { id: 'runs', label: 'Best Runs', short: 'Runs', icon: TrendingUp, Component: BestFixtureRuns },
   { id: 'gk', label: 'GK Rotation', short: 'GK', icon: Repeat, Component: GkRotation },
   { id: 'odds', label: 'Odds', icon: Percent, Component: OddsView },
+  { id: 'bracket', label: 'Bracket', short: 'KO', icon: Trophy, Component: KnockoutBracket },
   { id: 'strength', label: 'Strength', icon: SlidersHorizontal, Component: TeamStrengthSettings },
 ]
 
-// The Players tab joins the nav once a player sheet is configured. Until
-// then it's only reachable by its link (#/players, or #/players?demo=1 to
-// preview it with made-up players), so the menu doesn't advertise an empty
-// page.
-const PLAYERS_OPEN = PLAYERS_SHEET_URL != null
+// The Bracket tab joins the nav once the league phase is over. Until then
+// it's only reachable by its link (#/bracket, or #/bracket?demo=bracket to
+// preview it with made-up draws), so the menu doesn't advertise an empty page.
+const KO_OPEN = koStage(KNOCKOUT) !== 'pre'
+
+// The Players tab is for the league phase: it joins the nav once a player
+// sheet is configured, and leaves it again when the knockouts open, since
+// the Bracket tab has its own Players view for those (and there are no
+// league fixtures left to project). Either way it stays reachable by its
+// link (#/players, or #/players?demo=1 with made-up players).
+const PLAYERS_OPEN = PLAYERS_SHEET_URL != null && !KO_OPEN
 
 function Shell() {
   const { tab, setTab } = useTeams()
@@ -76,7 +87,10 @@ function Shell() {
   // (PlayerProjections alone is 41 kB) whether or not they were ever opened.
   const warm = (id) => LOADERS[id]?.().catch(() => {})
   const Active = (TABS.find((t) => t.id === tab) ?? TABS[0]).Component
-  const tabs = TABS.filter((t) => t.id !== 'players' || PLAYERS_OPEN || tab === 'players')
+  const tabs = TABS.filter(
+    (t) =>
+      (t.id !== 'bracket' || KO_OPEN || tab === 'bracket') && (t.id !== 'players' || PLAYERS_OPEN || tab === 'players'),
+  )
 
   // Real <a href="#/id"> links now (the site had zero internal links before),
   // but role="tab" means they must keep behaving like the buttons they

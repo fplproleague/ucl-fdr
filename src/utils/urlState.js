@@ -6,6 +6,9 @@
 //                                           old #/compare links open this)
 //   #/runs?from=2&to=5&r=ARS4BVB2
 //   #/table?from=5&to=8&team=VIL (Villarreal's panel open over the table)
+//   #/bracket?p=ARS---BAY       (bracket picks, see serializePicks)
+//   #/bracket?demo=playoffs     (preview with made-up draws)
+//   #/bracket?v=odds            (Bracket tab sub-view: odds, players or legs)
 //   #/players?demo=1            (Players with made-up players, for previews)
 //   #/players?cmp=p250016833,p250176450   (up to 5 players side by side)
 //   #/odds?from=5&to=8          (bookmaker odds, apart from the ratings)
@@ -17,7 +20,10 @@
 // through tabs instead of leaving the site); everything else replaces, so
 // dragging a rating around doesn't bury the back button under 40 entries.
 
-export const TAB_IDS = ['table', 'runs', 'strength', 'gk', 'players', 'odds']
+import { parsePicks, serializePicks } from './bracket.js'
+import { DEMO_STAGES } from '../data/knockoutDemo.js'
+
+export const TAB_IDS = ['table', 'runs', 'strength', 'gk', 'players', 'odds', 'bracket']
 // The tabs that can show a team's panel.
 export const PANEL_TABS = ['table', 'runs', 'odds']
 // How many players the Players tab compares side by side.
@@ -26,6 +32,9 @@ export const ODDS_VIEWS = ['teams', 'players']
 // An old link with om=xgAgainst (goals against, since dropped) opens on
 // clean sheets.
 export const ODDS_METRICS = ['cs', 'xgFor']
+// The Bracket tab's sub-views (?v=…): the bracket, its Outlook (knockout
+// odds — not the Odds tab), its Players view and the leg planner.
+export const KO_VIEWS = ['bracket', 'odds', 'players', 'legs']
 
 export function parseHash(hash = window.location.hash) {
   const raw = hash.replace(/^#\/?/, '')
@@ -40,6 +49,7 @@ export function parseHash(hash = window.location.hash) {
   }
   const day = params.get('day')
   const demo = params.get('demo')
+  const koView = params.get('v')
   const ov = params.get('ov')
   const om = params.get('om')
   return {
@@ -54,7 +64,10 @@ export function parseHash(hash = window.location.hash) {
     showMatchday: params.get('md') === null ? null : params.get('md') === '1',
     dayFilter: ['TUE', 'WED', 'THU'].includes(day) ? day : null,
     ratings: parseRatings(params.get('r')),
-    demo: demo || null,
+    picks: parsePicks(params.get('p')),
+    // A knockout stage for the Bracket tab, or "1" for the Players tab.
+    demo: DEMO_STAGES.includes(demo) || demo === '1' ? demo : null,
+    koView: KO_VIEWS.includes(koView) ? koView : 'bracket',
     // Player ids are the sheet's ("p250016833", or a name slug): anything
     // else is dropped rather than trusted.
     // A search typed on the Players or Odds tab, so a link can carry it.
@@ -71,22 +84,41 @@ export function parseHash(hash = window.location.hash) {
 
 // Ratings are packed as fixed-width 4-character chunks — "ARS4BVB2" — so a
 // shared link carrying a full custom ticker stays short enough to tweet.
+// Half steps take a lowercase letter in the same one character (a = 1½,
+// b = 2½, c = 3½, d = 4½), so every link made before half steps existed
+// still reads exactly the same.
+const HALF_CODES = 'abcd'
+
+function decodeRating(ch) {
+  if (/^[1-5]$/.test(ch)) return Number(ch)
+  const half = HALF_CODES.indexOf(ch)
+  return half >= 0 ? half + 1.5 : null
+}
+
+function encodeRating(r) {
+  return Number.isInteger(r) ? String(r) : HALF_CODES[r - 1.5]
+}
+
+export function isValidRating(r) {
+  return r >= 1 && r <= 5 && Number.isInteger(r * 2)
+}
+
 export function parseRatings(str) {
   if (!str) return null
   const out = {}
   for (let i = 0; i + 4 <= str.length; i += 4) {
     const id = str.slice(i, i + 3).toUpperCase()
-    const rating = Number(str[i + 3])
-    if (/^[A-Z]{3}$/.test(id) && rating >= 1 && rating <= 5) out[id] = rating
+    const rating = decodeRating(str[i + 3])
+    if (/^[A-Z]{3}$/.test(id) && rating != null) out[id] = rating
   }
   return Object.keys(out).length ? out : null
 }
 
 export function serializeRatings(overrides) {
   return Object.entries(overrides)
-    .filter(([, r]) => r >= 1 && r <= 5)
+    .filter(([, r]) => isValidRating(r))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, r]) => `${id}${r}`)
+    .map(([id, r]) => `${id}${encodeRating(r)}`)
     .join('')
 }
 
@@ -101,7 +133,9 @@ export function buildHash({
   showMatchday,
   dayFilter,
   ratings,
+  picks,
   demo,
+  koView,
   players,
   query,
   oddsView,
@@ -119,7 +153,12 @@ export function buildHash({
   if (showMatchday && dayFilter && dayFilter !== 'ALL') params.set('day', dayFilter)
   const packed = ratings ? serializeRatings(ratings) : ''
   if (packed) params.set('r', packed)
-  if (tab === 'players' && demo) params.set('demo', demo)
+  // Bracket picks only ride along on the Bracket tab — they'd just be noise
+  // in a link to the FDR table.
+  const packedPicks = tab === 'bracket' && picks ? serializePicks(picks) : ''
+  if (packedPicks) params.set('p', packedPicks)
+  if (tab === 'bracket' && koView && koView !== 'bracket') params.set('v', koView)
+  if ((tab === 'bracket' || tab === 'players') && demo) params.set('demo', demo)
   if (tab === 'players' && players?.length) params.set('cmp', players.join(','))
   if (tab === 'odds' && oddsView && oddsView !== 'teams') params.set('ov', oddsView)
   if (tab === 'odds' && oddsMetric && oddsMetric !== 'cs') params.set('om', oddsMetric)
